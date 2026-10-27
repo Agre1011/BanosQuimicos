@@ -1,0 +1,4 @@
+@direccionApi = http://localhost:5148
+
+GET {{direccionApi}}/api/estado
+Accept: application/json
