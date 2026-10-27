@@ -58,6 +58,8 @@ Ninguna observación de esta sección cambia por sí misma la documentación apr
 | D10 | Texto indica pedir baja; Figma dice Dar de Baja. No se explican retiro, fin del servicio ni liberación del baño. | Confirmar aprobación administrativa y momento de los cambios; no dar de baja inmediatamente por el texto del botón. |
 | D11 | Un rol por usuario en ER; perfil CLIENTES opcional y empleado representado por usuario. Texto permite cambiar rol. | Definir qué ocurre con servicios y tareas existentes al cambiar rol, suspender o dar de baja. Validar relaciones antes de migraciones. |
 
+Actualización posterior: D1, D5 y D6 tienen decisiones confirmadas por el estudiante en la sección 9; también se confirmaron partes de D2/D3/D9. La tabla anterior conserva las observaciones originales para explicar las diferencias; consultar C1-C6 para distinguir lo resuelto de los detalles aún pendientes.
+
 ## 4. Entorno observado (solo consultas)
 
 | Consulta | Resultado |
@@ -142,3 +144,235 @@ Se revisaron los archivos de configuración y perfiles de ejecución: contienen 
 La simulación `git add --dry-run` fue bloqueada por permisos del aislamiento al intentar crear `.git/index.lock`; no agregó archivos. La comprobación de candidatos se hizo con consultas de solo lectura de Git, sin preparar archivos para commit.
 
 Resultado: archivos listos para el primer commit de estructura inicial, con V1 registrado como pendiente conocido. No se ejecutaron commits ni push, no se corrigió la interfaz y no se inició otro bloque. No se repitió la compilación porque solo cambiaron exclusiones y documentación.
+
+## 9. Preparación del modelo: decisiones confirmadas por el estudiante
+
+Esta sección complementa el diagrama original aprobado por el profesor; no lo reemplaza ni afirma que el profesor ya haya validado estos ajustes. Se conservan sin modificar el PDF y las dos imágenes originales. El estudiante informó que realizó el primer commit y push. Continúa autorizada únicamente la preparación documental del modelo, sin entidades, bases ni migraciones.
+
+### C1. Solicitudes de varios baños y baño adicional (D1)
+
+Confirmado:
+
+- Un servicio corresponde a un baño.
+- Una solicitud de varios baños puede originar varios servicios.
+- Un baño adicional origina un servicio nuevo, conservando la solicitud de origen y el servicio de referencia.
+- En esta primera versión cada pedido tiene un solo tipo de baño solicitado. El tipo solicitado no elimina la regla aprobada de uso cruzado obra/evento.
+
+Ejemplo: una solicitud de tres baños origina tres servicios individuales. Un pedido posterior de un baño adicional origina un cuarto servicio y conserva el vínculo con su solicitud y con el servicio de referencia.
+
+Diferencia respecto del ER original: SERVICIOS ya referencia un baño, pero SOLICITUDES_CLIENTE no muestra cantidad, tipo solicitado ni fecha deseada, y no existe vínculo explícito entre la solicitud y todos los servicios que origina.
+
+Ajuste estructural propuesto para expresar la decisión conservando tablas: agregar en SOLICITUDES_CLIENTE cantidad y tipo de baño solicitado, dirección de entrega y fecha deseada para esos pedidos; usar su referencia opcional a servicio como servicio de referencia/contexto. Agregar en SERVICIOS una referencia opcional a la solicitud de origen. Así se distinguen las dos direcciones: servicio existente que motiva un pedido y servicios nuevos resultantes. Los nombres, obligatoriedad por tipo y demás detalles de campos son una propuesta técnica pendiente de revisión; las relaciones y reglas de negocio anteriores sí están confirmadas. No crear una tabla de detalle de pedido mientras un solo tipo por solicitud alcance.
+
+### C2. Mantenimiento sin servicio activo
+
+Confirmado:
+
+- Permitir tareas de mantenimiento de un baño sin servicio activo.
+- Agregar la relación directa TAREAS_OPERATIVAS -> BANOS_QUIMICOS.
+- Permitir servicio opcional para esos mantenimientos.
+- Si una tarea tiene servicio, el baño de la tarea debe coincidir con el del servicio.
+
+Ejemplo: reparar la puerta de un baño que está en el depósito genera una tarea para ese baño, sin inventar cliente ni servicio.
+
+Diferencia respecto del ER original: la tarea referencia un servicio y no tiene referencia directa al baño. Ajuste identificado: agregar IdBano y permitir IdServicio nulo para los casos confirmados. Esto no autoriza a dejar sin servicio cualquier tipo de tarea; las reglas para los demás tipos se definirán antes de implementar. No requiere una tabla nueva.
+
+### C3. Condición física y disponibilidad (D5)
+
+Confirmado:
+
+- ESTADOS_BANO representa condición física.
+- La disponibilidad se calcula considerando las asignaciones y los mantenimientos que impidan utilizar el baño.
+- Una tarea pendiente de limpieza no bloquea por sí sola la disponibilidad.
+
+Ejemplo: un baño sano asignado a una obra no está disponible; uno libre con reparación que impide usarlo tampoco. Tener una limpieza pendiente no equivale automáticamente a estar bloqueado.
+
+Diferencia respecto del ER original y Figma: el catálogo de estado no precisa la separación y las pantallas mezclan condición física con asignación/disponibilidad. Ajuste identificado: precisar el significado de ESTADOS_BANO y obtener disponibilidad desde condición, servicios y mantenimiento, sin guardar un segundo valor que pueda quedar desactualizado.
+
+Actualización: los valores de condición, el indicador de bloqueo y sus efectos se confirmaron posteriormente en C8-C9. No suponer que todo mantenimiento pendiente bloquea ni que una limpieza pendiente lo hace.
+
+### Alcance de los ajustes y próximas decisiones
+
+Las tres decisiones pueden representarse, en principio, manteniendo las 12 tablas: agregar campos/relaciones y precisar reglas en las tablas existentes. No se fuerza ese número si una decisión posterior exige otra estructura; cualquier cambio se consultará antes. No hay implementación ni aprobación automática de los detalles técnicos sugeridos.
+
+Las siguientes tres decisiones se confirmaron posteriormente con las aclaraciones del estudiante que se registran en C4-C6. No son propuestas pendientes.
+
+### C4. Estados de solicitudes y tareas (D6)
+
+Confirmado:
+
+- Solicitudes: Pendiente, Aprobada, Rechazada, Resuelta y Cancelada.
+- Tareas: Pendiente, En curso, Realizada y Cancelada.
+- Mantener ESTADOS_OPERACION y agregar un campo que distinga el ámbito Solicitud/Tarea. Validar que cada entidad solo use estados de su ámbito; la coincidencia de nombres no hace intercambiables los registros.
+- Aprobar no equivale a resolver. Una solicitud que requiera trabajos se resuelve cuando se completan todos los necesarios. Cancelar una tarea no resuelve automáticamente la solicitud ni debe permitir considerar satisfecho un trabajo todavía necesario.
+- El administrador puede resolver reclamos o avisos sin tareas registrando una respuesta o explicación.
+
+Ejemplo: aprobar un pedido de tres baños no completa las entregas. Si una entrega se cancela, no alcanza con que las otras dos estén realizadas para dar el pedido por resuelto.
+
+Ajustes respecto del ER: campo de ámbito en ESTADOS_OPERACION y validación de compatibilidad en sus relaciones; utilizar ObservacionesAdministrador para registrar la respuesta/explicación cuando alcance. No se necesita otra tabla para distinguir estos estados. Siguen pendientes la matriz completa de transiciones, quién puede cancelar y cómo registrar sustituciones de trabajos; no se infieren permisos nuevos.
+
+### C5. Modalidades de cambio de ubicación y conservación histórica (D3)
+
+Confirmado:
+
+- Traslado solicitado a la empresa: actualizar ubicación al completar la tarea de traslado.
+- Traslado ya realizado informado por el cliente: actualizar ubicación cuando el administrador valide el aviso.
+- Conservar ubicación anterior y fecha efectiva del cambio, separada de la fecha de registro o validación.
+- Los trabajos realizados anteriormente conservan su referencia a la ubicación que les correspondía.
+
+Ejemplo: el cliente informa el martes un traslado realizado el lunes; el administrador valida el miércoles. La fecha efectiva es el lunes, no el miércoles, y un trabajo realizado antes del traslado mantiene su ubicación anterior.
+
+Ajustes identificados respecto del ER: modalidad explícita en la solicitud; fechas separadas para ocurrencia efectiva y registro/validación; relación de tareas con UBICACIONES_SERVICIO para conservar su contexto histórico. Los nombres y tipos exactos de campos se definirán en la revisión técnica. No sobrescribir la dirección de una fila histórica para representar un traslado ni reasignar retroactivamente trabajos realizados. Las tareas de mantenimiento sin servicio no se obligan por esta decisión a tener una ubicación de servicio. Todo puede representarse inicialmente con las tablas existentes.
+
+### C6. Registro de cliente y cuenta pendiente (D2/D9)
+
+Confirmado:
+
+- Crear juntos usuario y perfil de cliente, con rol Cliente y estado de cuenta Pendiente.
+- Hasta la activación administrativa, mostrar solamente el aviso de espera, sin acceso a servicios ni solicitudes.
+- La API también impone la restricción; ocultar opciones en la interfaz no es suficiente.
+- El usuario no elige su rol ni activa su cuenta.
+
+Ejemplo: aunque una persona recién registrada intente llamar directamente al endpoint de servicios, su cuenta pendiente no puede obtener esos datos.
+
+Ajustes respecto del ER/Figma: las tablas USUARIOS, CLIENTES y ROLES ya permiten representar estos conceptos; precisar el estado inicial, crear los dos registros como una operación indivisible y validar rol/estado desde el servidor. El aviso de espera es una adaptación de pantalla que se implementará en un bloque posterior. No autoriza todavía un mecanismo concreto de autenticación. El identificador de login quedó confirmado en C7. Los datos obligatorios del perfil, política de cambio de rol y alta segura del primer administrador siguen pendientes.
+
+### C7. Correo como único identificador de acceso (D2)
+
+Confirmado por el estudiante: usar correo electrónico único, eliminando espacios exteriores y comparando sin distinguir mayúsculas/minúsculas. No habrá nombre de usuario adicional. Ejemplo: Ana@correo.com y ana@correo.com identifican la misma cuenta.
+
+Ajuste respecto del ER: dejar de utilizar NombreUsuario y omitir ese campo en el modelo a implementar; Email será la credencial única, con normalización y unicidad coherentes en servidor y base. Ajuste de pantalla: cambiar la etiqueta del login a «Correo electrónico». No se modifica el ER original ni las capturas de Figma. Los detalles técnicos de normalización e índices se revisarán antes de implementar.
+
+### C8. Ciclo de vida del servicio y exclusividad de asignación (D10/C3)
+
+Confirmado:
+
+- Una unidad asignada a un servicio no se puede asignar simultáneamente a otro, aunque aún no se haya entregado.
+- En esta versión no se implementan reservas futuras superpuestas de una misma unidad.
+- Diferenciar servicio Pendiente de entrega, Entregado, Finalizado y Cancelado, conservando las fechas correspondientes.
+- Solicitar baja no libera el baño. Al confirmar retiro y cerrar el servicio se libera la asignación; que pueda volver a asignarse depende además de condición y mantenimiento.
+- Una cancelación previa a la entrega libera la asignación sin registrar un retiro ficticio.
+
+Ejemplo: un baño preparado para entregar mañana ya tiene una asignación exclusiva. Tras retirarlo se cierra ese servicio, pero si está No apto no puede asignarse otra vez.
+
+Ajuste respecto del ER: Activo y FechaInicio/FechaFin no expresan por sí solos las cuatro situaciones y sus fechas. Incorporar estado explícito y distinguir fechas de asignación, entrega efectiva, retiro/cierre y cancelación; los nombres exactos se revisarán en el esquema final. Propuesta técnica para mantener las 12 tablas: campo de estado del servicio con valores restringidos, sin crear otro catálogo ni reutilizar estados de solicitudes/tareas. Evitar un Activo independiente que pueda contradecir ese estado. Esta representación técnica se presentará en el resumen final; no es una implementación.
+
+### C9. Condición física y mantenimiento que bloquea nuevas asignaciones (C3)
+
+Confirmado:
+
+- ESTADOS_BANO contiene Apto y No apto como condiciones físicas.
+- El administrador indica si una tarea de mantenimiento bloquea nuevas asignaciones. Si es bloqueante y está Pendiente o En curso, impide asignar el baño.
+- Realizar o cancelar la tarea elimina el bloqueo de esa tarea, sin cambiar automáticamente la condición física a Apto. Otros mantenimientos bloqueantes pueden seguir impidiendo la asignación.
+- El administrador confirma los cambios de condición física; el empleado registra el trabajo y sus observaciones.
+- Una limpieza pendiente no bloquea por sí sola la disponibilidad.
+- Si un baño ya está en servicio pasa a No apto, conserva la asignación y se muestra la situación al administrador. No se cierra ni libera automáticamente el servicio.
+
+Ejemplo: un baño asignado sufre una rotura; se marca No apto y se informa al administrador, pero no desaparece del servicio del cliente. Completar una reparación no basta para marcarlo Apto sin confirmación administrativa.
+
+Ajuste respecto del ER/Figma: separar explícitamente condición y disponibilidad; incorporar el indicador de mantenimiento bloqueante en TAREAS_OPERATIVAS y aplicar permisos administrativos para la condición. La disponibilidad para una nueva asignación requiere condición Apto, ausencia de asignación vigente y ausencia de mantenimiento bloqueante Pendiente/En curso. Se mantiene el catálogo y no se agrega tabla de disponibilidad.
+
+### C10. Datos obligatorios del registro
+
+Confirmado por el estudiante: nombre, apellido, correo electrónico, teléfono y contraseña obligatorios; razón social, CUIT y dirección principal opcionales. El perfil CLIENTES se crea igualmente. El teléfono se guarda como texto para conservar prefijos y signos como +. No imponer CUIT único en esta versión. La dirección necesaria para prestar el servicio se registra en la solicitud correspondiente aunque no exista dirección principal del cliente.
+
+Ajuste respecto del ER: precisar nulabilidad de campos de USUARIOS/CLIENTES; no confundir dirección principal con dirección del servicio. La contraseña recibida es obligatoria, pero se propone guardar solo ContrasenaHash con un mecanismo estándar, nunca texto plano. El algoritmo y la autenticación se resolverán al implementar el bloque de acceso, sin introducir por ello un nombre de usuario adicional.
+
+### C11. Aplicación de tipos de operación (D6)
+
+Confirmado: mantener TIPOS_OPERACION con indicadores de uso en solicitudes, tareas o ambas, y validar el ámbito en la API. Solicitudes: nuevo servicio, baño adicional, limpieza extra, cambio de dirección, reclamo y baja. Tareas: entrega, retiro, limpieza semanal, limpieza extra, traslado y mantenimiento. Limpieza extra puede aplicarse a ambos; no copiar automáticamente un tipo de solicitud a la tarea que produce (baja -> retiro, por ejemplo). La modalidad del cambio de dirección sigue siendo un dato aparte.
+
+Ajuste respecto del ER: agregar los indicadores a TIPOS_OPERACION y definir sus valores, sin crear otro catálogo.
+
+### C12. Tareas pendientes sin empleado y conservación del responsable
+
+Confirmado: permitir tareas Pendientes sin empleado; exigir empleado activo y con rol Empleado antes de pasar a En curso o Realizada. Solo el administrador asigna o reasigna tareas. Los empleados únicamente consultan y registran avances de sus propias tareas. Conservar el empleado asociado a tareas realizadas aunque luego su cuenta sea suspendida o dada de baja.
+
+Ajuste respecto del ER: IdEmpleado opcional mientras la tarea está Pendiente; validación de rol, estado y propiedad en API, y protección de referencias históricas. No borrar el usuario ni poner a nulo su referencia en trabajos realizados. Suspender una cuenta no vuelve inválido el registro histórico; la condición de empleado activo se comprueba al asignar y al avanzar la tarea, no para mostrar hechos ya realizados.
+
+Las políticas restantes de permisos/transiciones, cambio de rol y preparación del primer administrador se precisarán antes de sus bloques funcionales; no se inventan reglas por omisión. Se mantiene la intención de 12 tablas. No crear entidades ni migraciones antes de revisar y cerrar el resumen del modelo.
+
+Verificación de esta actualización: revisar el diff del plan y comparar hashes SHA-256 de los tres originales. Solo cambia este archivo; no corresponde repetir compilación porque no cambió código. El pendiente visual V1 y la falta de prueba app/API continúan vigentes. Esta preparación sigue abierta a las respuestas del estudiante; no comenzar implementación.
+
+Mensaje de commit sugerido para esta actualización documental: `docs: registrar decisiones iniciales del modelo de datos`. No ejecutado.
+
+## 10. Resumen final del esquema para revisión
+
+Estado: preparación documental terminada y propuesta de esquema lista para revisión/cierre por el estudiante. No constituye autorización para crear entidades, bases o migraciones. Las reglas C1-C12 están confirmadas; los nombres, tipos de almacenamiento y restricciones técnicas descritos abajo son propuestas de diseño que expresan esas reglas. Los originales conservan su carácter de documentos aprobados por el profesor; este resumen identifica las adaptaciones acordadas con el estudiante.
+
+Se mantienen exactamente las 12 tablas. PK = clave primaria, FK = referencia a otra tabla. Los campos de la columna principal son obligatorios salvo aclaración. Los campos opcionales pueden volverse obligatorios según operación o estado; opcional en la tabla no significa prescindible en todos los formularios.
+
+### Tablas, campos principales y opcionales
+
+| Tabla | Campos principales propuestos | Opcionales o condicionales |
+| --- | --- | --- |
+| USUARIOS | IdUsuario PK; Nombre; Apellido; Email; Telefono (texto); ContrasenaHash; IdRol FK; EstadoCuenta; FechaRegistro | MotivoSuspension; FechaBaja. Propuesta técnica: EstadoCuenta limitado a Pendiente, Activa, Suspendida y BajaLogica; estos nombres de almacenamiento no crean roles nuevos. |
+| ROLES | IdRol PK; NombreRol | Sin opcionales principales. Catálogo Administrador, Empleado y Cliente. |
+| CLIENTES | IdCliente PK; IdUsuario FK, único | RazonSocial; Cuit (texto, no único); DireccionPrincipal; Observaciones. |
+| BANOS_QUIMICOS | IdBano PK; CodigoInterno único; IdTipoBano FK; IdEstadoBano FK; FechaAlta | Observaciones. No guardar Disponible como indicador independiente. |
+| TIPOS_BANO | IdTipoBano PK; NombreTipo | Descripcion. Clasificación obra/evento; no fija el uso permitido del baño. |
+| ESTADOS_BANO | IdEstadoBano PK; NombreEstado | Descripcion. Solo condición física: Apto y No apto. |
+| SERVICIOS | IdServicio PK; IdCliente FK; IdBano FK; TipoUso (obra/evento); CantidadLimpiezasSemana; EstadoServicio; FechaAsignacion | IdSolicitudOrigen FK; FechaEntregaProgramada; FechaEntregaReal; FechaRetiroReal; FechaFinalizacion; FechaCancelacion; Observaciones. Fechas reales obligatorias al alcanzar el estado correspondiente. |
+| UBICACIONES_SERVICIO | IdUbicacion PK; IdServicio FK; Direccion; FechaRegistro; EsActual | Localidad; Referencia; FechaDesde (efectiva); FechaHasta (efectiva); FechaValidacion. FechaDesde obligatoria al entrar en vigencia; puede faltar en un destino aún pendiente de entrega. |
+| SOLICITUDES_CLIENTE | IdSolicitud PK; IdCliente FK; IdTipoOperacion FK; IdEstadoOperacion FK; FechaSolicitud | IdServicioReferencia FK (precisa el antiguo IdServicio); Descripcion; CantidadBanos; IdTipoBanoSolicitado FK; TipoUsoSolicitado; DireccionSolicitada; FechaDeseada; NuevaDireccion; ModalidadCambioDireccion; FechaCambioEfectiva; FechaValidacion; FechaResolucion; ObservacionesAdministrador. Obligatoriedad según reglas siguientes. |
+| TAREAS_OPERATIVAS | IdTarea PK; IdBano FK; IdTipoOperacion FK; IdEstadoOperacion FK; FechaRegistro; BloqueaAsignacion (booleano) | IdServicio FK; IdEmpleado FK a USUARIOS; IdSolicitud FK; IdUbicacion FK; IdUbicacionDestino FK; FechaProgramada; FechaInicioReal; FechaRealizada; FechaCancelacion; PapelHigienicoRepuesto (booleano opcional); ObservacionesEmpleado. Reglas condicionales abajo. |
+| TIPOS_OPERACION | IdTipoOperacion PK; NombreOperacion; AplicaASolicitudes; AplicaATareas | Descripcion. Al menos un indicador verdadero. Valores por C11. |
+| ESTADOS_OPERACION | IdEstadoOperacion PK; NombreEstado; Ambito (Solicitud/Tarea) | Descripcion. Valores por C4; unicidad propuesta por Ambito + NombreEstado. |
+
+Propuestas técnicas comunes: identificadores enteros; textos Unicode con longitudes acotadas a definir en el mapeo; teléfono y CUIT nunca numéricos; fechas de hechos/registro con hora y criterio temporal uniforme. Mantener separadas fechas efectivas informadas y fechas de registro/validación. Los tamaños exactos y nombres C# no necesitan otra decisión de negocio.
+
+No se afirma que cada campo adicional haya sido confirmado por su nombre: son una representación técnica para revisar. Por ejemplo, FechaInicioReal, fechas de resolución/cancelación y las dos referencias de ubicación permiten expresar cronología sin nuevas tablas.
+
+### Relaciones y cardinalidades
+
+- ROLES 1 -> muchos USUARIOS. Un usuario tiene un rol; puede tener cero o un perfil CLIENTES, y cada perfil pertenece a un único usuario. Todo autorregistro crea ambos registros como una operación indivisible, con rol Cliente y cuenta Pendiente.
+- CLIENTES 1 -> muchos SERVICIOS y SOLICITUDES_CLIENTE. BANOS_QUIMICOS 1 -> muchos SERVICIOS históricos, pero como máximo una asignación vigente por baño.
+- TIPOS_BANO y ESTADOS_BANO 1 -> muchos BANOS_QUIMICOS. TIPOS_BANO también clasifica el tipo pedido en una solicitud, sin exigir que el tipo físico coincida con el uso obra/evento.
+- SERVICIOS 1 -> muchas UBICACIONES_SERVICIO. Solo una ubicación actual por servicio cuando corresponda; no se reemplazan direcciones históricas al trasladar.
+- SOLICITUDES_CLIENTE 1 -> muchos SERVICIOS originados y muchas TAREAS_OPERATIVAS. Un servicio puede no tener solicitud de origen (por ejemplo, alta administrativa); no se inventa una solicitud para completar la FK. Una solicitud puede tener cero o un servicio de referencia. Este vínculo no se confunde con los nuevos servicios que origina.
+- BANOS_QUIMICOS 1 -> muchas TAREAS_OPERATIVAS. El servicio de la tarea es opcional solo para los mantenimientos sin servicio acordados; si existe, su baño debe coincidir con IdBano de la tarea.
+- USUARIOS 1 -> muchas tareas asignadas como empleado; una tarea puede estar sin asignar mientras está Pendiente. No se agrega tabla EMPLEADOS ni empleado fijo en SERVICIOS.
+- Cada solicitud/tarea tiene un tipo y un estado compatibles con su ámbito. Las ubicaciones de tarea se vinculan a UBICACIONES_SERVICIO; cuando hay servicio deben pertenecer al mismo servicio de la tarea.
+
+### Restricciones y criterios de comprobación del futuro modelo
+
+1. Correo: quitar espacios exteriores, comparar sin distinguir mayúsculas y hacer cumplir unicidad también en base de datos. No utilizar NombreUsuario. No guardar contraseñas en claro. No agregar credenciales reales a archivos versionados.
+2. Registro: Nombre, Apellido, Email, Telefono y contraseña recibida obligatorios/no vacíos. El perfil cliente existe aunque sus datos comerciales sean nulos. CUIT sin índice único. Cuenta Pendiente solo accede al aviso de espera, no a operaciones de servicios/solicitudes; la API impone la misma regla y no acepta rol ni activación elegidos por el cliente.
+3. Pedido nuevo/adicional: cantidad entera positiva, un tipo solicitado, uso, dirección y fecha deseada. La dirección de prestación es obligatoria en la solicitud aunque el perfil no tenga dirección principal. Para adicional, servicio de referencia obligatorio y del mismo cliente. Cada baño asignado origina un servicio distinto vinculado a esa solicitud. No asignar unidades antes de su selección/aprobación administrativa. No equiparar cantidad solicitada con trabajos ya completados.
+4. Operaciones sobre un servicio: servicio de referencia del mismo cliente. En cambio de dirección exigir modalidad y nueva dirección; en aviso de traslado realizado exigir fecha efectiva informada. Fechas de validación/resolución se completan cuando suceden. Reclamos/avisos resueltos sin tareas requieren respuesta administrativa. Una solicitud sin tareas no se resuelve automáticamente solo por tener cero tareas; el administrador debe resolverla según C4.
+5. Estados/tipos: API valida ámbito de estados y los indicadores del tipo, además de las FKs. Una FK válida no basta para garantizar compatibilidad. Propuesta de restricciones de base/validación de servidor para reforzar integridad, sin una tabla adicional por catálogo.
+6. Servicio: campo EstadoServicio restringido a Pendiente de entrega, Entregado, Finalizado y Cancelado. Sustituye Activo como dato independiente; una asignación vigente se deriva de los dos primeros estados. Propuesta de índice único filtrado por esos estados para IdBano, junto con operaciones transaccionales y validación de disponibilidad. No permitir dos asignaciones simultáneas ni reservar la misma unidad para otro servicio mientras ya tiene asignación. Conservar fechas programadas separadas de las reales; cancelar antes de entrega no registra retiro. La solicitud de baja por sí sola no cambia el estado ni libera la unidad.
+7. Disponibilidad calculada: Apto, sin asignación vigente y sin mantenimiento bloqueante Pendiente/En curso. BloqueaAsignacion solo puede ser verdadero en mantenimiento y lo define el administrador. Realizar/cancelar ese mantenimiento no marca el baño Apto. Cambiar condición requiere administrador. Un baño asignado que pasa a No apto conserva servicio y referencia al cliente; se muestra la situación al administrador sin liberar automáticamente.
+8. Ubicaciones: cerrar el intervalo anterior y agregar la nueva fila al hacer efectivo el traslado; no sobrescribir su dirección. FechaHasta no anterior a FechaDesde; evitar intervalos efectivos superpuestos y más de una fila actual. FechaRegistro/FechaValidacion no sustituyen la fecha efectiva. Un aviso retroactivo se valida preservando trabajos históricos; no reasignarlos silenciosamente por recalcular la ubicación actual.
+9. Contexto del trabajo: propuesta de IdUbicacion para el lugar al que corresponde la tarea; en traslado, IdUbicacionDestino conserva además el destino. En entrega puede referirse al destino registrado antes de entrar en vigencia. Una tarea realizada conserva esas referencias; trabajos antiguos no se redirigen a la ubicación actual. Mantenimiento sin servicio puede carecer de ambas referencias y describir el lugar en observaciones; no crear un servicio ficticio. Estas referencias precisan C5 sin crear tabla de movimientos.
+10. Responsable: Pendiente permite IdEmpleado nulo; En curso/Realizada requieren empleado activo con rol Empleado al avanzar. Solo administrador asigna/reasigna. El empleado solo ve/modifica sus propias tareas conforme a los permisos acordados. No reasignar retrospectivamente una tarea realizada; conservar su empleado aunque la cuenta deje de estar activa. Propuesta técnica de FKs sin borrado en cascada para historial y baja lógica de cuentas.
+11. Resolución: aprobar no resuelve; tareas canceladas no satisfacen trabajos necesarios. La futura validación debe comprobar el resultado requerido (por ejemplo, las entregas de todos los baños del pedido), no limitarse a que todas las tareas no canceladas estén realizadas. Sustituir una tarea cancelada conserva su registro. No se agrega una tabla de pasos para esta versión; la regla de resolución por tipo y la intervención administrativa se detallarán en el bloque funcional antes de automatizarla.
+12. Integridad histórica: conservar cuentas, servicios, ubicaciones, solicitudes y tareas referenciadas; evitar borrados físicos en cascada. En vínculos solicitud/servicio, validar mismo cliente; en tarea/servicio, mismo baño; en tarea/ubicación, mismo servicio. Las actualizaciones de entrega/retiro/traslado y sus fechas deben ser coherentes dentro de una transacción. Estos son criterios de futuras pruebas, no pruebas ya ejecutadas.
+
+### Diferencias respecto del ER original aprobado
+
+| Área | Adaptación a revisar con el profesor |
+| --- | --- |
+| Acceso | Omitir NombreUsuario, usar Email único normalizado y cambiar etiqueta de login. Proponer ContrasenaHash en lugar de Contrasena. Precisar campos obligatorios y perfil cliente con datos comerciales opcionales. |
+| Estados y tipos | Agregar Ambito a ESTADOS_OPERACION e indicadores de uso a TIPOS_OPERACION, manteniendo ambos catálogos compartidos. |
+| Solicitudes | Agregar cantidad, tipo solicitado, uso, dirección de prestación y fecha deseada; distinguir servicio de referencia de servicios originados. Agregar modalidad de traslado y separar fechas efectivas de registro/validación/resolución. |
+| Servicios | Agregar solicitud de origen, cuatro estados y fechas del ciclo de vida. Sustituir Activo independiente y precisar FechaInicio/FechaFin mediante fechas con significado explícito. Exclusividad de asignación por baño. |
+| Tareas | Agregar baño directo; servicio opcional para mantenimiento sin servicio; empleado opcional en Pendiente; indicador de bloqueo; referencias de ubicación y fechas de seguimiento. Preservar responsable histórico. |
+| Ubicaciones | Precisar intervalos efectivos, fecha de registro/validación y referencia estable desde trabajos anteriores; destino previo a entrega no implica ubicación efectiva. |
+| Condición/disponibilidad | ESTADOS_BANO solo Apto/No apto. Disponibilidad calculada; no crear tabla ni columna independiente para ella. |
+
+Sin cambios de alcance: sin pagos/facturación; sin tabla de empleados, contratos comerciales, empresa compartida entre varias cuentas, auditoría general o motor de reservas. La falta de CUIT único no crea por sí misma relaciones entre distintos perfiles cliente.
+
+### Programación manual de tareas: propuesta pendiente de confirmación
+
+Propuesta para esta primera versión: el administrador crea/programa y asigna las tareas manualmente, incluidas las limpiezas semanales. La frecuencia del servicio sirve de referencia para programarlas; no genera automáticamente tareas ni calcula recorridos. Aprobar una solicitud no crea por sí solo trabajos si el administrador no los registra. Esta última descripción del flujo manual sigue siendo propuesta, no regla confirmada.
+
+Sí requiere confirmación del estudiante antes de implementar la programación de tareas. No impide revisar/cerrar el esquema: FechaProgramada y las relaciones existentes admiten el flujo manual sin tablas adicionales. No se implementa planificación automática por omisión.
+
+### Resultado y verificaciones de esta preparación
+
+No queda una regla de negocio indispensable que obligue a abrir otra ronda para expresar este esquema de 12 tablas. Las propuestas técnicas se presentan juntas para revisión, no como decisiones ya confirmadas. Programación manual, matriz detallada de permisos/transiciones, alta segura del primer administrador y método de autenticación se concretarán antes de sus bloques funcionales; la revisión del esquema no autoriza su implementación ni agrega requisitos.
+
+Cambió únicamente docs/plan-trabajo.md. Verificado: revisión de consistencia C1-C12, inventario de 12 tablas, diff de Git y hashes de los originales. No se ejecutó compilación ni pruebas de base porque no cambió código ni existe modelo implementado. No se crearon entidades, DbContext, base, migraciones, commits ni publicaciones. LocalDB fue detectado anteriormente con consultas de solo lectura: instancia MSSQLLocalDB 15.0.4382.1 detenida; no se inició ni se probó conexión SQL.
+
+Entrega documental cerrada; esquema pendiente de revisión y cierre por el estudiante. Esperar su confirmación antes del siguiente bloque. Mensaje de commit sugerido: `docs: consolidar esquema de datos y decisiones confirmadas`.
