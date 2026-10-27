@@ -1,6 +1,6 @@
 # Baños Químicos
 
-Estructura inicial en .NET 10, sin entidades, autenticación ni persistencia.
+Proyecto en .NET 10 con estructura inicial y modelo de persistencia EF Core/SQL Server. Todavía sin autenticación ni controladores CRUD.
 
 - `BanosQuimicos.Api`: ASP.NET Core Web API con controladores.
 - `BanosQuimicos.App`: .NET MAUI Blazor Hybrid con componentes Razor. Destinos Android y Windows; Windows permite comprobar la interfaz en la PC.
@@ -43,7 +43,7 @@ dotnet run --project BanosQuimicos.Api --launch-profile http
 2. Para una comprobación local en Windows, seleccionar `Windows Machine` y presionar F5. Debe aparecer el título «Baños Químicos» y una breve descripción.
 3. La pantalla está en `Components/Pages/Home.razor`; `MainPage.xaml` hospeda el BlazorWebView y `Components/Routes.razor` resuelve la ruta inicial.
 
-Para Android, primero confirmar con el estudiante teléfono físico o emulador. Luego verificar su configuración, seleccionar ese destino en Visual Studio y ejecutar. Compilar Android no implica haber instalado o probado la app en un dispositivo.
+El estudiante ya probó la pantalla inicial en Windows y en un teléfono Android físico por USB. Para repetir en Android, seleccionar ese teléfono en Visual Studio y ejecutar. Continúa pendiente el título parcialmente tapado por la franja superior y la conexión app/API.
 
 ## Compilar desde terminal
 
@@ -56,6 +56,10 @@ La solución incluye exactamente los dos proyectos. El proyecto MAUI compila par
 
 ## Git
 
-Repositorio inicializado solo localmente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original permanece disponible para versionar. No se han realizado commits ni configurado publicación.
+El estudiante realizó los commits y el push previos. El bloque de persistencia se desarrolla en `feature/modelo-datos`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+
+## Base de datos
+
+La base local es `BanosQuimicosDb` en `(localdb)\MSSQLLocalDB`, con autenticación de Windows. La API registra el DbContext, pero no ejecuta migraciones automáticamente al iniciar. Ver [modelo, restricciones y pasos para consultar la base](docs/base-datos.md).
 
 Ver `docs/plan-trabajo.md` para evidencias de esta entrega, limitaciones y próximos pasos.
