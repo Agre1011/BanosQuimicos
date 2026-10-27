@@ -1,6 +1,6 @@
 # Plan de trabajo
 
-Fecha de revisión: 27/10/2026. Bloque 0 cerrado. Bloque 1 autorizado posteriormente por el estudiante con alcance limitado a estructura y compilación; ver sección 7. El resto del orden es una propuesta pendiente de confirmación.
+Fecha de revisión: 27/10/2026. Bloques 0 y 1 cerrados. El estudiante confirmó el esquema y autorizó el bloque de modelo/persistencia: ver sección 11 para implementación y verificaciones. Las secciones anteriores conservan la historia de preparación; no autorizan otros bloques funcionales.
 
 ## 1. Fuentes revisadas y límites de lectura
 
@@ -363,11 +363,11 @@ No se afirma que cada campo adicional haya sido confirmado por su nombre: son un
 
 Sin cambios de alcance: sin pagos/facturación; sin tabla de empleados, contratos comerciales, empresa compartida entre varias cuentas, auditoría general o motor de reservas. La falta de CUIT único no crea por sí misma relaciones entre distintos perfiles cliente.
 
-### Programación manual de tareas: propuesta pendiente de confirmación
+### Programación manual de tareas: confirmada posteriormente
 
-Propuesta para esta primera versión: el administrador crea/programa y asigna las tareas manualmente, incluidas las limpiezas semanales. La frecuencia del servicio sirve de referencia para programarlas; no genera automáticamente tareas ni calcula recorridos. Aprobar una solicitud no crea por sí solo trabajos si el administrador no los registra. Esta última descripción del flujo manual sigue siendo propuesta, no regla confirmada.
+Confirmado para esta primera versión: el administrador crea/programa y asigna las tareas manualmente, incluidas las limpiezas semanales. La frecuencia del servicio sirve de referencia para programarlas; no genera automáticamente tareas ni calcula recorridos. No se implementa generación automática de trabajos al aprobar solicitudes.
 
-Sí requiere confirmación del estudiante antes de implementar la programación de tareas. No impide revisar/cerrar el esquema: FechaProgramada y las relaciones existentes admiten el flujo manual sin tablas adicionales. No se implementa planificación automática por omisión.
+El estudiante confirmó la programación manual al autorizar el bloque de modelo/persistencia. Ya no representa una decisión pendiente. Esta confirmación no autoriza todavía endpoints de tareas ni pantallas.
 
 ### Resultado y verificaciones de esta preparación
 
@@ -376,3 +376,58 @@ No queda una regla de negocio indispensable que obligue a abrir otra ronda para 
 Cambió únicamente docs/plan-trabajo.md. Verificado: revisión de consistencia C1-C12, inventario de 12 tablas, diff de Git y hashes de los originales. No se ejecutó compilación ni pruebas de base porque no cambió código ni existe modelo implementado. No se crearon entidades, DbContext, base, migraciones, commits ni publicaciones. LocalDB fue detectado anteriormente con consultas de solo lectura: instancia MSSQLLocalDB 15.0.4382.1 detenida; no se inició ni se probó conexión SQL.
 
 Entrega documental cerrada; esquema pendiente de revisión y cierre por el estudiante. Esperar su confirmación antes del siguiente bloque. Mensaje de commit sugerido: `docs: consolidar esquema de datos y decisiones confirmadas`.
+
+## 11. Bloque de modelo de datos y persistencia: implementado y cerrado
+
+El estudiante confirmó el esquema de la sección 10 y la programación manual (decisión C13), e informó que guardó y subió el avance documental. Autorizó las entidades, contexto, configuraciones, migración inicial y creación exclusiva de BanosQuimicosDb. No autorizó autenticación, CRUD ni pantallas nuevas. Esta autorización posterior reemplaza las restricciones de la etapa documental para este bloque únicamente.
+
+### Rama, archivos y decisiones técnicas
+
+- Se revisaron AGENTS.md, el plan completo y Git. El árbol estaba limpio, en master, commit 3f0fdfe. Se creó feature/modelo-datos desde esa versión, sin descartar cambios. No se hizo commit ni push.
+- Modelos/: 12 clases de entidades con propiedades y referencias de navegación. No se agregaron entidades fuera del esquema.
+- Datos/BanosQuimicosDbContext.cs y Datos/Configuraciones/: contexto y 12 configuraciones separadas, con claves, longitudes, nulabilidad, tablas, relaciones y catálogos. Todas las relaciones usan NO ACTION en SQL Server, evitando borrados en cascada.
+- Datos/Migraciones/20261027203511_Inicial.cs, su Designer y snapshot: migración inicial revisada, con 12 tablas del negocio, índices y 27 filas de catálogos. No incluye usuarios ni datos operativos.
+- BanosQuimicos.Api.csproj: EF Core SqlServer y Design 10.0.12, con Design privado; dotnet-tools.json: herramienta dotnet-ef 10.0.12 local al repositorio, sin instalación global. Compatibilidad net10.0 verificada en NuGet y mediante compilación.
+- Una dependencia transitiva inicial de SqlClient generó avisos NU1902/NU1903 por System.Security.Cryptography.Pkcs 9.0.11. Se fijó la versión corregida 10.0.13; la auditoría posterior de la API no encontró paquetes vulnerables en los orígenes consultados.
+- Program.cs registra UseSqlServer. La conexión de desarrollo usa (localdb)\MSSQLLocalDB, BanosQuimicosDb y seguridad integrada de Windows; no se guardan contraseñas. No se ejecutan migraciones automáticamente al arrancar.
+- scripts/verificar-persistencia.sql comprueba metadatos, catálogos y tablas operativas vacías, sin insertar usuarios ni datos de prueba. docs/base-datos.md explica estructura, reproducción, límites y consulta por Visual Studio/SSMS; README actualizado.
+
+Tipos/longitudes elegidos: claves int; textos Unicode nvarchar; nombre/apellido 100, email 254, teléfono 40, CUIT 20, razón social 200, dirección 300, observaciones 2000. Hash hasta 1000 caracteres. Fechas DateTimeOffset/datetimeoffset para distinguir instante efectivo de registro/validación. Teléfono y CUIT siguen siendo texto. No se implementó un algoritmo de hash ni autenticación todavía: solo su campo de persistencia.
+
+### Protecciones implementadas en SQL Server
+
+- Email único con collation Latin1_General_100_CI_AS y CHECK que rechaza vacío/espacios exteriores. La propiedad C# recorta espacios; no hay NombreUsuario.
+- CódigoInterno único, sin espacios exteriores; CLIENTES.IdUsuario único; CUIT no único.
+- Índice único filtrado UX_SERVICIOS_BanoAsignado sobre IdBano para Pendiente de entrega y Entregado. Permite conservar servicios históricos sin duplicar asignaciones vigentes.
+- Índice único filtrado para una ubicación actual por servicio; chequeo básico de intervalo efectivo.
+- Restricciones de uso obra/evento, modalidad solicitado/informado, cuenta y fechas/ciclo del servicio; frecuencia no negativa y cantidad solicitada positiva si se proporciona.
+- Las tareas sin servicio y los bloqueos se limitan al tipo Mantenimiento; En curso/Realizada exigen IdEmpleado no nulo. Los CHECK de tareas referencian IDs estables de catálogos (11 mantenimiento, 7/8 estados); cambios a esos IDs requieren migraciones coordinadas.
+- 21 relaciones FK activas, validadas y NO ACTION. Estas protecciones no sustituyen baja lógica ni impiden por sí mismas modificar un historial; los futuros servicios de negocio deben conservarlo.
+
+### Base y migración aplicada
+
+Se inició la instancia existente MSSQLLocalDB, versión 15.0.4382.1 (SQL Server 2019). La consulta previa comprobó que BanosQuimicosDb no existía. No se modificaron bases de otros proyectos ni se instalaron componentes de SQL Server.
+
+La primera actualización con --no-build usó el ensamblado anterior a generar la migración y creó solo la base vacía con __EFMigrationsHistory. Se detectó el resultado, se compiló la migración y se consultó esa base antes de continuar: solo tenía el historial vacío. Después se aplicó Inicial correctamente, sin borrar ni recrear la base. Es un incidente de ejecución corregido, no una migración pendiente.
+
+Resultado: 12 tablas del negocio más __EFMigrationsHistory, tabla técnica de EF que guarda MigrationId/ProductVersion. Su fila es 20261027203511_Inicial / 10.0.12. Las 13 tablas visibles no significan una entidad adicional del negocio.
+
+Catálogos comprobados: ROLES 3, TIPOS_BANO 2, ESTADOS_BANO 2, TIPOS_OPERACION 11, ESTADOS_OPERACION 9. Total 27 filas, con nombres, ámbitos e indicadores acordados. USUARIOS, CLIENTES, BANOS_QUIMICOS, SERVICIOS, UBICACIONES_SERVICIO, SOLICITUDES_CLIENTE y TAREAS_OPERATIVAS permanecen vacías.
+
+### Verificaciones realizadas y pendientes
+
+Realizadas:
+
+- Compilación de BanosQuimicos.sln (API, app Android y Windows): correcta, 0 errores y 0 advertencias tras corregir la dependencia.
+- Conexión real con LocalDB mediante sqlcmd y EF Core; migración generada/revisada/aplicada.
+- Verificación SQL de solo lectura: 12 tablas de negocio + historial, 21 FKs sin cascada, índices únicos/filtros, collation de email, CHECK activos y catálogos/ausencia de datos operativos.
+- dotnet ef migrations has-pending-model-changes: sin diferencias entre el modelo y la última migración.
+- Auditoría NuGet de la API con dependencias transitivas: sin vulnerabilidades informadas en los orígenes actuales.
+- API ejecutada con perfil http; GET /api/estado respondió HTTP 200 y el mensaje esperado. El endpoint sigue siendo una respuesta simple, no una comprobación de salud de la base. Se detuvo el servidor de prueba.
+- Revisión de Git y hashes SHA-256: PDF y dos PNG originales conservados. bin/obj/.vs continúan excluidos.
+
+Pendiente para próximos bloques: autenticación/activación y permisos; ámbito real del tipo/estado de cada solicitud/tarea; datos condicionales de solicitudes; comprobación del mismo cliente/baño/servicio en relaciones; disponibilidad completa y concurrencia al asignar; transiciones y resolución de solicitudes; programación manual; actualizaciones históricas de ubicación; impedir cambios retroactivos de responsable. Las FKs garantizan existencia, no esas reglas entre registros. Detalle y pasos reproducibles en docs/base-datos.md.
+
+No se realizaron altas de usuarios/datos operativos ni pruebas CRUD; el control de índices se hizo consultando su definición real, no insertando duplicados. No se ejecutó la interfaz en este bloque; se conservan las pruebas previas del estudiante en Windows/Android y el pendiente visual V1. App/API sigue sin integración ni prueba de conexión desde el teléfono.
+
+Bloque cerrado dentro del alcance autorizado. Para revisar: abrir solución, consultar la base desde Visual Studio/SSMS y ejecutar scripts/verificar-persistencia.sql siguiendo docs/base-datos.md. No se hizo commit ni push. Mensaje sugerido: `feat: agregar modelo de datos y persistencia con EF Core y LocalDB`. Esperar confirmación del estudiante antes de comenzar otro bloque.
