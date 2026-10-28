@@ -1,4 +1,81 @@
 @page "/"
+@using BanosQuimicos.App.Autenticacion
+@using BanosQuimicos.App.Components.Autenticacion
+@inject SesionUsuario Sesion
+@implements IDisposable
 
-<h1>Baños Químicos</h1>
-<p>Sistema de gestión para la empresa de baños químicos.</p>
+<header class="marca" aria-label="Baños Químicos">
+    <span class="marca-simbolo" aria-hidden="true">BQ</span>
+    <p>BAÑOS QUÍMICOS</p>
+    <span>Sistema de gestión</span>
+</header>
+
+@if (!string.IsNullOrEmpty(Sesion.Mensaje))
+{
+    <div class="aviso" role="status">@Sesion.Mensaje</div>
+}
+@if (!string.IsNullOrEmpty(avisoRegistro) && Sesion.Estado == EstadoSesion.SinSesion)
+{
+    <div class="aviso" role="status">@avisoRegistro</div>
+}
+@if (Sesion.Estado == EstadoSesion.Verificando)
+{
+    <section class="tarjeta" aria-busy="true"><h1>Consultando tu cuenta…</h1><p>Estamos verificando la sesión con el servidor.</p></section>
+}
+else if (Sesion.Estado == EstadoSesion.SinSesion)
+{
+    if (registro) { <Registro Registrado="CuentaRegistrada" Volver="Volver" /> }
+    else { <Login @key="correoInicial" CorreoInicial="@correoInicial" CrearCuenta="MostrarRegistro" /> }
+}
+else if (Sesion.Estado == EstadoSesion.Pendiente)
+{
+    <section class="tarjeta" aria-labelledby="titulo-espera">
+        <h1 id="titulo-espera">Cuenta pendiente</h1>
+        <div class="aviso espera" role="status">Tu cuenta está pendiente de activación por el administrador.</div>
+        <button class="principal" disabled="@Sesion.Ocupada" @onclick="Sesion.ActualizarAsync">Consultar nuevamente el estado</button>
+        <button class="salir" disabled="@Sesion.Ocupada" @onclick="SalirAsync">Cerrar sesión</button>
+    </section>
+}
+else if (Sesion.Estado == EstadoSesion.Activa && Sesion.Cuenta is { } cuenta)
+{
+    <section class="tarjeta" aria-labelledby="titulo-inicio">
+        <h1 id="titulo-inicio">Hola, @cuenta.Nombre</h1>
+        <p class="rol">Rol: <strong>@cuenta.Rol</strong></p>
+        <button class="principal" disabled="@Sesion.Ocupada" @onclick="Sesion.ActualizarAsync">Actualizar estado de la cuenta</button>
+        <button class="salir" disabled="@Sesion.Ocupada" @onclick="SalirAsync">Cerrar sesión</button>
+    </section>
+}
+else
+{
+    <section class="tarjeta">
+        <h1>No pudimos verificar tu cuenta</h1>
+        <p>Consultá nuevamente antes de continuar.</p>
+        <button class="principal" disabled="@Sesion.Ocupada" @onclick="Sesion.ActualizarAsync">Volver a intentar</button>
+        <button class="salir" disabled="@Sesion.Ocupada" @onclick="SalirAsync">Cerrar sesión</button>
+    </section>
+}
+
+@code {
+    private bool registro;
+    private string correoInicial = "";
+    private string? avisoRegistro;
+    protected override async Task OnInitializedAsync()
+    {
+        Sesion.Cambio += ActualizarVista;
+        await Sesion.InicializarAsync();
+    }
+    private void ActualizarVista() => _ = InvokeAsync(StateHasChanged);
+    private void MostrarRegistro() { registro = true; avisoRegistro = null; }
+    private void Volver() => registro = false;
+    private void CuentaRegistrada(string email)
+    {
+        registro = false; correoInicial = email;
+        avisoRegistro = "Tu cuenta fue creada y requiere activación por el administrador. Ya podés iniciar sesión para consultar su estado.";
+    }
+    private async Task SalirAsync()
+    {
+        registro = false; avisoRegistro = null; correoInicial = "";
+        await Sesion.CerrarAsync();
+    }
+    public void Dispose() => Sesion.Cambio -= ActualizarVista;
+}

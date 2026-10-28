@@ -533,3 +533,66 @@ No se registran correos personales, contraseñas, hashes, tokens ni contenidos d
 Revisión final: diff revisado y git diff --check sin errores; 103 archivos versionados/candidatos revisados y 0 preparados en el índice. No se detectaron indicadores de credenciales, claves privadas o tokens literales en los textos examinados, ni rutas de generados/secretos locales entre los candidatos. Se comprobaron exclusiones para bin, obj, .vs, resultados de pruebas, APK/AAB, .env.local y PFX. No se leyó el almacén local de secretos. Los hashes SHA-256 del PDF y los dos PNG originales coinciden con los iniciales. No se repitieron compilación ni pruebas automatizadas: esta actualización solo modifica documentación y conserva los resultados anteriores.
 
 Bloque de autenticación de la API cerrado con pruebas automatizadas y manuales documentadas. Quedan fuera de este cierre la integración MAUI/API, pantallas de autenticación, CRUD del negocio y el pendiente visual V1. No iniciar otro bloque sin confirmación. No se hizo commit ni push. Mensaje de commit sugerido: `feat: agregar autenticacion y activacion de cuentas en la API`.
+
+## 13. Bloque de autenticación de BanosQuimicos.App
+
+### Autorización, punto de partida y límites
+
+El estudiante confirmó commit, push y merge de autenticación API y master local actualizado. Se leyeron AGENTS.md, el plan completo, contratos/controladores y guías de API; se revisó visualmente la captura de Figma en la página 5 del PDF aprobado. Git estaba limpio en master 9234f4f, coincidente con la referencia local origin/master; se creó feature/autenticacion-app desde ese punto, sin descartar cambios. No se hizo un nuevo fetch/pull ni se alteraron documentos originales.
+
+Se explicó antes de implementar: formularios Razor acordes con Figma y los campos confirmados; cliente HTTP y sesión separados de la vista; SecureStorage; consulta /yo como fuente del estado actual; conexión Windows HTTPS y Android Debug por loopback mediante USB; ajuste de área segura nativa. Sin CRUD, activación administrativa en la app, recuperación, proveedores externos ni cambios de esquema.
+
+### Archivos y comportamiento implementado
+
+- App/Autenticacion/: contratos con validación, ClienteAutenticacion y SesionUsuario. Registro con nombre, apellido, correo, teléfono y contraseña obligatorios; razón social, CUIT y dirección principal opcionales. No se envían rol ni estado. Correo recortado; unicidad sin mayúsculas validada por la API existente.
+- App/Components/Autenticacion/: Login y Registro; Home.razor selecciona login/registro, aviso Pendiente, cuenta activa mínima con nombre/rol o estado sin verificar. Tras registro exitoso informa activación requerida y precarga correo en login, sin iniciar sesión automáticamente. Campos y botones se deshabilitan durante el envío; la sesión evita consultas simultáneas.
+- El cliente usa POST /api/autenticacion/registro, POST /api/autenticacion/login y GET /api/autenticacion/yo reales. Solo /yo recibe Bearer, por petición. No se adjunta a un cliente global ni a URLs externas. El handler no sigue redirecciones. No se guardan contraseñas ni claves JWT en la app.
+- /yo es obligatorio después del login, al restaurar, al volver de segundo plano y al actualizar. Pendiente conserva únicamente estado y aviso, sin perfil/rol operativo; Activa muestra identidad actual. Ante falta de conexión o 403 se oculta la identidad y se ofrece reintentar/cerrar. 401 de /yo elimina la sesión; login 401 informa credenciales incorrectas; login 403, cuenta no habilitada. La API no distingue en el 401 vencimiento de suspensión/baja; el mensaje lo refleja sin inventar una causa.
+- App/Plataforma/: ConexionApi crea el HttpClient (20 segundos), AlmacenSesionSeguro conserva exclusivamente JWT con SecureStorage. Preferences contiene solo el indicador no sensible de restauración. Cerrar elimina memoria/token y deshabilita restauración. Si no se puede guardar, se informa sesión solo en memoria. No hay refresh token ni revocación global al cerrar sesión.
+- MauiProgram y App registran servicios y consulta al reanudar. MainPage usa SafeAreaEdges=All; App.xaml aplica Resize del teclado Android. CSS permite desplazamiento natural, formularios sin alturas fijas y foco visible. Se conservan paleta/acciones de Figma, etiqueta Correo electrónico confirmada y cabecera textual BQ. No se presenta como copia exacta de un logotipo.
+- AndroidManifest.Debug.xml y Desarrollo/network_security_config.xml permiten HTTP solo a 127.0.0.1 en Android Debug. El csproj selecciona el manifiesto antes de compilar, después de que los targets MAUI hayan elegido el base; se detectó y corrigió esa sobrescritura durante la revisión. Release usa el manifiesto base y excluye ese recurso. Windows usa https://localhost:7292; Android Debug usa http://127.0.0.1:5148 mediante adb reverse por USB. No hay callback que omita certificados ni permiso HTTP global. Release necesita configurar el servidor HTTPS real antes de distribuir.
+- Pruebas: el proyecto existente enlaza el C# real de autenticación de la app (sin exigir runtime MAUI en los tests). AutenticacionAppPruebas simula transporte y almacén; una prueba nueva en AutenticacionPruebas usa ese cliente contra los controladores reales, SQL Server y activación administrativa.
+
+### Verificaciones realizadas por el agente
+
+- Suite completa: **29 pruebas correctas, 0 fallidas, 0 omitidas**: 16 del cliente/sesión, 12 previas de API y 1 integración nueva app/API. Comprueba rutas/token, estado actual frente al del login, ocultamiento de perfil Pendiente, restauración/cierre, pérdida de conexión/reintento, distinción 401/403/409/400/500/3xx, almacén fallido, respuesta malformada y prevención de consultas duplicadas. La integración nueva registra, ingresa como Pendiente, activa por administrador, actualiza con el mismo token y cierra.
+- Integración ejecutada con TestServer y nombre normal de LocalDB, en una base nueva BanosQuimicosAuthPruebas_<GUID> conservada. Las credenciales se generan en memoria y las cuentas se identifican como PRUEBA AUTENTICACION/example.invalid. No se consultaron credenciales ni se modificaron cuentas personales de BanosQuimicosDb. Estas pruebas no equivalen a tráfico HTTPS real desde el teléfono.
+- Primera compilación App Debug Android/Windows: correcta, 0 errores y 0 advertencias. La solución completa también compiló con 0 errores/advertencias. Tras el último ajuste de selección de manifiesto y ruta de recurso, se recompiló Android: 0 errores/advertencias. Se verificó en el manifiesto generado networkSecurityConfig y en res/xml el recurso con base HTTP denegado y excepción exclusiva 127.0.0.1. Release se evaluó sin ese manifiesto/recurso (no se ejecutó una compilación Release).
+- Ejecución visual en Windows: se abrió la app nativa, se revisaron login y registro, se desplazó el formulario hasta sus últimos campos y botones, y se envió vacío comprobando mensajes de validación. No se introdujeron credenciales personales ni se registraron cuentas desde la interfaz. La inspección detectó un parámetro de correo mostrado literalmente y se corrigió; se reabrió la versión compilada y se comprobó el correo inicial vacío.
+- ADB devices -l no encontró teléfonos conectados durante esta sesión. No se instaló ni ejecutó esta versión en Android. Se consultó la configuración evaluada de Release, que excluye el recurso de red de Debug.
+- El primer ejecutor de pruebas en aislamiento no completó; la ejecución fuera de ese aislamiento pasó. No se presenta ese intento como una prueba de funcionalidad fallida ni como evidencia de éxito.
+
+### Pruebas manuales: estado al cierre inicial
+
+docs/autenticacion-app.md contiene pasos reproducibles para API HTTPS, Windows, túnel USB Android, registro, cuenta Pendiente, activación en Postman con IdUsuario obtenido por consulta de solo lectura, actualización a Activa y cierre. Incluye errores, vencimiento, reinicio y teclado/desplazamiento. README enlaza la guía y deja de afirmar que la app no consume la API.
+
+Al cierre inicial quedaba pendiente que el estudiante repitiera el flujo completo en Windows y Android físico: certificado de desarrollo, transporte nativo, persistencia real SecureStorage, activación con sesión abierta, reinicio, vencimiento y cierre. La simulación de almacenamiento no verifica SecureStorage nativo. **V1 al cierre inicial: ajuste del título implementado; confirmación visual Android pendiente (resuelto posteriormente según el cierre final siguiente)**, junto con teclado abierto, campos inferiores, botones, rotación y barras del sistema. No dar por cerrado V1 solo por compilar. Las pruebas Windows/Android informadas en bloques anteriores correspondían a la pantalla inicial anterior.
+
+No se agregaron tablas, migraciones, paquetes ni endpoints de negocio. No se inicia el siguiente bloque sin confirmación. Bloque implementado para revisión, con pruebas personales pendientes según lo anterior. No se hizo commit ni push. Mensaje sugerido: `feat: agregar autenticacion y gestion de sesion en la app MAUI`.
+
+Revisión final de archivos: git diff --check correcto; 114 archivos versionados/candidatos, sin rutas de bin/obj/.vs/APK/AAB/temporales/secretos ni indicadores de claves privadas o tokens literales en los textos examinados. Índice sin archivos preparados. Exclusiones de generados y .env.local comprobadas; SHA-256 del PDF y los dos PNG originales sin cambios. No se leyó el almacén de secretos ni se hizo commit/push.
+
+Conectividad local adicional: API ejecutada con perfil https y configuración normal; GET https://localhost:7292/api/estado y GET http://localhost:5148/api/estado devolvieron 200. HTTPS comprobado con validación normal del certificado, sin bypass y sin enviar credenciales. La primera consulta anterior al arranque no pudo conectar; luego del arranque fue correcta. Esto confirma los puertos locales para la guía, no una prueba de transporte desde Android ni un login completo desde la app Windows. Se detuvo la API de comprobación y se cerró la app usada para inspección para dejar libre el entorno.
+
+### Cierre final para commit: pruebas manuales confirmadas el 28/10/2026
+
+El estudiante confirmó personalmente resultados correctos en Windows y en su Moto G9 Plus físico conectado por USB. Estas verificaciones manuales son independientes de las **29 pruebas automatizadas previamente ejecutadas por el agente**; no se atribuyen a una nueva ejecución automática.
+
+| Verificación manual | Windows | Moto G9 Plus / Android |
+| --- | --- | --- |
+| Campos obligatorios y credenciales incorrectas | Correcto | Correcto |
+| Registro con opcionales vacíos y rechazo de correo duplicado | Correcto | Correcto |
+| Cuenta Pendiente sin perfil ni rol | Correcto | Correcto |
+| Activación desde Postman y actualización en la app sin otro login | Correcto | Correcto |
+| Restauración de sesión tras cerrar y abrir la app | Correcto | Correcto |
+| Pérdida de conexión: ocultar identidad y mostrar error | Correcto | Correcto |
+| Recuperación de conexión al reiniciar la API | Correcto | Correcto |
+| Cierre de sesión persistente tras volver a abrir la app | Correcto | Correcto |
+
+Además, en Windows confirmó ventana reducida, tabulación y desplazamiento. En Android confirmó título completo, barras del sistema, teclado, desplazamiento y rotación. La conexión del teléfono funcionó mediante `adb reverse` al puerto 5148. **V1 cerrado por confirmación visual del estudiante en el dispositivo físico.** La restauración y el cierre persistente quedaron comprobados manualmente en ambas plataformas, además de las pruebas previas con almacén simulado.
+
+**Pendiente: vencimiento real del token por transcurso del tiempo. No probado manualmente.** Los escenarios automatizados de token vencido/401 no sustituyen esta prueba real en la app. No se afirma haber probado otros escenarios manuales no informados.
+
+Revisión para commit: rama feature/autenticacion-app; diff y archivos nuevos revisados, git diff --check sin errores. Se examinaron 114 archivos versionados/candidatos y el índice está vacío. No se detectaron rutas de generados/temporales/secretos ni indicadores de tokens literales, claves privadas o credenciales en los textos examinados. Se comprobaron exclusiones de bin, obj, .vs, TestResults, APK/AAB, temporales, .env.local y PFX. Los hashes SHA-256 del PDF y los dos PNG originales permanecen iguales. Se conserva código, solución, recursos y documentación necesarios; no se leyó el almacén de secretos ni se guardaron credenciales o tokens.
+
+En esta actualización solo se modificó documentación: no se repitieron compilación ni tests, y se conservan sus resultados anteriores. Bloque de autenticación de la app **cerrado y listo para commit**, con el vencimiento real registrado como pendiente. No se hizo commit ni push ni se inició otro bloque. Mensaje sugerido: `feat: agregar autenticacion y gestion de sesion en la app MAUI`. Esperar confirmación antes del siguiente bloque.

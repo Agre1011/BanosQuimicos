@@ -1,13 +1,13 @@
 # Baños Químicos
 
-Proyecto en .NET 10 con persistencia EF Core/SQL Server y autenticación de la API. Todavía sin controladores CRUD del negocio ni integración de autenticación en la app.
+Proyecto en .NET 10 con persistencia EF Core/SQL Server y autenticación en la API y la app MAUI. Todavía sin controladores CRUD del negocio.
 
 - `BanosQuimicos.Api`: ASP.NET Core Web API con controladores.
 - `BanosQuimicos.App`: .NET MAUI Blazor Hybrid con componentes Razor. Destinos Android y Windows; Windows permite comprobar la interfaz en la PC.
 - `BanosQuimicos.Api.Pruebas`: pruebas de integración con JWT y SQL Server reales, en bases aisladas de prueba.
 - `docs`: documentación original y plan de trabajo.
 
-La app todavía no consume la API. Esta etapa permite comprobar cada proyecto por separado.
+La app consume registro, login y consulta de cuenta de la API. Ver [guía de autenticación de la app](docs/autenticacion-app.md) para Windows y teléfono Android físico por USB.
 
 ## Abrir y compilar en Visual Studio 2026
 
@@ -44,11 +44,11 @@ dotnet run --project BanosQuimicos.Api --launch-profile http
 
 ## Ejecutar la app
 
-1. Detener la depuración de la API si está activa y establecer `BanosQuimicos.App` como proyecto de inicio.
-2. Para una comprobación local en Windows, seleccionar `Windows Machine` y presionar F5. Debe aparecer el título «Baños Químicos» y una breve descripción.
+1. Mantener la API ejecutándose con el perfil `https` en otra terminal y establecer `BanosQuimicos.App` como proyecto de inicio. También se admite inicio múltiple en Visual Studio.
+2. Para una comprobación local en Windows, seleccionar `Windows Machine` y presionar F5. Debe aparecer el título «Baños Químicos» y el formulario de inicio de sesión.
 3. La pantalla está en `Components/Pages/Home.razor`; `MainPage.xaml` hospeda el BlazorWebView y `Components/Routes.razor` resuelve la ruta inicial.
 
-El estudiante ya probó la pantalla inicial en Windows y en un teléfono Android físico por USB. Para repetir en Android, seleccionar ese teléfono en Visual Studio y ejecutar. Continúa pendiente el título parcialmente tapado por la franja superior y la conexión app/API.
+El estudiante confirmó las pruebas manuales de autenticación en Windows y en su Moto G9 Plus físico por USB, incluidos restauración/cierre de sesión, recuperación de conexión y presentación con teclado y rotación. El pendiente visual del título quedó resuelto. Android Debug usa `adb reverse tcp:5148 tcp:5148`, detallado en la guía de la app. El vencimiento real del token sigue pendiente; ver el registro separado de pruebas manuales y automatizadas en el plan.
 
 ## Compilar desde terminal
 
@@ -61,7 +61,7 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/autenticacion-api`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/autenticacion-app`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 ## Base de datos
 

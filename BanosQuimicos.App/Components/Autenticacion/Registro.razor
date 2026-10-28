@@ -1,0 +1,56 @@
+@using BanosQuimicos.App.Autenticacion
+@inject ClienteAutenticacion Api
+
+<section class="tarjeta" aria-labelledby="titulo-registro">
+    <h1 id="titulo-registro">Crear cuenta</h1>
+    <p>Los campos con * son obligatorios. Tu cuenta necesitará activación.</p>
+    @if (!string.IsNullOrEmpty(error)) { <div class="aviso error" role="alert">@error</div> }
+    <EditForm Model="datos" OnValidSubmit="RegistrarAsync" FormName="registro">
+        <DataAnnotationsValidator />
+        <fieldset disabled="@ocupada">
+            <label for="registro-nombre">Nombre *</label>
+            <InputText id="registro-nombre" autocomplete="given-name" maxlength="100" @bind-Value="datos.Nombre" />
+            <ValidationMessage For="@(() => datos.Nombre)" />
+            <label for="registro-apellido">Apellido *</label>
+            <InputText id="registro-apellido" autocomplete="family-name" maxlength="100" @bind-Value="datos.Apellido" />
+            <ValidationMessage For="@(() => datos.Apellido)" />
+            <label for="registro-email">Correo electrónico *</label>
+            <InputText id="registro-email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" maxlength="254" @bind-Value="datos.Email" />
+            <ValidationMessage For="@(() => datos.Email)" />
+            <label for="registro-telefono">Teléfono *</label>
+            <InputText id="registro-telefono" type="tel" inputmode="tel" autocomplete="tel" maxlength="40" @bind-Value="datos.Telefono" />
+            <ValidationMessage For="@(() => datos.Telefono)" />
+            <label for="registro-clave">Contraseña *</label>
+            <InputText id="registro-clave" type="password" autocomplete="new-password" maxlength="128" aria-describedby="ayuda-clave" @bind-Value="datos.Contrasena" />
+            <small id="ayuda-clave">Entre 12 y 128 caracteres. No guardamos tu contraseña en la app.</small>
+            <ValidationMessage For="@(() => datos.Contrasena)" />
+            <label for="registro-razon">Razón social <span>(opcional)</span></label>
+            <InputText id="registro-razon" autocomplete="organization" maxlength="200" @bind-Value="datos.RazonSocial" />
+            <ValidationMessage For="@(() => datos.RazonSocial)" />
+            <label for="registro-cuit">CUIT <span>(opcional)</span></label>
+            <InputText id="registro-cuit" maxlength="20" @bind-Value="datos.Cuit" />
+            <ValidationMessage For="@(() => datos.Cuit)" />
+            <label for="registro-direccion">Dirección principal <span>(opcional)</span></label>
+            <InputText id="registro-direccion" autocomplete="street-address" maxlength="300" @bind-Value="datos.DireccionPrincipal" />
+            <ValidationMessage For="@(() => datos.DireccionPrincipal)" />
+            <button class="principal" type="submit">@(ocupada ? "Creando cuenta…" : "Crear cuenta")</button>
+            <button class="secundario" type="button" @onclick="Volver">Volver a iniciar sesión</button>
+        </fieldset>
+    </EditForm>
+</section>
+
+@code {
+    [Parameter] public EventCallback<string> Registrado { get; set; }
+    [Parameter] public EventCallback Volver { get; set; }
+    private DatosRegistro datos = new();
+    private bool ocupada;
+    private string? error;
+    private async Task RegistrarAsync()
+    {
+        if (ocupada) return;
+        ocupada = true; error = null;
+        try { await Api.RegistrarAsync(datos); await Registrado.InvokeAsync(datos.Email); }
+        catch (ErrorApi ex) { error = ex.Message; }
+        finally { datos.Contrasena = ""; ocupada = false; }
+    }
+}

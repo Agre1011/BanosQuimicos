@@ -14,4 +14,9 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />
     <ProjectReference Include="../BanosQuimicos.Api/BanosQuimicos.Api.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Comparte el código cliente real sin depender del runtime Android/Windows en los tests. -->
+    <Compile Include="../BanosQuimicos.App/Autenticacion/*.cs" Link="App/Autenticacion/%(Filename)%(Extension)" />
+    <Compile Include="../BanosQuimicos.App/Plataforma/ConexionApi.cs" Link="App/ConexionApi.cs" />
+  </ItemGroup>
 </Project>
