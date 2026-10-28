@@ -1,9 +1,10 @@
 # Baños Químicos
 
-Proyecto en .NET 10 con estructura inicial y modelo de persistencia EF Core/SQL Server. Todavía sin autenticación ni controladores CRUD.
+Proyecto en .NET 10 con persistencia EF Core/SQL Server y autenticación de la API. Todavía sin controladores CRUD del negocio ni integración de autenticación en la app.
 
 - `BanosQuimicos.Api`: ASP.NET Core Web API con controladores.
 - `BanosQuimicos.App`: .NET MAUI Blazor Hybrid con componentes Razor. Destinos Android y Windows; Windows permite comprobar la interfaz en la PC.
+- `BanosQuimicos.Api.Pruebas`: pruebas de integración con JWT y SQL Server reales, en bases aisladas de prueba.
 - `docs`: documentación original y plan de trabajo.
 
 La app todavía no consume la API. Esta etapa permite comprobar cada proyecto por separado.
@@ -13,6 +14,10 @@ La app todavía no consume la API. Esta etapa permite comprobar cada proyecto po
 1. Abrir `BanosQuimicos.sln` con Archivo > Abrir > Proyecto o solución.
 2. Esperar la restauración de paquetes NuGet.
 3. Elegir configuración Debug y Compilar > Compilar solución.
+
+Antes de ejecutar la API por primera vez, ejecutar `./scripts/configurar-jwt-local.ps1` desde PowerShell para guardar una clave aleatoria en User Secrets, fuera de Git. Ver [autenticación y pruebas](docs/autenticacion-api.md) para crear el primer administrador sin credenciales fijas.
+
+Guías: [flujo completo en Postman](docs/guia-postman-autenticacion.md) y [LocalDB por nombre normal](docs/localdb.md).
 
 Se necesita el SDK .NET 10 y las herramientas MAUI/Android. La instalación o actualización de componentes requiere revisión previa.
 
@@ -52,11 +57,11 @@ dotnet sln BanosQuimicos.sln list
 dotnet build BanosQuimicos.sln
 ```
 
-La solución incluye exactamente los dos proyectos. El proyecto MAUI compila para Android y Windows. Los archivos de plataforma iOS/MacCatalyst que conserva la plantilla no son destinos habilitados en esta etapa.
+La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El proyecto MAUI compila para Android y Windows. Los archivos de plataforma iOS/MacCatalyst que conserva la plantilla no son destinos habilitados en esta etapa.
 
 ## Git
 
-El estudiante realizó los commits y el push previos. El bloque de persistencia se desarrolla en `feature/modelo-datos`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/autenticacion-api`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 ## Base de datos
 

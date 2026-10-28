@@ -1,6 +1,6 @@
 # Plan de trabajo
 
-Fecha de revisión: 27/10/2026. Bloques 0 y 1 cerrados. El estudiante confirmó el esquema y autorizó el bloque de modelo/persistencia: ver sección 11 para implementación y verificaciones. Las secciones anteriores conservan la historia de preparación; no autorizan otros bloques funcionales.
+Fecha de revisión: 27/10/2026. Preparación, estructura y persistencia cerradas. Autenticación de la API autorizada e implementada: ver sección 12 para alcance y verificaciones. Las secciones anteriores conservan la historia; no autorizan otros bloques funcionales.
 
 ## 1. Fuentes revisadas y límites de lectura
 
@@ -431,3 +431,105 @@ Pendiente para próximos bloques: autenticación/activación y permisos; ámbito
 No se realizaron altas de usuarios/datos operativos ni pruebas CRUD; el control de índices se hizo consultando su definición real, no insertando duplicados. No se ejecutó la interfaz en este bloque; se conservan las pruebas previas del estudiante en Windows/Android y el pendiente visual V1. App/API sigue sin integración ni prueba de conexión desde el teléfono.
 
 Bloque cerrado dentro del alcance autorizado. Para revisar: abrir solución, consultar la base desde Visual Studio/SSMS y ejecutar scripts/verificar-persistencia.sql siguiendo docs/base-datos.md. No se hizo commit ni push. Mensaje sugerido: `feat: agregar modelo de datos y persistencia con EF Core y LocalDB`. Esperar confirmación del estudiante antes de comenzar otro bloque.
+
+## 12. Bloque de autenticación de la API: cerrado para revisión
+
+El estudiante informó commit, push y merge de persistencia y actualización de master, y autorizó registro, login, roles, restricción de cuentas no activas, consulta de identidad, activación administrativa y preparación del primer administrador. No autorizó pantallas, CRUD del negocio, recuperación de contraseña ni proveedores externos.
+
+### Estado inicial y rama
+
+Se releyeron AGENTS.md y el plan, y se revisó Git: master limpio en 12bf0ba (merge de persistencia), coincidente con la referencia local origin/master. Se creó feature/autenticacion-api desde ese master. No se descartaron cambios, no se hizo commit ni push.
+
+### Elecciones técnicas explicadas antes de implementar
+
+- JWT Bearer con paquete oficial Microsoft.AspNetCore.Authentication.JwtBearer 10.0.12. Se valida firma HMAC-SHA256, emisor, audiencia y expiración; duración predeterminada 30 minutos y tolerancia de reloj 15 segundos. No hay refresh tokens ni tablas de sesiones.
+- PasswordHasher<Usuario> de ASP.NET Core para hash con sal y verificación estándar; se usa este servicio de Identity sin agregar las tablas de Identity. Se actualiza un hash al iniciar sesión si el verificador indica SuccessRehashNeeded.
+- Política técnica de contraseña: 12 a 128 caracteres, sin recortar ni exigir símbolos concretos. Nombre/apellido/correo/teléfono se recortan y validan; opcionales comerciales mantienen las longitudes del modelo. No se acepta rol ni activación del solicitante.
+- Clave JWT aleatoria de 64 bytes guardada en User Secrets por scripts/configurar-jwt-local.ps1, sin imprimirla ni pasarla como argumento. El script conserva una clave existente. UserSecretsId del csproj es un identificador público, no la clave. En otros entornos la clave se proporciona externamente como Jwt__ClaveBase64. El arranque normal valida la configuración y no tiene una clave fija de respaldo.
+- No se modificaron entidades, configuraciones EF, snapshot ni migración: se conservan 12 tablas del negocio más el historial técnico de EF. No fue necesario un cambio de esquema.
+
+### Implementación
+
+- Contratos/Autenticacion/: DTOs separados de EF, validación y respuestas limitadas sin hashes. El registro rechaza campos JSON no admitidos, incluidos rol/estado.
+- POST /api/autenticacion/registro: crea USUARIOS y CLIENTES juntos en transacción explícita; rol Cliente consultado del catálogo, estado Pendiente y fecha UTC. Normaliza espacios exteriores del correo y respeta la comparación sin mayúsculas de SQL Server. Precomprueba duplicados y captura también la colisión del índice único concurrente como 409. No se expone la contraseña recibida.
+- POST /api/autenticacion/login: verifica correo/contraseña con mensaje genérico para credenciales incorrectas (401). Pendiente obtiene token restringido y aviso; Activa obtiene token; Suspendida/BajaLogica con contraseña correcta recibe 403 sin token.
+- GET /api/autenticacion/yo: cuenta activa obtiene DTO propio con datos básicos/rol/estado; pendiente recibe solo estado y aviso de espera, no perfil ni datos operativos. No devuelve entidades ni hash.
+- POST /api/cuentas/{id}/activar: exige administrador activo y actualiza solo Cliente/Pendiente con perfil existente, mediante UPDATE condicional. 204 al activar, 404 si no existe y 409 si no cumple condiciones. No reactiva suspendidas ni cambia roles.
+- Seguridad/ConfiguracionSeguridad.cs: por cada token válido consulta usuario/rol actuales en SQL Server y reconstruye los claims. Inexistente/Suspendida/BajaLogica falla autenticación (401). Pendiente no obtiene rol operativo. Un token previo deja de dar acceso al suspender/dar de baja y refleja cambios de rol en la petición siguiente.
+- CuentaActiva es política predeterminada y fallback; CuentaIdentificada se reserva para /yo; Administrador exige estado activo y rol actual. AllowAnonymous se limita a estado, registro y login. No basta con ocultar opciones de la interfaz. La comprobación es por petición, no una revocación permanente independiente: si una cuenta vuelve legítimamente a un estado permitido, se evalúa ese estado actual y el vencimiento del token.
+- El comando local --crear-admin-local pide datos y contraseña sin mostrarla y con confirmación, solo en Development; crea el primer Administrador/Activa en transacción Serializable y termina sin iniciar web. Rechaza si ya existe cualquier administrador o el correo pertenece a otra cuenta. No existe endpoint de bootstrap, credencial fija ni creación automática en el arranque. No crea perfil cliente ficticio para el administrador.
+- Program.cs agrega autenticación antes de autorización. Fuera de Development activa redirección HTTPS; HTTP se mantiene únicamente para pruebas locales. /api/estado continúa público y sin dependencia de autenticación.
+
+### Pruebas realizadas y conservación de datos
+
+Se agregó BanosQuimicos.Api.Pruebas a la solución (tercer proyecto, solo de pruebas), con xUnit v3, WebApplicationFactory/TestServer y SQL Server real. Las rutas auxiliares de prueba se agregan exclusivamente al host de pruebas; no existen en la API distribuida. Cada ejecución crea una base nueva BanosQuimicosAuthPruebas_<GUID>, verifica que no exista y aplica la migración original. Nunca usa la base principal, borra registros ni ejecuta EnsureDeleted. Las cuentas llevan PRUEBA AUTENTICACION y correos example.invalid; las contraseñas y la clave JWT se generan en memoria.
+
+Incidente inicial de entorno: SqlLocalDB start MSSQLLocalDB falló y el primer intento de las 11 pruebas falló en el constructor de la infraestructura, antes de probar rutas. Se inspeccionó el log y se comprobó que el proceso existente sí respondía por su canal local. Se verificó @@SERVERNAME, sin recrear ni reparar la instancia. Las ejecuciones iniciales posteriores usaron ese canal mediante BANOS_PRUEBAS_SERVIDOR_SQL; la conexión versionada continuó (localdb)\MSSQLLocalDB. Ese acceso temporal fue retirado tras resolver la desincronización como se documenta en el cierre complementario de esta sección.
+
+Resultado final: 12 pruebas de integración correctas:
+
+1. Registro normaliza correo, crea perfil, guarda/verifica hash estándar y no lo expone.
+2. Correo duplicado, incluso concurrente, devuelve 409 sin perfiles duplicados/huérfanos.
+3. Falta de teléfono y envío de rol/estado privilegiados devuelven 400 sin alta.
+4. Contraseña incorrecta y correo inexistente devuelven el mismo 401.
+5. Pendiente solo obtiene estado/aviso; falla acceso operativo, fallback y autoactivación (403).
+6. Administrador activa; cliente no activa; repetición incompatible da 409 y objetivo inexistente 404.
+7. Cuenta Suspendida con token anterior pierde acceso y no obtiene nuevo token.
+8. Cuenta BajaLogica con token anterior pierde acceso y no obtiene nuevo token.
+9. Cambio de rol se refleja con el mismo token; no conserva permisos anteriores.
+10. Sin token y con token alterado, vencido, emisor/audiencia incorrectos se rechaza acceso; /api/estado continúa público.
+11. Bootstrap crea el primer administrador en la base de prueba y rechaza otro sin modificar cuentas.
+12. Fallo controlado después de SaveChanges y antes del commit revierte usuario y perfil juntos.
+
+Se conservan las dos bases de las ejecuciones correctas: BanosQuimicosAuthPruebas_00538f787a894d588214e98f337b5990 y BanosQuimicosAuthPruebas_bc8d47134aad4267bc9b6fa2aa4dd24b. No se guardaron sus contraseñas en el repositorio ni se eliminaron datos. La base principal BanosQuimicosDb tenía 0 usuarios y 0 clientes antes y mantiene 0/0 después. No se creó allí un administrador real: el desarrollador elegirá sus credenciales en el comando interactivo.
+
+Verificado además: solución completa (API, pruebas, app Android/Windows) compilada con 0 errores y 0 advertencias; auditoría del proyecto de pruebas con dependencias transitivas sin vulnerabilidades informadas; EF sin cambios pendientes del modelo. Script de clave local ejecutado correctamente, con valor fuera de Git. API ejecutada con User Secrets y conexión temporal al canal local de la instancia existente: /api/estado devolvió 200, /api/autenticacion/yo y activación sin token devolvieron 401. Estos últimos controles HTTP no insertaron datos en la base principal.
+
+### Reproducción, límites y cierre
+
+docs/autenticacion-api.md contiene configuración, bootstrap, endpoints, códigos HTTP, pruebas manuales sin contraseñas fijas y comando dotnet test. README y docs/base-datos.md enlazan el nuevo bloque. Los documentos originales se conservan, con hashes SHA-256 sin cambios. No se guardan tokens, contraseñas ni claves en código/configuración versionada.
+
+En el cierre inicial quedaba pendiente el ingreso interactivo del primer administrador y la prueba manual: el estudiante posteriormente confirmó ambos, según el cierre final de esta sección. El ingreso por consola no fue automatizado con credenciales reales. El arranque por nombre de LocalDB quedó resuelto en el cierre complementario siguiente. Continúan pendientes integración MAUI/API, pantallas de autenticación y pendiente visual V1. No se implementaron endpoints de suspensión/cambio de rol ni CRUD del negocio; los escenarios de suspensión/rol se probaron modificando exclusivamente los datos propios de bases aisladas.
+
+Bloque cerrado para revisión. No se hizo commit ni push. Mensaje sugerido: `feat: agregar autenticacion y activacion de cuentas en la API`. Esperar confirmación antes de continuar con otro bloque.
+
+### Cierre complementario: arranque normal de LocalDB resuelto
+
+El estudiante pidió resolver este pendiente antes del cierre definitivo, sin otro bloque ni acciones destructivas. Se conservaron todos los cambios locales de feature/autenticacion-api.
+
+Diagnóstico: SqlLocalDB info indicaba Stopped y el registro del usuario anunciaba LOCALDB#7AB46D6F, mientras el proceso 19936 seguía ejecutándose como LOCALDB#F0CB2303 sobre los mismos archivos/directorio de MSSQLLocalDB. Ese motor respondía por su canal. La desincronización impedía resolver/iniciar por el nombre normal. Se comprobó esta inconsistencia; no se determinó el evento original que la produjo ni se atribuyó a corrupción o a coexistencia de versiones sin evidencia.
+
+Acción no destructiva: verificar servidor/archivos, bases y sesiones; sin transacciones de usuario abiertas, ejecutar SHUTDOWN normal (sin NOWAIT) en el proceso identificado, esperar que termine e iniciar SqlLocalDB start MSSQLLocalDB. No se borraron ni recrearon instancia/bases; no se alteró registro, versión o archivos MDF/LDF ni se mataron procesos. Una conexión ociosa de Visual Studio fue desconectada por la parada normal.
+
+Verificaciones posteriores:
+
+- SqlLocalDB info informa Running, versión 15.0.4382.1. Consultas desde procesos independientes por (localdb)\MSSQLLocalDB abren BanosQuimicosDb, leen roles y usuarios sin errores.
+- La API arrancó con appsettings.Development.json normal y User Secrets solo para la clave JWT, sin ConnectionStrings__BanosQuimicos ni canal alternativo. GET /api/estado devolvió 200. Un login de diagnóstico con correo aleatorio inexistente devolvió 401 con el mensaje esperado y dejó evidencia del SELECT real USUARIOS/ROLES de EF Core en el log. No creó ni cambió cuentas.
+- Se retiró la alternativa BANOS_PRUEBAS_SERVIDOR_SQL de la infraestructura de pruebas. Las 12 pruebas de integración pasaron usando únicamente el nombre normal; la ejecución generó y conservó BanosQuimicosAuthPruebas_f319f196af514cbe87260a3a7473d0e4.
+- Las tres bases previas conservaron database_id y create_date. BanosQuimicosDb mantiene id 8, 13 tablas (12 del negocio + historial EF), la misma migración y 0 usuarios/0 clientes. No se perdió información ni se creó el administrador real.
+
+Documentación: docs/localdb.md describe evidencia, recuperación realizada, comprobación normal y precauciones ante una recurrencia. No presenta el canal como solución de conexión permanente. docs/guia-postman-autenticacion.md guía los siete pasos pedidos con rutas/cuerpos reales, secretos locales y códigos HTTP: creación personal del administrador, ejecución en VS, login, registro Pendiente, activación, /yo activo y rechazo de activación de otra cuenta por un cliente. Aclara que no existen todavía endpoints de servicios/solicitudes y que la restricción operativa genérica se verifica en el host de integración, sin inventar rutas de negocio.
+
+El arranque por nombre ya no es pendiente. La guía quedó inicialmente a disposición del estudiante; sus pruebas manuales fueron confirmadas después y se registran a continuación. No se presentan como ejecuciones del agente. Se detuvo la API de comprobación para dejar libre el puerto al estudiante. No se inició otro bloque ni se hizo commit/push. Se mantiene el mensaje de commit sugerido del bloque de autenticación.
+
+### Cierre final: pruebas manuales confirmadas por el estudiante
+
+El estudiante informó haber realizado personalmente las siguientes verificaciones en Visual Studio y Postman. Son resultados manuales comunicados por él, separados de las 12 pruebas automatizadas de integración ejecutadas anteriormente por el agente:
+
+| Verificación manual | Resultado confirmado |
+| --- | --- |
+| Crear el administrador local y arrancar normalmente la API | Completado; uso de la conexión normal de desarrollo. |
+| Login del administrador y GET /api/autenticacion/yo | 200; rol Administrador y cuenta Activa. |
+| Registro de cliente | 201; cuenta Pendiente. |
+| Login del cliente pendiente y consulta /yo | Únicamente estado y aviso de espera, sin datos operativos ni perfil. |
+| Intento de autoactivación por cliente | 403. |
+| Activación del cliente por administrador | 204. |
+| Consulta /yo con el mismo token del cliente tras activarlo | 200; datos del usuario, rol Cliente y cuenta Activa. |
+| Cliente activo intenta activar otra cuenta | 403. |
+| Intento de activación sin token | 401. |
+
+No se registran correos personales, contraseñas, hashes, tokens ni contenidos del almacén de secretos. Las comprobaciones antiguas de 0 usuarios/0 clientes describen el estado anterior a estas altas manuales, no el estado actual de la base. No se consultaron ni modificaron datos de las cuentas personales para documentar este cierre.
+
+Revisión final: diff revisado y git diff --check sin errores; 103 archivos versionados/candidatos revisados y 0 preparados en el índice. No se detectaron indicadores de credenciales, claves privadas o tokens literales en los textos examinados, ni rutas de generados/secretos locales entre los candidatos. Se comprobaron exclusiones para bin, obj, .vs, resultados de pruebas, APK/AAB, .env.local y PFX. No se leyó el almacén local de secretos. Los hashes SHA-256 del PDF y los dos PNG originales coinciden con los iniciales. No se repitieron compilación ni pruebas automatizadas: esta actualización solo modifica documentación y conserva los resultados anteriores.
+
+Bloque de autenticación de la API cerrado con pruebas automatizadas y manuales documentadas. Quedan fuera de este cierre la integración MAUI/API, pantallas de autenticación, CRUD del negocio y el pendiente visual V1. No iniciar otro bloque sin confirmación. No se hizo commit ni push. Mensaje de commit sugerido: `feat: agregar autenticacion y activacion de cuentas en la API`.

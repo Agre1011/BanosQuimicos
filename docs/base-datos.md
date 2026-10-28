@@ -1,6 +1,6 @@
 # Modelo y persistencia
 
-La API contiene las 12 entidades acordadas. La app no se conecta directamente a SQL Server y todavía no consume la API. No hay autenticación ni controladores CRUD en este bloque.
+La API contiene las 12 entidades acordadas. La app no se conecta directamente a SQL Server y todavía no consume la API. El bloque posterior agregó [autenticación de la API](autenticacion-api.md) sin cambiar el esquema; todavía no hay CRUD del negocio.
 
 ## Archivos para estudiar
 
@@ -23,6 +23,8 @@ Fuentes: [proveedor EF Core SQL Server 10.0.12](https://www.nuget.org/packages/M
 - Base exclusiva: `BanosQuimicosDb`
 - Autenticación: Windows / seguridad integrada del usuario de desarrollo.
 - Instancia comprobada: SQL Server LocalDB 2019, 15.0.4382.1. No se cambió a la versión 2025 también instalada.
+
+El fallo de arranque por nombre detectado durante autenticación quedó resuelto sin recrear la instancia. La conexión normal anterior está verificada; consultar [diagnóstico de LocalDB](localdb.md) si se repite una inconsistencia de estado.
 
 `TrustServerCertificate=True` se utiliza solo en esta conexión local de desarrollo. La configuración de otros entornos se proporciona externamente mediante `ConnectionStrings__BanosQuimicos`; no guardar credenciales reales en el repositorio. LocalDB corresponde a la PC del backend, no al teléfono Android.
 
@@ -100,10 +102,10 @@ Pendiente para servicios de negocio y endpoints posteriores (no queda implementa
 
 - Validar ámbito de estado/tipo en solicitudes y tareas. Las FKs solo garantizan que el catálogo exista; el campo Ambito y los indicadores no validan automáticamente su uso desde otra tabla.
 - Validar cliente compartido entre solicitud/servicio, baño compartido entre tarea/servicio y pertenencia de las ubicaciones al servicio.
-- Registro atómico de usuario/perfil, activación, permisos por rol, empleado activo al asignar/avanzar y conservación de responsable/ubicación al realizar tareas.
+- Registro atómico de usuario/perfil, activación y políticas de cuenta/rol ya implementados en el bloque de autenticación. Pendientes: empleado activo al asignar/avanzar y conservación de responsable/ubicación al realizar tareas del negocio.
 - Disponibilidad completa según condición y mantenimiento, comprobada transaccionalmente al asignar. El índice evita duplicar asignaciones, pero no impide por sí solo asignar una unidad No apta o con mantenimiento bloqueante.
 - Datos condicionales de cada solicitud (dirección de prestación, cantidad/tipo/fecha, servicio de referencia o modalidad), transición de estados y resolución por todos los trabajos requeridos.
 - Cambios de dirección, intervalos históricos sin superposición y actualización coordinada de servicio, tareas y ubicaciones. Un índice de ubicación actual no comprueba todos los intervalos históricos.
 - Cambios de condición por administrador, bajas lógicas y asignación/programación manual de tareas; sin generación automática semanal.
 
-No se escribieron pruebas de altas/modificaciones con datos operativos. La verificación ejecutada consulta estructura y catálogos reales sin insertar usuarios, respetando el alcance de esta entrega.
+El bloque de persistencia no escribió pruebas de altas/modificaciones con datos operativos. La verificación de su script consulta estructura y catálogos reales sin insertar usuarios. El bloque posterior de autenticación sí agrega integración de cuentas en bases nuevas de prueba, según docs/autenticacion-api.md, sin alterar BanosQuimicosDb.
