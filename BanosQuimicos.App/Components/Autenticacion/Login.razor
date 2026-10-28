@@ -1,0 +1,38 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+<section class="tarjeta" aria-labelledby="titulo-login">
+    <h1 id="titulo-login">Iniciar sesión</h1>
+    <p>Ingresá con tu correo electrónico.</p>
+    @if (!string.IsNullOrEmpty(error)) { <div class="aviso error" role="alert">@error</div> }
+    <EditForm Model="datos" OnValidSubmit="IngresarAsync" FormName="login">
+        <DataAnnotationsValidator />
+        <fieldset disabled="@ocupada">
+            <label for="login-email">Correo electrónico</label>
+            <InputText id="login-email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" maxlength="254" @bind-Value="datos.Email" />
+            <ValidationMessage For="@(() => datos.Email)" />
+            <label for="login-clave">Contraseña</label>
+            <InputText id="login-clave" type="password" autocomplete="current-password" maxlength="128" @bind-Value="datos.Contrasena" />
+            <ValidationMessage For="@(() => datos.Contrasena)" />
+            <button class="principal" type="submit">@(ocupada ? "Ingresando…" : "Iniciar sesión")</button>
+            <button class="secundario" type="button" @onclick="CrearCuenta">Crear cuenta</button>
+        </fieldset>
+    </EditForm>
+</section>
+
+@code {
+    [Parameter] public string CorreoInicial { get; set; } = "";
+    [Parameter] public EventCallback CrearCuenta { get; set; }
+    private DatosLogin datos = new();
+    private bool ocupada;
+    private string? error;
+    protected override void OnInitialized() => datos.Email = CorreoInicial;
+    private async Task IngresarAsync()
+    {
+        if (ocupada) return;
+        ocupada = true; error = null;
+        try { await Sesion.IngresarAsync(datos); }
+        catch (ErrorApi ex) { error = ex.Message; }
+        finally { datos.Contrasena = ""; ocupada = false; }
+    }
+}

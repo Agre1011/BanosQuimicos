@@ -40,6 +40,18 @@
         <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
     </PropertyGroup>
 
+    <!-- MAUI selecciona el manifiesto base al importar sus targets. Ajustarlo después,
+         antes de compilar, evita que esa selección pise el manifiesto exclusivo de Debug. -->
+    <Target Name="SeleccionarManifiestoAndroidDebug" BeforeTargets="_GetAndroidPackageName;PrepareForBuild"
+            Condition="'$(Configuration)' == 'Debug' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+        <PropertyGroup>
+            <AndroidManifest>Platforms\Android\AndroidManifest.Debug.xml</AndroidManifest>
+        </PropertyGroup>
+    </Target>
+    <ItemGroup Condition="'$(Configuration)' == 'Debug' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+        <AndroidResource Include="Platforms\Android\Desarrollo\network_security_config.xml" Link="Platforms\Android\Resources\xml\network_security_config.xml" />
+    </ItemGroup>
+
     <ItemGroup>
         <!-- App Icon -->
         <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />

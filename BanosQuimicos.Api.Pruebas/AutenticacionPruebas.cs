@@ -50,6 +50,40 @@ public class AutenticacionPruebas(AplicacionPruebas app, ITestOutputHelper salid
     private Task<string> TokenAdmin() => Token(app.CorreoAdmin, app.ClaveAdmin);
 
     [Fact]
+    public async Task Cliente_de_app_registra_consulta_pendiente_refleja_activacion_y_cierra()
+    {
+        salida.WriteLine("Base aislada conservada: " + app.NombreBase);
+        using var http = Cliente();
+        var api = new BanosQuimicos.App.Autenticacion.ClienteAutenticacion(http);
+        var almacen = new AutenticacionAppPruebas.AlmacenPrueba();
+        var sesion = new BanosQuimicos.App.Autenticacion.SesionUsuario(api, almacen);
+        var datos = Datos();
+        await api.RegistrarAsync(new BanosQuimicos.App.Autenticacion.DatosRegistro {
+            Nombre = datos.Nombre, Apellido = datos.Apellido, Email = datos.Email,
+            Telefono = datos.Telefono, Contrasena = datos.Contrasena
+        });
+        await sesion.InicializarAsync();
+        await sesion.IngresarAsync(new BanosQuimicos.App.Autenticacion.DatosLogin {
+            Email = datos.Email, Contrasena = datos.Contrasena
+        });
+        Assert.Equal(BanosQuimicos.App.Autenticacion.EstadoSesion.Pendiente, sesion.Estado);
+        Assert.Null(sesion.Cuenta!.Rol);
+        var tokenAnterior = almacen.Token;
+        using var db = app.NuevoContexto();
+        var id = await db.Usuarios.Where(x => x.Email == datos.Email).Select(x => x.IdUsuario).SingleAsync(Ct);
+        using var admin = Cliente(await TokenAdmin());
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"/api/cuentas/{id}/activar", null, Ct)).StatusCode);
+        await sesion.ActualizarAsync();
+        Assert.Equal(BanosQuimicos.App.Autenticacion.EstadoSesion.Activa, sesion.Estado);
+        Assert.Equal("Cliente", sesion.Cuenta!.Rol);
+        Assert.Equal(datos.Nombre, sesion.Cuenta.Nombre);
+        Assert.Equal(tokenAnterior, almacen.Token);
+        await sesion.CerrarAsync();
+        Assert.Null(almacen.Token);
+        Assert.Equal(BanosQuimicos.App.Autenticacion.EstadoSesion.SinSesion, sesion.Estado);
+    }
+
+    [Fact]
     public async Task Registro_normaliza_correo_y_crea_perfil_con_hash_sin_exponerlo()
     {
         salida.WriteLine("Base aislada conservada: " + app.NombreBase);
