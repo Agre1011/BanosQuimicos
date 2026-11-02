@@ -135,3 +135,7 @@ Cobertura: registro/perfil/hash, normalización, duplicados concurrentes, rechaz
 El incidente inicial de LocalDB quedó resuelto mediante parada normal del proceso desincronizado y arranque por nombre, sin borrar ni recrear la instancia/base. La API y las 12 pruebas se verificaron con `(localdb)\MSSQLLocalDB`, sin canal alternativo ni sobrescrituras de conexión. Se retiró la alternativa de servidor de la infraestructura de pruebas. Ver [diagnóstico y recuperación reproducible](localdb.md).
 
 Para realizar personalmente el flujo de administrador y cliente en Postman, seguir la [guía paso a paso](guia-postman-autenticacion.md), que usa las rutas/cuerpos reales y distingue resultados esperados de verificaciones ya ejecutadas.
+
+## Ampliación: gestión de cuentas
+
+El bloque posterior incorpora GET /api/cuentas y GET /api/cuentas/{id}, exclusivos del administrador activo. El POST de activación conserva su contrato. Ver [gestión de cuentas](gestion-cuentas.md) para filtros, paginación y prueba desde la app; ya es posible obtener IdUsuario del listado autorizado, sin consultar SQL.

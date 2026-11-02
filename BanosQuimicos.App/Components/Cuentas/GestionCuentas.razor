@@ -1,0 +1,152 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+@implements IDisposable
+
+<section class="tarjeta" aria-labelledby="titulo-cuentas" aria-busy="@ocupada">
+    <h1 id="titulo-cuentas">Gestionar cuentas</h1>
+    @if (!string.IsNullOrEmpty(aviso)) { <div class="aviso" role="status">@aviso</div> }
+    @if (!string.IsNullOrEmpty(error)) { <div class="aviso error" role="alert">@error</div> }
+    @if (ocupada) { <p role="status">Consultando cuentas…</p> }
+    <fieldset disabled="@(ocupada || Sesion.Ocupada)">
+    @if (idSeleccionado is null)
+    {
+        <form @onsubmit="BuscarAsync" @onsubmit:preventDefault>
+            <label for="busqueda-cuentas">Nombre, apellido o correo</label>
+            <input id="busqueda-cuentas" maxlength="254" @bind="busqueda" />
+            <label for="estado-cuentas">Estado de cuenta</label>
+            <select id="estado-cuentas" @bind="estado">
+                <option value="">Todos</option><option>Pendiente</option><option>Activa</option>
+                <option>Suspendida</option><option value="BajaLogica">Baja lógica</option>
+            </select>
+            <button class="principal" type="submit">Buscar</button>
+        </form>
+        @if (listado is { } lista)
+        {
+            <p role="status">@lista.Total cuenta(s). Página @pagina de @TotalPaginas.</p>
+            @if (lista.Elementos.Count == 0) { <p>No hay cuentas para los filtros seleccionados.</p> }
+            @foreach (var item in lista.Elementos)
+            {
+                <article class="cuenta-resumen" @key="item.IdUsuario">
+                    <h2>@item.Nombre @item.Apellido</h2>
+                    <p>@item.Email</p><p>@item.Rol · @EstadoVisible(item.EstadoCuenta)</p>
+                    <button class="principal" @onclick="() => AbrirAsync(item.IdUsuario)">Ver detalle</button>
+                </article>
+            }
+            <nav aria-label="Páginas de cuentas">
+                <button class="secundario" disabled="@(pagina <= 1)" @onclick="() => PaginarAsync(-1)">Anterior</button>
+                <button class="secundario" disabled="@(pagina >= TotalPaginas)" @onclick="() => PaginarAsync(1)">Siguiente</button>
+            </nav>
+        }
+        <button class="principal" @onclick="CargarAsync">Actualizar listado</button>
+        <button class="secundario" @onclick="Volver">Volver al inicio</button>
+    }
+    else
+    {
+        @if (detalle is { } cuenta)
+        {
+            <h2>@cuenta.Nombre @cuenta.Apellido</h2>
+            <dl class="cuenta-detalle">
+                <dt>Correo electrónico</dt><dd>@cuenta.Email</dd>
+                <dt>Teléfono</dt><dd>@cuenta.Telefono</dd>
+                <dt>Rol</dt><dd>@cuenta.Rol</dd>
+                <dt>Estado</dt><dd>@EstadoVisible(cuenta.EstadoCuenta)</dd>
+                <dt>Fecha de registro (hora local)</dt><dd>@cuenta.FechaRegistro.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+            </dl>
+            @if (cuenta.PuedeActivar)
+            {
+                @if (confirmar)
+                {
+                    <div class="aviso" role="group" aria-labelledby="confirmar-activacion">
+                        <p id="confirmar-activacion">¿Confirmás activar a @cuenta.Nombre @cuenta.Apellido (@cuenta.Email)? Podrá acceder como Cliente.</p>
+                        <button class="principal" @onclick="ActivarAsync">Confirmar activación</button>
+                        <button class="secundario" @onclick="() => confirmar = false">Cancelar</button>
+                    </div>
+                }
+                else { <button class="principal" @onclick="() => confirmar = true">Activar cliente</button> }
+            }
+        }
+        <button class="principal" @onclick="RecargarDetalleAsync">Actualizar detalle</button>
+        <button class="secundario" @onclick="VolverListadoAsync">Volver al listado</button>
+    }
+    </fieldset>
+</section>
+
+@code {
+    [Parameter] public EventCallback Volver { get; set; }
+    private PaginaCuentas? listado;
+    private CuentaGestion? detalle;
+    private int pagina = 1;
+    private int? idSeleccionado;
+    private string busqueda = "", estado = "", filtroBusqueda = "", filtroEstado = "";
+    private string? error, aviso;
+    private bool ocupada, confirmar, dispuesto;
+    private int TotalPaginas => (int)Math.Max(1, ((long)(listado?.Total ?? 0) + 9) / 10);
+    private static string EstadoVisible(string valor) => valor == "BajaLogica" ? "Baja lógica" : valor;
+    protected override Task OnInitializedAsync() => CargarAsync();
+    private async Task EjecutarAsync(Func<Task> accion)
+    {
+        if (ocupada) return;
+        ocupada = true; error = null; confirmar = false;
+        try { await accion(); }
+        catch (ErrorApi ex) { if (!dispuesto) error = ex.Message; }
+        finally { ocupada = false; }
+    }
+    private async Task LeerListadoAsync()
+    {
+        listado = null;
+        var resultado = await Sesion.ListarCuentasAsync(pagina, filtroBusqueda, filtroEstado);
+        // Activar la última cuenta de una página Pendiente puede dejar esa página vacía.
+        var ultima = (int)Math.Max(1, ((long)resultado.Total + 9) / 10);
+        if (pagina > ultima)
+        {
+            pagina = ultima;
+            resultado = await Sesion.ListarCuentasAsync(pagina, filtroBusqueda, filtroEstado);
+        }
+        if (!dispuesto) listado = resultado;
+    }
+    private Task CargarAsync() => EjecutarAsync(LeerListadoAsync);
+    private Task BuscarAsync()
+    {
+        if (ocupada) return Task.CompletedTask;
+        filtroBusqueda = busqueda.Trim(); filtroEstado = estado; pagina = 1; aviso = null;
+        return CargarAsync();
+    }
+    private Task PaginarAsync(int cambio)
+    {
+        if (ocupada) return Task.CompletedTask;
+        pagina = Math.Clamp(pagina + cambio, 1, TotalPaginas); aviso = null;
+        return CargarAsync();
+    }
+    private Task AbrirAsync(int id)
+    {
+        if (ocupada) return Task.CompletedTask;
+        idSeleccionado = id; aviso = null;
+        return RecargarDetalleAsync();
+    }
+    private Task RecargarDetalleAsync() => EjecutarAsync(async () =>
+    {
+        detalle = null;
+        var cuenta = await Sesion.DetalleCuentaAsync(idSeleccionado!.Value);
+        if (!dispuesto) detalle = cuenta;
+    });
+    private Task VolverListadoAsync()
+    {
+        if (ocupada) return Task.CompletedTask;
+        idSeleccionado = null; detalle = null; aviso = null;
+        return CargarAsync();
+    }
+    private Task ActivarAsync() => EjecutarAsync(async () =>
+    {
+        if (detalle is not { PuedeActivar: true } cuenta) return;
+        // Nunca reintentar automáticamente el POST: ante conflicto se lee el estado actual.
+        var conflicto = false;
+        try { await Sesion.ActivarCuentaAsync(cuenta.IdUsuario); }
+        catch (ErrorApi ex) when (ex.Tipo == TipoErrorApi.Conflicto) { conflicto = true; }
+        detalle = null;
+        aviso = conflicto ? "La cuenta cambió en otra sesión. Se muestra su estado actual." : "Cliente activado correctamente.";
+        var actual = await Sesion.DetalleCuentaAsync(cuenta.IdUsuario);
+        if (!dispuesto) detalle = actual;
+        await LeerListadoAsync();
+    });
+    public void Dispose() { dispuesto = true; listado = null; detalle = null; }
+}

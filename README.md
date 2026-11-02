@@ -61,7 +61,11 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/autenticacion-app`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/gestion-cuentas`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+
+## Gestión de cuentas
+
+El administrador puede consultar cuentas con búsqueda, filtro y paginación, ver sus detalles y activar clientes pendientes con confirmación. Ver [guía y resultados esperados](docs/gestion-cuentas.md). No se incluyen edición, suspensión, baja ni cambio de rol.
 
 ## Base de datos
 

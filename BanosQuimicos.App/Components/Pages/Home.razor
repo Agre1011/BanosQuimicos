@@ -1,6 +1,7 @@
 @page "/"
 @using BanosQuimicos.App.Autenticacion
 @using BanosQuimicos.App.Components.Autenticacion
+@using BanosQuimicos.App.Components.Cuentas
 @inject SesionUsuario Sesion
 @implements IDisposable
 
@@ -38,12 +39,23 @@ else if (Sesion.Estado == EstadoSesion.Pendiente)
 }
 else if (Sesion.Estado == EstadoSesion.Activa && Sesion.Cuenta is { } cuenta)
 {
+    @if (gestion && cuenta.Rol == "Administrador")
+    {
+        <GestionCuentas Volver="() => gestion = false" />
+    }
+    else
+    {
     <section class="tarjeta" aria-labelledby="titulo-inicio">
         <h1 id="titulo-inicio">Hola, @cuenta.Nombre</h1>
         <p class="rol">Rol: <strong>@cuenta.Rol</strong></p>
+        @if (cuenta.Rol == "Administrador")
+        {
+            <button class="principal" disabled="@Sesion.Ocupada" @onclick="() => gestion = true">Gestionar cuentas</button>
+        }
         <button class="principal" disabled="@Sesion.Ocupada" @onclick="Sesion.ActualizarAsync">Actualizar estado de la cuenta</button>
         <button class="salir" disabled="@Sesion.Ocupada" @onclick="SalirAsync">Cerrar sesión</button>
     </section>
+    }
 }
 else
 {
@@ -56,7 +68,7 @@ else
 }
 
 @code {
-    private bool registro;
+    private bool registro, gestion;
     private string correoInicial = "";
     private string? avisoRegistro;
     protected override async Task OnInitializedAsync()
@@ -64,7 +76,11 @@ else
         Sesion.Cambio += ActualizarVista;
         await Sesion.InicializarAsync();
     }
-    private void ActualizarVista() => _ = InvokeAsync(StateHasChanged);
+    private void ActualizarVista() => _ = InvokeAsync(() =>
+    {
+        if (Sesion.Estado == EstadoSesion.SinSesion) gestion = false;
+        StateHasChanged();
+    });
     private void MostrarRegistro() { registro = true; avisoRegistro = null; }
     private void Volver() => registro = false;
     private void CuentaRegistrada(string email)
@@ -74,7 +90,7 @@ else
     }
     private async Task SalirAsync()
     {
-        registro = false; avisoRegistro = null; correoInicial = "";
+        registro = false; gestion = false; avisoRegistro = null; correoInicial = "";
         await Sesion.CerrarAsync();
     }
     public void Dispose() => Sesion.Cambio -= ActualizarVista;
