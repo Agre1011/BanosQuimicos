@@ -23,6 +23,8 @@ public class CuentasController(BanosQuimicosDbContext db) : ControllerBase
             usuarios = usuarios.Where(x => x.Nombre.Contains(busqueda) || x.Apellido.Contains(busqueda) || x.Email.Contains(busqueda));
         if (!string.IsNullOrEmpty(consulta.Estado))
             usuarios = usuarios.Where(x => x.EstadoCuenta == consulta.Estado);
+        if (!string.IsNullOrEmpty(consulta.Rol))
+            usuarios = usuarios.Where(x => x.Rol.NombreRol == consulta.Rol);
         var total = await usuarios.CountAsync(ct);
         // IdUsuario desempata nombres iguales: el orden no depende del plan de ejecución SQL.
         var elementos = await usuarios.OrderBy(x => x.Apellido).ThenBy(x => x.Nombre).ThenBy(x => x.IdUsuario)
@@ -43,6 +45,21 @@ public class CuentasController(BanosQuimicosDbContext db) : ControllerBase
                 x.EstadoCuenta == "Pendiente" && x.Rol.NombreRol == "Cliente" && x.Cliente != null))
             .SingleOrDefaultAsync(ct);
         return cuenta is null ? NotFound() : Ok(cuenta);
+    }
+
+    [HttpPut("{id:int}/rol")]
+    public async Task<IActionResult> CambiarRol(int id, CambioRolSolicitud datos, CancellationToken ct)
+    {
+        if (datos.RolAnterior == datos.NuevoRol)
+            return BadRequest(new { mensaje = "Elegir un rol distinto del actual." });
+        var destino = await db.Roles.Where(x => x.NombreRol == datos.NuevoRol).Select(x => x.IdRol).SingleAsync(ct);
+        // Solo se cambia la FK de rol: estado, contraseña, perfil e historial permanecen intactos.
+        // El rol anterior evita sobrescribir silenciosamente el cambio de otra sesión.
+        var actualizadas = await db.Usuarios.Where(x => x.IdUsuario == id && x.Rol.NombreRol == datos.RolAnterior)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.IdRol, destino), ct);
+        if (actualizadas == 1) return NoContent();
+        if (!await db.Usuarios.AnyAsync(x => x.IdUsuario == id, ct)) return NotFound();
+        return Conflict(new { mensaje = "El rol cambió o la cuenta no es Cliente/Empleado. Consultá su estado actual." });
     }
 
     [HttpPost("{id:int}/activar")]

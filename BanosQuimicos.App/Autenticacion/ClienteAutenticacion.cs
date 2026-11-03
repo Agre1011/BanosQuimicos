@@ -51,10 +51,11 @@ public class ClienteAutenticacion
             throw new ErrorApi(TipoErrorApi.Servidor, "No pudimos verificar el estado de la cuenta.");
         return cuenta;
     }
-    public async Task<PaginaCuentas> ListarCuentasAsync(string token, int pagina, string? busqueda, string? estado)
+    public async Task<PaginaCuentas> ListarCuentasAsync(string token, int pagina, string? busqueda, string? estado, string? rol = null)
     {
         var ruta = $"api/cuentas?pagina={pagina}&tamanoPagina=10&busqueda={Uri.EscapeDataString(busqueda?.Trim() ?? "")}";
         if (!string.IsNullOrEmpty(estado)) ruta += "&estado=" + Uri.EscapeDataString(estado);
+        if (!string.IsNullOrEmpty(rol)) ruta += "&rol=" + Uri.EscapeDataString(rol);
         using var request = PeticionCuenta(HttpMethod.Get, ruta, token);
         using var response = await EnviarAsync(request);
         await ComprobarAsync(response, "cuentas");
@@ -72,6 +73,13 @@ public class ClienteAutenticacion
         using var request = PeticionCuenta(HttpMethod.Post, $"api/cuentas/{id}/activar", token);
         using var response = await EnviarAsync(request);
         await ComprobarAsync(response, "cuentas");
+    }
+    public async Task CambiarRolAsync(string token, int id, string rolAnterior, string nuevoRol)
+    {
+        using var request = PeticionCuenta(HttpMethod.Put, $"api/cuentas/{id}/rol", token);
+        request.Content = JsonContent.Create(new { rolAnterior, nuevoRol });
+        using var response = await EnviarAsync(request);
+        await ComprobarAsync(response, "rol");
     }
     private static HttpRequestMessage PeticionCuenta(HttpMethod metodo, string ruta, string token)
     {
@@ -105,7 +113,7 @@ public class ClienteAutenticacion
                 operacion == "login" ? "La cuenta no está habilitada. Consultá al administrador." : "No tenés permiso para realizar esta operación.");
         if (response.StatusCode == HttpStatusCode.Conflict)
             throw new ErrorApi(operacion == "registro" ? TipoErrorApi.Duplicado : TipoErrorApi.Conflicto,
-                operacion == "registro" ? "El correo electrónico ya está registrado." : "La cuenta cambió o no cumple las condiciones para activarla.");
+                operacion == "registro" ? "El correo electrónico ya está registrado." : "La cuenta cambió o no cumple las condiciones para esta operación.");
         if (response.StatusCode == HttpStatusCode.NotFound)
             throw new ErrorApi(TipoErrorApi.NoEncontrado, "La cuenta ya no está disponible.");
         if (response.StatusCode == HttpStatusCode.BadRequest)

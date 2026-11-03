@@ -2,6 +2,7 @@
 @using BanosQuimicos.App.Autenticacion
 @using BanosQuimicos.App.Components.Autenticacion
 @using BanosQuimicos.App.Components.Cuentas
+@using BanosQuimicos.App.Components.Empleados
 @inject SesionUsuario Sesion
 @implements IDisposable
 
@@ -42,6 +43,10 @@ else if (Sesion.Estado == EstadoSesion.Activa && Sesion.Cuenta is { } cuenta)
     @if (gestion && cuenta.Rol == "Administrador")
     {
         <GestionCuentas Volver="() => gestion = false" />
+    }
+    else if (cuenta.Rol == "Empleado")
+    {
+        <InicioEmpleado Nombre="@cuenta.Nombre" Salir="SalirAsync" />
     }
     else
     {

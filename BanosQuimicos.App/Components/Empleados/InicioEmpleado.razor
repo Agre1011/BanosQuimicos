@@ -1,0 +1,14 @@
+<section class="inicio-empleado" aria-labelledby="saludo-empleado">
+    <div class="aviso saludo-empleado">
+        <h1 id="saludo-empleado">Hola, @Nombre</h1>
+        <p>Rol: Empleado</p>
+        <p>La consulta de tareas estará disponible en su bloque correspondiente.</p>
+    </div>
+    <button class="tareas-empleado" disabled>Tareas asignadas</button>
+    <button class="salir" @onclick="Salir">Cerrar sesión</button>
+</section>
+
+@code {
+    [Parameter] public string? Nombre { get; set; }
+    [Parameter] public EventCallback Salir { get; set; }
+}
