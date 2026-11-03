@@ -639,3 +639,46 @@ Guía nueva docs/gestion-cuentas.md con rutas, filtros, códigos HTTP y pasos en
 Se revisaron diff y archivos nuevos. git diff --check correcto; 119 archivos versionados/candidatos y ninguno preparado en el índice. No se detectaron rutas de generados/temporales/secretos ni indicadores de credenciales, tokens literales o claves privadas en los textos examinados. Se comprobaron exclusiones de bin, obj, .vs, TestResults, APK/AAB, temporales, .env.local y PFX. Los hashes SHA-256 del PDF y ambos PNG originales permanecen iguales. No se leyó el almacén de secretos. No se modificaron modelos, migraciones ni configuración de conexión Windows/Android, certificados o firewall.
 
 Bloque **cerrado para revisión**, con pruebas manuales pendientes según la guía. Se conservan las 12 tablas del negocio y el historial EF. Sin edición, creación de empleados, suspensión, baja, cambios de rol, pagos ni facturación. No se hizo commit ni push ni publicación, ni se inició otro bloque. Mensaje sugerido: `feat: consultar y activar cuentas desde la app del administrador`. Esperar confirmación antes de continuar.
+
+## 15. Ajuste puntual del destino de la app para pruebas HTTPS (03/11/2026)
+
+El estudiante informó que resolvió el alta del primer administrador por su cuenta y que la API ya está publicada en https://celeris.runasp.net/. Autorizó el cambio mínimo de conexión de la app, conservando opción local, HTTPS, sesiones separadas por destino y el trabajo/PR de feature/gestion-cuentas. No solicitó nuevas pantallas ni cambios al Figma.
+
+Se releyeron AGENTS.md, configuración de conexión, almacén seguro y plan. La rama continúa feature/gestion-cuentas. Al comenzar, el único candidato no versionado era scripts/publicacion/; se conservó intacto. No se cambió de rama ni se realizaron operaciones sobre el PR, commit o push.
+
+Cambios: ConexionApi.cs incorpora UsarHosting=true para seleccionar https://celeris.runasp.net/ también en Debug, tanto Android como Windows. Cambiar a false y recompilar conserva Windows HTTPS localhost:7292 y Android Debug loopback:5148 por adb reverse. El HttpClient mantiene certificado validado normalmente, redirecciones deshabilitadas y tiempo de espera de 20 segundos. No se cambiaron manifiestos, permisos de red, API ni pantallas.
+
+AlmacenSesionSeguro.cs recibe el mismo HttpClient de DI y asocia la sesión a su URL base mediante un valor no sensible en Preferences. Antes de restaurar, si la URL no coincide o la sesión antigua no tiene URL asociada, deshabilita restauración y elimina el token previo, sin leerlo/enviarlo a otro servidor. Al guardar, conserva JWT en SecureStorage y URL en Preferences. Cambiar efectivamente de servidor requiere otro login; no conserva sesiones paralelas por destino. Si falla limpiar el almacén se mantiene el manejo de errores existente y no se recupera el token anterior. No guarda contraseñas ni claves JWT.
+
+La guía docs/autenticacion-app.md añade el destino seleccionado, ejecución Android/Windows, selección local y comprobación manual del cambio de servidor. Para hosting: teléfono con Internet, app Debug en Visual Studio y F5; no requiere iniciar API local ni adb reverse. La depuración USB sigue disponible para instalar/depurar.
+
+Verificaciones: 16 pruebas automatizadas previas de cliente/sesión correctas, sin bases de datos ni altas. No prueban el SecureStorage nativo ni la nueva comparación de URL: esta última fue revisada en código y requiere comprobarse en los dispositivos. GET público https://celeris.runasp.net/api/estado devolvió 200 con el mensaje esperado y validación normal del certificado; no se enviaron credenciales ni se modificaron cuentas. La consulta inicial aislada no resolvió DNS y se repitió correctamente fuera del aislamiento. La compilación MAUI aislada falló sin diagnóstico de código y se repitió fuera de ese entorno.
+
+Pendientes manuales: iniciar sesión en hosting, cerrar/reabrir, cambiar a local y comprobar login nuevo sin restaurar sesión del hosting, y regresar al hosting con nuevo login. Probar el recorrido de gestión pendiente en Android y activación desde dos sesiones. El estudiante informó que en Windows gestión de cuentas llegó hasta desconexión/recuperación correctas; esto no prueba los casos pausados. **Vencimiento real del token: pendiente, no probado.** No se modificó Figma; si falta contexto para otra pantalla, pedirlo antes de crearla.
+
+Resultado final: app compilada en Debug para Windows y Android, 0 errores y 0 advertencias. Diff revisado y git diff --check correcto; índice vacío y sin indicadores de claves privadas/tokens ni rutas de generados/secretos entre los candidatos examinados. Solo se modificaron dos archivos de plataforma y dos documentos; el script SQL previo quedó intacto. No se ejecutó esta versión de la app en los dispositivos ni se probaron credenciales contra el hosting. Ajuste cerrado para revisión. Mensaje sugerido: `fix: seleccionar hosting HTTPS y aislar sesion por servidor`. Sin commit ni push. Esperar confirmación antes de otro bloque.
+
+### Cierre complementario: pruebas manuales confirmadas en gestión y hosting (03/11/2026)
+
+El estudiante confirmó personalmente las siguientes pruebas. Son verificaciones **manuales informadas por él**, separadas de las 45 pruebas automatizadas de gestión/autenticación y de las 16 pruebas de regresión ejecutadas previamente para el ajuste de conexión. No son nuevas ejecuciones del agente.
+
+| Plataforma / escenario | Resultado manual confirmado |
+| --- | --- |
+| Windows: listado, búsqueda y filtros | Funcionaron correctamente. |
+| Windows: detalle de cuenta | Funcionó correctamente. |
+| Windows: cancelar la confirmación de activación | Funcionó correctamente. |
+| Windows: pérdida de conexión y recuperación | Recuperación correcta. |
+| Moto G9 Plus contra https://celeris.runasp.net/: activar cliente | Activación realizada correctamente desde la app. |
+| Windows contra la API alojada: intentar activar también la cuenta activada desde Android | La app informó el cambio y mostró la cuenta Activa. Conflicto entre dos sesiones comprobado manualmente. |
+| Android: cerrar sesión del administrador y reabrir la app | Apareció el login; cierre persistente confirmado. |
+| Android: ingresar como cliente | Mostró su rol sin acceso a Gestionar cuentas. |
+
+Estas pruebas actualizan los pendientes históricos de las secciones 14 y 15: la activación desde Android, el manejo del cambio desde otra sesión y el cierre persistente del administrador en Android ya están confirmados. No se marcan como probados otros recorridos visuales, de paginación o de interacción no informados en este mensaje.
+
+**Siguen pendientes:** vencimiento real del token por transcurso del tiempo y prueba de alternar entre servidores en el dispositivo (hosting → local → hosting), comprobando que no se restaure ni envíe una sesión del servidor anterior. El cierre y reapertura en el mismo hosting no sustituyen esa prueba de cambio de destino.
+
+Regla de pantallas confirmada y registrada en AGENTS.md: deben corresponder al Figma aprobado. La pantalla adicional aceptada para gestionar cuentas es la única excepción; no autoriza nuevas pantallas fuera de Figma. Si falta una referencia, pedir la captura antes de implementar. No se modificaron pantallas en esta actualización.
+
+Revisión previa al commit: se examinaron 120 archivos versionados/candidatos; no se detectaron perfiles de publicación, credenciales, claves privadas, tokens literales ni rutas de generados entre los candidatos examinados. Se comprobaron exclusiones para .pubxml, .pubxml.user, .publishsettings, .env.local, PFX, bin/obj y .vs. Índice vacío y git diff --check sin errores. No se abrieron perfiles de publicación ni almacenes de secretos. El script SQL previo y los cambios de conexión/sesión existentes se conservan sin modificaciones en esta ronda.
+
+Solo se actualizaron AGENTS.md y este plan; no se repitieron compilación ni pruebas automatizadas por tratarse de documentación. Bloque cerrado para revisión/commit con los pendientes explícitos anteriores. Mensaje sugerido: `docs: registrar pruebas manuales y regla de pantallas Figma`. No se hizo commit ni push ni se inició otro bloque. Se conserva feature/gestion-cuentas y el PR existente sin operaciones remotas.
