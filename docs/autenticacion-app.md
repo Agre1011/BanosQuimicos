@@ -2,6 +2,18 @@
 
 Bloque de .NET MAUI Blazor Hybrid para Windows y Android físico por USB. Usa la API existente y sus 12 tablas; no agrega CRUD ni pantallas administrativas. Login y registro toman como referencia la captura de Figma del PDF aprobado: paleta marrón, acciones azul/rosa y campos acordados. El encabezado BQ es textual; no sustituye un logotipo original. Se aplica el cambio confirmado de «Nombre de usuario» a «Correo electrónico».
 
+## Destino seleccionado para esta ronda: hosting HTTPS
+
+En `BanosQuimicos.App/Plataforma/ConexionApi.cs`, `UsarHosting = true` selecciona **https://celeris.runasp.net/** en Windows y Android, tanto Debug como Release. La URL es pública; no se incluyen claves ni credenciales. El HttpClient conserva la validación normal del certificado y no sigue redirecciones.
+
+Para probar en el Moto G9 Plus: abrir la solución en Visual Studio 2026, establecer BanosQuimicos.App como inicio, elegir Debug y el teléfono Android autorizado por USB, y ejecutar F5. El teléfono necesita Internet por Wi-Fi o datos. **No hace falta iniciar la API local ni usar adb reverse para el hosting.** En Windows elegir Windows Machine y ejecutar del mismo modo.
+
+La primera apertura con esta versión puede pedir login: las sesiones antiguas sin URL asociada se descartan. El token permanece en SecureStorage; solo se guarda la URL no sensible en Preferences. Al cambiar de destino y abrir la app, se elimina la sesión anterior antes de leer/enviar su token y se requiere ingresar en el servidor seleccionado. No se mantienen sesiones paralelas por servidor.
+
+Para volver a la API local, cambiar únicamente `UsarHosting` a `false`, recompilar y ejecutar otra vez. Windows usa https://localhost:7292; Android Debug usa http://127.0.0.1:5148 mediante el túnel USB. Las secciones 1 y 2 siguientes describen **esta opción local**, no son requisitos para el hosting. No cambia ninguna pantalla del Figma aprobado.
+
+Comprobación manual pendiente: entrar en hosting, cerrar/reabrir y verificar restauración; seleccionar local y comprobar que vuelve al login; regresar al hosting y volver a ingresar. No pegar tokens ni contraseñas en el chat. El vencimiento real del token sigue pendiente.
+
 ## 1. Preparar la API y Windows
 
 1. Abrir `BanosQuimicos.sln` en Visual Studio 2026, configuración **Debug**. La base y el administrador ya existentes se conservan. Si el equipo es nuevo, seguir primero [autenticación de la API](autenticacion-api.md); no crear otro administrador ni regenerar claves sin necesidad.

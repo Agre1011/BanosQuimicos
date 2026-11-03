@@ -104,7 +104,7 @@ public class AutenticacionAppPruebas
     [InlineData(HttpStatusCode.Unauthorized, TipoErrorApi.Credenciales)]
     [InlineData(HttpStatusCode.Forbidden, TipoErrorApi.CuentaNoHabilitada)]
     [InlineData(HttpStatusCode.BadRequest, TipoErrorApi.Validacion)]
-    [InlineData(HttpStatusCode.Conflict, TipoErrorApi.Duplicado)]
+    [InlineData(HttpStatusCode.Conflict, TipoErrorApi.Conflicto)]
     [InlineData(HttpStatusCode.InternalServerError, TipoErrorApi.Servidor)]
     [InlineData(HttpStatusCode.Redirect, TipoErrorApi.Servidor)]
     public async Task Login_traduce_errores_sin_exponer_el_cuerpo(HttpStatusCode codigo, TipoErrorApi esperado)

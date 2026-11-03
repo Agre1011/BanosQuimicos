@@ -97,5 +97,34 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
         }
         finally { Notificar(); exclusión.Release(); }
     }
+    public Task<PaginaCuentas> ListarCuentasAsync(int pagina, string? busqueda, string? estado) =>
+        ComoAdministradorAsync(t => api.ListarCuentasAsync(t, pagina, busqueda, estado));
+    public Task<CuentaGestion> DetalleCuentaAsync(int id) => ComoAdministradorAsync(t => api.DetalleCuentaAsync(t, id));
+    public Task<bool> ActivarCuentaAsync(int id) => ComoAdministradorAsync(async t => { await api.ActivarCuentaAsync(t, id); return true; });
+
+    private async Task<T> ComoAdministradorAsync<T>(Func<string, Task<T>> operacion)
+    {
+        await exclusión.WaitAsync();
+        try
+        {
+            if (token is null || Estado != EstadoSesion.Activa || Cuenta?.Rol != "Administrador")
+                throw new ErrorApi(TipoErrorApi.SinPermiso, "Solo un administrador activo puede gestionar cuentas.");
+            Ocupada = true; Notificar();
+            return await operacion(token);
+        }
+        catch (ErrorApi ex) when (ex.Tipo is TipoErrorApi.SesionNoValida or TipoErrorApi.SinPermiso or TipoErrorApi.Conexion)
+        {
+            // No dejar datos administrativos visibles cuando ya no se puede verificar el acceso.
+            Cuenta = null; Mensaje = ex.Message;
+            Estado = ex.Tipo == TipoErrorApi.SesionNoValida ? EstadoSesion.SinSesion : EstadoSesion.SinVerificar;
+            if (ex.Tipo == TipoErrorApi.SesionNoValida)
+            {
+                token = null;
+                try { await almacen.BorrarAsync(); } catch { }
+            }
+            throw;
+        }
+        finally { Ocupada = false; Notificar(); exclusión.Release(); }
+    }
     private void Notificar() => Cambio?.Invoke();
 }

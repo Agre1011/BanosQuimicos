@@ -4,7 +4,7 @@
 - Priorizá la documentación aprobada en `docs` y las indicaciones del profesor. Separá los requisitos aprobados de las propuestas y consultá antes de cambiar reglas de negocio.
 - Mantené una estructura sencilla, acorde con las tecnologías estudiadas: C#, .NET 10 (verificar el entorno), .NET MAUI Blazor Hybrid con componentes Razor, ASP.NET Core Web API con controladores, SQL Server y Entity Framework Core. Usá Visual Studio 2026 para abrir, compilar y depurar; las pruebas móviles se orientan a Android.
 - No agregues pagos, facturación ni funcionalidades fuera del alcance.
-- Usá las pantallas de Figma como referencia. Si falta una pantalla o un detalle no es legible, informalo sin inventar requisitos.
+- Las pantallas deben corresponder al Figma aprobado. La pantalla adicional que el estudiante aceptó para gestionar cuentas es la única excepción autorizada y no habilita a crear otras pantallas fuera de Figma. Si falta una referencia o no es legible, pedile la captura al estudiante antes de implementar; no inventes pantallas ni requisitos.
 - Trabajá de a un bloque funcional y explicá su objetivo antes de modificar código.
 - Al finalizar cada bloque, indicá qué cambió, en qué archivos, cómo probarlo y qué verificaciones ejecutaste. Diferenciá las pruebas realizadas de las pendientes.
 - Incluí comentarios útiles para comprender las reglas de negocio.

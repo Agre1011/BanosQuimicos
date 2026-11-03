@@ -29,3 +29,11 @@ button:disabled, fieldset:disabled button { opacity: .65; cursor: wait; }
 #blazor-error-ui { background: #fff0ef; color: #83172b; padding: 1rem; position: fixed; bottom: 0; width: 100%; display: none; z-index: 100; }
 #blazor-error-ui .dismiss { float: right; cursor: pointer; }
 @media (max-width: 360px) { .tarjeta { padding: 1rem; } h1 { font-size: 1.4rem; } }
+
+/* Tarjetas de cuentas inspiradas en la vista Clientes y Empleados de Figma. */
+select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; background: white; color: #191919; }
+.cuenta-resumen { border: 1px solid #947456; border-radius: .5rem; padding: 1rem; margin-top: 1rem; overflow-wrap: anywhere; }
+.cuenta-resumen h2 { font-size: 1.15rem; margin: 0; }
+.cuenta-resumen p { margin: .5rem 0; }
+.cuenta-detalle dd { margin-left: 0; margin-bottom: 1rem; overflow-wrap: anywhere; }
+.cuenta-detalle dt { font-weight: bold; }

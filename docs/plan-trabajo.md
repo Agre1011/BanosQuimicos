@@ -1,6 +1,6 @@
 # Plan de trabajo
 
-Fecha de revisión: 27/10/2026. Preparación, estructura y persistencia cerradas. Autenticación de la API autorizada e implementada: ver sección 12 para alcance y verificaciones. Las secciones anteriores conservan la historia; no autorizan otros bloques funcionales.
+Fecha de revisión: 28/10/2026. Preparación, estructura, persistencia y autenticación de API/app cerradas. Gestión de cuentas implementada para revisión: ver sección 14. Las secciones anteriores conservan la historia; no autorizan otros bloques funcionales.
 
 ## 1. Fuentes revisadas y límites de lectura
 
@@ -596,3 +596,89 @@ Además, en Windows confirmó ventana reducida, tabulación y desplazamiento. En
 Revisión para commit: rama feature/autenticacion-app; diff y archivos nuevos revisados, git diff --check sin errores. Se examinaron 114 archivos versionados/candidatos y el índice está vacío. No se detectaron rutas de generados/temporales/secretos ni indicadores de tokens literales, claves privadas o credenciales en los textos examinados. Se comprobaron exclusiones de bin, obj, .vs, TestResults, APK/AAB, temporales, .env.local y PFX. Los hashes SHA-256 del PDF y los dos PNG originales permanecen iguales. Se conserva código, solución, recursos y documentación necesarios; no se leyó el almacén de secretos ni se guardaron credenciales o tokens.
 
 En esta actualización solo se modificó documentación: no se repitieron compilación ni tests, y se conservan sus resultados anteriores. Bloque de autenticación de la app **cerrado y listo para commit**, con el vencimiento real registrado como pendiente. No se hizo commit ni push ni se inició otro bloque. Mensaje sugerido: `feat: agregar autenticacion y gestion de sesion en la app MAUI`. Esperar confirmación antes del siguiente bloque.
+
+## 14. Consulta y activación de cuentas desde la app del administrador
+
+### Autorización y revisión previa
+
+El estudiante confirmó commit, push y merge de autenticacion-app y master actualizado. Se revisaron AGENTS.md, el plan, contratos, controles de seguridad y documentación de API; texto de páginas 1-2 del PDF aprobado y captura Figma del administrador en página 6. Master estaba limpio en 6c73160, coincidente con la referencia local origin/master. Se creó feature/gestion-cuentas desde ese punto, sin descartar cambios, sin fetch/pull ni commit/push del agente.
+
+Antes de modificar archivos se explicó: agregar listado/detalle protegidos a CuentasController, tarjetas en la app, activación mediante el POST existente con confirmación y lectura del estado actual ante conflicto. No se necesitó modificar el modelo. Figma permite reconocer Clientes y Empleados, tarjetas, paleta y navegación; no todos los textos pequeños son legibles. La búsqueda, filtro, paginación, detalle y confirmación son adaptaciones al alcance autorizado, no controles afirmados como visibles en la captura. No se agregan los controles de baja/cambio de rol que pertenecen a otro bloque.
+
+### Implementación y archivos
+
+- API/Contratos/Cuentas/ConsultaCuentas.cs: parámetros validados y DTOs explícitos para listado/detalle. API/Controllers/CuentasController.cs: GET /api/cuentas y GET /api/cuentas/{id}, bajo la política Administrador ya existente. Se conserva POST /api/cuentas/{id}/activar con UPDATE condicional y respuestas 204/409/404.
+- Listado: página desde 1, tamaño predeterminado 10 y máximo 50; búsqueda opcional hasta 254 caracteres recortados por nombre/apellido/correo, combinada con estado Pendiente/Activa/Suspendida/BajaLogica. Filtra, cuenta y pagina en SQL mediante EF AsNoTracking. Orden apellido/nombre/IdUsuario para desempatar. Rechaza parámetros fuera de rango y desplazamientos que excedan int.MaxValue. Una página fuera de resultados devuelve lista vacía con el total filtrado.
+- DTOs exponen solo IdUsuario, nombre, apellido, correo, teléfono, rol, estado, fecha de registro y PuedeActivar. La fecha se presenta en hora local en la app. PuedeActivar exige Cliente/Pendiente con perfil, sin reemplazar las validaciones del POST. No devuelve entidades EF, contraseñas, hashes ni tokens.
+- App/Autenticacion/ContratosCuentas.cs y ClienteAutenticacion.cs: contratos y peticiones a rutas fijas de nuestra API; Bearer por petición, también para las nuevas rutas administrativas, sin exponer el token a las vistas. Diferencia 409 de activación respecto del correo duplicado de registro, y trata 404 como cuenta no disponible.
+- SesionUsuario.cs: operaciones administrativas serializadas con la sesión actual, sin cambiar SecureStorage ni URL/handler. Al recibir 401 limpia sesión; ante 403 o falta de conexión oculta identidad administrativa y exige nueva consulta, conservando las reglas anteriores. La API vuelve a validar rol/estado actuales; no depende de la interfaz.
+- Home.razor muestra Gestionar cuentas únicamente a un administrador activo. Components/Cuentas/GestionCuentas.razor contiene listado y detalle con tarjetas, formulario de búsqueda/filtro, controles de página, carga, vacío, error y regreso. CSS conserva la paleta y permite desplazamiento. No se agregan rutas navegables que eludan la selección por sesión.
+- La activación requiere confirmación explícita de nombre/correo; cancelar no envía POST. Controles deshabilitados durante la operación. Tras 204 se consulta detalle/listado. Ante 409 se informa cambio en otra sesión y se vuelve a leer el estado sin repetir el POST. Si la última página filtrada queda vacía, se ajusta a la última página válida. Si falla la lectura posterior, se informa el error y se puede volver a consultar; no se promete que una operación con respuesta perdida no se haya realizado.
+- GestionCuentasPruebas.cs agrega pruebas de integración con la infraestructura aislada existente. AutenticacionAppPruebas.cs ajusta el caso simulado de conflicto de login para no confundirlo con duplicado de registro.
+
+### Verificaciones realizadas por el agente
+
+- API compilada inicialmente sin errores/advertencias. Solución completa compilada en Debug para API, pruebas, app Windows y app Android: **0 errores y 0 advertencias**. No se instalaron paquetes ni workloads nuevos.
+- Suite final: **45 correctas, 0 fallidas, 0 omitidas**: 29 previas y 16 casos nuevos de gestión. La primera ejecución con 43 casos pasó y señaló dos advertencias de estilo xUnit; se corrigieron y se incorporaron dos pruebas adicionales antes de ejecutar la suite final sin esas advertencias.
+- Permisos de listado/detalle/activación: anónimo 401; cliente activo, empleado activo y cuenta Pendiente 403; administrador suspendido o dado de baja después de emitir el token 401. Los intentos rechazados no activan el objetivo.
+- Paginación: 23 cuentas de prueba con nombres iguales, cuatro páginas de tamaño 7, sin duplicados, orden repetible por IdUsuario, total consistente y página posterior vacía. Rechazo de página 0, tamaños 0/51, desplazamiento excesivo y estado desconocido.
+- Búsqueda por nombre, apellido y correo (con espacios exteriores y mayúsculas en correo); filtros combinados Pendiente/Activa/Suspendida, sin coincidencias y carácter % literal. El filtro BajaLogica está implementado; no se afirma una prueba visual de ese filtro ni la creación de bajas desde la app.
+- Detalle con conjunto exacto de campos permitidos, lista sin hash/contraseña/token, detalle inexistente 404. Activación simultánea desde dos clientes: un 204 y un 409; repetición 409, estado actual Activa, indicador PuedeActivar falso y un solo perfil cliente.
+- Cliente C# real de la app contra TestServer/SQL: sesión administrador, búsqueda, detalle pendiente, activación, repetición como conflicto, detalle Activa y desaparición del filtro Pendiente. Cambio de rol en datos aislados después del login: API rechaza con 403, sesión oculta identidad administrativa y /yo posterior refleja Cliente.
+- Cada clase de integración usa una base nueva BanosQuimicosAuthPruebas_<GUID>, por nombre normal de LocalDB; se conserva sin borrar bases ni registros anteriores. Cuentas identificadas PRUEBA CUENTAS/example.invalid y secretos aleatorios solo en memoria. No se ejecutaron altas, activaciones o cambios de nuestras cuentas existentes en BanosQuimicosDb. Las modificaciones de rol/estado para pruebas ocurrieron exclusivamente en bases aisladas; no agregan endpoints de edición.
+- El intento MAUI dentro del aislamiento falló sin diagnóstico de código; se repitió fuera del aislamiento y compiló. La consulta inicial ADB aislada no pudo iniciar su daemon; fuera del aislamiento detectó Moto G9 Plus conectado como device. No se cambió el túnel, firewall ni configuración de red.
+
+### Pruebas manuales pendientes y reproducción
+
+Guía nueva docs/gestion-cuentas.md con rutas, filtros, códigos HTTP y pasos en Visual Studio/Windows y Moto G9 Plus por USB. README y docs/autenticacion-api.md enlazan el bloque. Se conserva la preparación HTTPS/adb reverse 5148 y las reglas de sesión anteriores.
+
+**Estas pantallas nuevas no fueron ejecutadas ni probadas manualmente por el agente en Windows o Android.** La compilación y TestServer no sustituyen confirmar carga, vacío, búsqueda/filtro/páginas, detalle, cancelar/confirmar activación, conflicto entre dos instalaciones, errores, teclado/desplazamiento y rotación. Las pruebas manuales anteriores del estudiante corresponden a autenticación, no a gestión de cuentas. No se solicitan credenciales en el chat. **El vencimiento real del token continúa pendiente y no se marca como probado.** V1 del título permanece cerrado por la confirmación previa del estudiante; verificar que no regrese en las pantallas nuevas.
+
+### Revisión de Git y cierre
+
+Se revisaron diff y archivos nuevos. git diff --check correcto; 119 archivos versionados/candidatos y ninguno preparado en el índice. No se detectaron rutas de generados/temporales/secretos ni indicadores de credenciales, tokens literales o claves privadas en los textos examinados. Se comprobaron exclusiones de bin, obj, .vs, TestResults, APK/AAB, temporales, .env.local y PFX. Los hashes SHA-256 del PDF y ambos PNG originales permanecen iguales. No se leyó el almacén de secretos. No se modificaron modelos, migraciones ni configuración de conexión Windows/Android, certificados o firewall.
+
+Bloque **cerrado para revisión**, con pruebas manuales pendientes según la guía. Se conservan las 12 tablas del negocio y el historial EF. Sin edición, creación de empleados, suspensión, baja, cambios de rol, pagos ni facturación. No se hizo commit ni push ni publicación, ni se inició otro bloque. Mensaje sugerido: `feat: consultar y activar cuentas desde la app del administrador`. Esperar confirmación antes de continuar.
+
+## 15. Ajuste puntual del destino de la app para pruebas HTTPS (03/11/2026)
+
+El estudiante informó que resolvió el alta del primer administrador por su cuenta y que la API ya está publicada en https://celeris.runasp.net/. Autorizó el cambio mínimo de conexión de la app, conservando opción local, HTTPS, sesiones separadas por destino y el trabajo/PR de feature/gestion-cuentas. No solicitó nuevas pantallas ni cambios al Figma.
+
+Se releyeron AGENTS.md, configuración de conexión, almacén seguro y plan. La rama continúa feature/gestion-cuentas. Al comenzar, el único candidato no versionado era scripts/publicacion/; se conservó intacto. No se cambió de rama ni se realizaron operaciones sobre el PR, commit o push.
+
+Cambios: ConexionApi.cs incorpora UsarHosting=true para seleccionar https://celeris.runasp.net/ también en Debug, tanto Android como Windows. Cambiar a false y recompilar conserva Windows HTTPS localhost:7292 y Android Debug loopback:5148 por adb reverse. El HttpClient mantiene certificado validado normalmente, redirecciones deshabilitadas y tiempo de espera de 20 segundos. No se cambiaron manifiestos, permisos de red, API ni pantallas.
+
+AlmacenSesionSeguro.cs recibe el mismo HttpClient de DI y asocia la sesión a su URL base mediante un valor no sensible en Preferences. Antes de restaurar, si la URL no coincide o la sesión antigua no tiene URL asociada, deshabilita restauración y elimina el token previo, sin leerlo/enviarlo a otro servidor. Al guardar, conserva JWT en SecureStorage y URL en Preferences. Cambiar efectivamente de servidor requiere otro login; no conserva sesiones paralelas por destino. Si falla limpiar el almacén se mantiene el manejo de errores existente y no se recupera el token anterior. No guarda contraseñas ni claves JWT.
+
+La guía docs/autenticacion-app.md añade el destino seleccionado, ejecución Android/Windows, selección local y comprobación manual del cambio de servidor. Para hosting: teléfono con Internet, app Debug en Visual Studio y F5; no requiere iniciar API local ni adb reverse. La depuración USB sigue disponible para instalar/depurar.
+
+Verificaciones: 16 pruebas automatizadas previas de cliente/sesión correctas, sin bases de datos ni altas. No prueban el SecureStorage nativo ni la nueva comparación de URL: esta última fue revisada en código y requiere comprobarse en los dispositivos. GET público https://celeris.runasp.net/api/estado devolvió 200 con el mensaje esperado y validación normal del certificado; no se enviaron credenciales ni se modificaron cuentas. La consulta inicial aislada no resolvió DNS y se repitió correctamente fuera del aislamiento. La compilación MAUI aislada falló sin diagnóstico de código y se repitió fuera de ese entorno.
+
+Pendientes manuales: iniciar sesión en hosting, cerrar/reabrir, cambiar a local y comprobar login nuevo sin restaurar sesión del hosting, y regresar al hosting con nuevo login. Probar el recorrido de gestión pendiente en Android y activación desde dos sesiones. El estudiante informó que en Windows gestión de cuentas llegó hasta desconexión/recuperación correctas; esto no prueba los casos pausados. **Vencimiento real del token: pendiente, no probado.** No se modificó Figma; si falta contexto para otra pantalla, pedirlo antes de crearla.
+
+Resultado final: app compilada en Debug para Windows y Android, 0 errores y 0 advertencias. Diff revisado y git diff --check correcto; índice vacío y sin indicadores de claves privadas/tokens ni rutas de generados/secretos entre los candidatos examinados. Solo se modificaron dos archivos de plataforma y dos documentos; el script SQL previo quedó intacto. No se ejecutó esta versión de la app en los dispositivos ni se probaron credenciales contra el hosting. Ajuste cerrado para revisión. Mensaje sugerido: `fix: seleccionar hosting HTTPS y aislar sesion por servidor`. Sin commit ni push. Esperar confirmación antes de otro bloque.
+
+### Cierre complementario: pruebas manuales confirmadas en gestión y hosting (03/11/2026)
+
+El estudiante confirmó personalmente las siguientes pruebas. Son verificaciones **manuales informadas por él**, separadas de las 45 pruebas automatizadas de gestión/autenticación y de las 16 pruebas de regresión ejecutadas previamente para el ajuste de conexión. No son nuevas ejecuciones del agente.
+
+| Plataforma / escenario | Resultado manual confirmado |
+| --- | --- |
+| Windows: listado, búsqueda y filtros | Funcionaron correctamente. |
+| Windows: detalle de cuenta | Funcionó correctamente. |
+| Windows: cancelar la confirmación de activación | Funcionó correctamente. |
+| Windows: pérdida de conexión y recuperación | Recuperación correcta. |
+| Moto G9 Plus contra https://celeris.runasp.net/: activar cliente | Activación realizada correctamente desde la app. |
+| Windows contra la API alojada: intentar activar también la cuenta activada desde Android | La app informó el cambio y mostró la cuenta Activa. Conflicto entre dos sesiones comprobado manualmente. |
+| Android: cerrar sesión del administrador y reabrir la app | Apareció el login; cierre persistente confirmado. |
+| Android: ingresar como cliente | Mostró su rol sin acceso a Gestionar cuentas. |
+
+Estas pruebas actualizan los pendientes históricos de las secciones 14 y 15: la activación desde Android, el manejo del cambio desde otra sesión y el cierre persistente del administrador en Android ya están confirmados. No se marcan como probados otros recorridos visuales, de paginación o de interacción no informados en este mensaje.
+
+**Siguen pendientes:** vencimiento real del token por transcurso del tiempo y prueba de alternar entre servidores en el dispositivo (hosting → local → hosting), comprobando que no se restaure ni envíe una sesión del servidor anterior. El cierre y reapertura en el mismo hosting no sustituyen esa prueba de cambio de destino.
+
+Regla de pantallas confirmada y registrada en AGENTS.md: deben corresponder al Figma aprobado. La pantalla adicional aceptada para gestionar cuentas es la única excepción; no autoriza nuevas pantallas fuera de Figma. Si falta una referencia, pedir la captura antes de implementar. No se modificaron pantallas en esta actualización.
+
+Revisión previa al commit: se examinaron 120 archivos versionados/candidatos; no se detectaron perfiles de publicación, credenciales, claves privadas, tokens literales ni rutas de generados entre los candidatos examinados. Se comprobaron exclusiones para .pubxml, .pubxml.user, .publishsettings, .env.local, PFX, bin/obj y .vs. Índice vacío y git diff --check sin errores. No se abrieron perfiles de publicación ni almacenes de secretos. El script SQL previo y los cambios de conexión/sesión existentes se conservan sin modificaciones en esta ronda.
+
+Solo se actualizaron AGENTS.md y este plan; no se repitieron compilación ni pruebas automatizadas por tratarse de documentación. Bloque cerrado para revisión/commit con los pendientes explícitos anteriores. Mensaje sugerido: `docs: registrar pruebas manuales y regla de pantallas Figma`. No se hizo commit ni push ni se inició otro bloque. Se conserva feature/gestion-cuentas y el PR existente sin operaciones remotas.
