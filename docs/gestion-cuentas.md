@@ -1,10 +1,10 @@
 # Consulta y activación de cuentas
 
-Bloque limitado a consultar usuarios y activar clientes pendientes. No permite crear empleados, editar datos, suspender, dar de baja ni cambiar roles. No agrega tablas o migraciones. Las 12 tablas del negocio y el historial de EF permanecen sin cambios.
+Esta guía describe el bloque original de consulta y activación. La ampliación posterior permite cambiar Cliente ↔ Empleado sobre la cuenta existente: ver [acceso de empleados](acceso-empleados.md). No se crean empleados mediante un alta separada ni se permite editar datos, suspender o dar de baja. No agrega tablas o migraciones. Las 12 tablas del negocio y el historial de EF permanecen sin cambios.
 
 ## Referencia aprobada y adaptación
 
-Se revisaron el texto de las páginas 1-2 del PDF aprobado y la captura Figma del administrador (página 6). Se conservan la paleta y la presentación por tarjetas de Clientes y Empleados. Algunos textos pequeños no son legibles; no se tomaron como reglas. «Gestionar cuentas», búsqueda, filtro, paginación, detalle y confirmación responden al alcance autorizado de este bloque. No se copian los controles de baja o cambio de rol visibles en Figma porque quedan fuera de esta entrega. Los originales se conservan.
+Se revisaron el texto de las páginas 1-2 del PDF aprobado y la captura Figma del administrador (página 6). Se conservan la paleta y la presentación por tarjetas de Clientes y Empleados. Algunos textos pequeños no son legibles; no se tomaron como reglas. «Gestionar cuentas», búsqueda, filtro, paginación, detalle y confirmación responden al alcance autorizado de este bloque. La baja sigue fuera de alcance; el cambio de rol se incorporó después según la captura ampliada y la corrección del estudiante, como explica la guía de empleados. Los originales se conservan.
 
 ## API: contratos reales
 
@@ -71,7 +71,7 @@ Usar el login y Vault de [la guía de autenticación](guia-postman-autenticacion
 | POST activación de cliente pendiente, sin cuerpo | Administrador activo | 204 |
 | Repetir POST con la misma cuenta ya activa | Administrador activo | 409; GET devuelve Activa |
 
-No existen operaciones de suspensión/cambio de rol en esta entrega. Su efecto sobre un token previo se comprueba únicamente en datos aislados de las pruebas automatizadas, sin alterar nuestras cuentas existentes.
+No existe operación de suspensión. El cambio de rol ya cuenta con PUT /api/cuentas/{id}/rol según la ampliación de empleados, que se prueba exclusivamente contra API local en este bloque. Los escenarios automatizados usan datos aislados y no alteran nuestras cuentas existentes.
 
 ## Pruebas automatizadas y pendiente explícito
 

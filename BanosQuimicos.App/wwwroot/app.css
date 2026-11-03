@@ -37,3 +37,9 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .cuenta-resumen p { margin: .5rem 0; }
 .cuenta-detalle dd { margin-left: 0; margin-bottom: 1rem; overflow-wrap: anywhere; }
 .cuenta-detalle dt { font-weight: bold; }
+
+.pestanas-cuentas { display: flex; gap: .75rem; }
+.pestanas-cuentas button[aria-pressed="true"] { background: #2ac86b; color: #17331e; border-color: #246a3f; }
+.inicio-empleado { text-align: center; }
+.saludo-empleado { background: #ffe06b; text-align: left; }
+.tareas-empleado { background: #2ac86b; color: #17331e; margin: 1rem 0 2rem; }

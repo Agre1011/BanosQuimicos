@@ -1,6 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>BanosQuimicos.App</RootNamespace>
     <OutputType>Exe</OutputType>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -18,5 +19,14 @@
     <!-- Comparte el código cliente real sin depender del runtime Android/Windows en los tests. -->
     <Compile Include="../BanosQuimicos.App/Autenticacion/*.cs" Link="App/Autenticacion/%(Filename)%(Extension)" />
     <Compile Include="../BanosQuimicos.App/Plataforma/ConexionApi.cs" Link="App/ConexionApi.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Los componentes reales permiten probar el paso de selección/confirmación, no solo HTTP. -->
+    <RazorComponent Include="../BanosQuimicos.App/Components/_Imports.razor" Link="Components/_Imports.razor" />
+    <RazorComponent Include="../BanosQuimicos.App/Components/Cuentas/GestionCuentas.razor" Link="Components/Cuentas/GestionCuentas.razor" />
+    <RazorComponent Include="../BanosQuimicos.App/Components/Empleados/InicioEmpleado.razor" Link="Components/Empleados/InicioEmpleado.razor" />
+    <RazorComponent Include="../BanosQuimicos.App/Components/Pages/Home.razor" Link="Components/Pages/Home.razor" />
+    <RazorComponent Include="../BanosQuimicos.App/Components/Autenticacion/*.razor" Link="Components/Autenticacion/%(Filename)%(Extension)" />
+    <RazorComponent Include="../BanosQuimicos.App/Components/Layout/MainLayout.razor" Link="Components/Layout/MainLayout.razor" />
   </ItemGroup>
 </Project>

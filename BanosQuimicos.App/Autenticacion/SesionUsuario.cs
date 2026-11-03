@@ -97,8 +97,10 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
         }
         finally { Notificar(); exclusión.Release(); }
     }
-    public Task<PaginaCuentas> ListarCuentasAsync(int pagina, string? busqueda, string? estado) =>
-        ComoAdministradorAsync(t => api.ListarCuentasAsync(t, pagina, busqueda, estado));
+    public Task<PaginaCuentas> ListarCuentasAsync(int pagina, string? busqueda, string? estado, string? rol = null) =>
+        ComoAdministradorAsync(t => api.ListarCuentasAsync(t, pagina, busqueda, estado, rol));
+    public Task<bool> CambiarRolAsync(int id, string rolAnterior, string nuevoRol) =>
+        ComoAdministradorAsync(async t => { await api.CambiarRolAsync(t, id, rolAnterior, nuevoRol); return true; });
     public Task<CuentaGestion> DetalleCuentaAsync(int id) => ComoAdministradorAsync(t => api.DetalleCuentaAsync(t, id));
     public Task<bool> ActivarCuentaAsync(int id) => ComoAdministradorAsync(async t => { await api.ActivarCuentaAsync(t, id); return true; });
 

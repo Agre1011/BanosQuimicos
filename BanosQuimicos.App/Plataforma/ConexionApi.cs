@@ -3,7 +3,7 @@ namespace BanosQuimicos.App.Plataforma;
 public static class ConexionApi
 {
     // Cambiar a false y recompilar para probar la API local; no depende de Debug/Release.
-    private static readonly bool UsarHosting = true;
+    private static readonly bool UsarHosting = false;
 
     public static HttpClient CrearCliente()
     {

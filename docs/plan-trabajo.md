@@ -682,3 +682,100 @@ Regla de pantallas confirmada y registrada en AGENTS.md: deben corresponder al F
 Revisión previa al commit: se examinaron 120 archivos versionados/candidatos; no se detectaron perfiles de publicación, credenciales, claves privadas, tokens literales ni rutas de generados entre los candidatos examinados. Se comprobaron exclusiones para .pubxml, .pubxml.user, .publishsettings, .env.local, PFX, bin/obj y .vs. Índice vacío y git diff --check sin errores. No se abrieron perfiles de publicación ni almacenes de secretos. El script SQL previo y los cambios de conexión/sesión existentes se conservan sin modificaciones en esta ronda.
 
 Solo se actualizaron AGENTS.md y este plan; no se repitieron compilación ni pruebas automatizadas por tratarse de documentación. Bloque cerrado para revisión/commit con los pendientes explícitos anteriores. Mensaje sugerido: `docs: registrar pruebas manuales y regla de pantallas Figma`. No se hizo commit ni push ni se inició otro bloque. Se conserva feature/gestion-cuentas y el PR existente sin operaciones remotas.
+
+## 16. Acceso de empleados por cambio de rol (feature/alta-empleados)
+
+### Preparación inicial y corrección de alcance
+
+El estudiante confirmó merge de gestión de cuentas y del script de publicación, pull de master y compilación local correcta; informó acceso al hosting y activación desde dos sesiones en Windows/Moto G9 Plus. Permanecen pendientes el vencimiento real del token y alternar servidores en el dispositivo. Estos resultados son manuales comunicados por el estudiante.
+
+Revisión inicial: master limpio en cd30fed, coincidente con origin/master local. Se creó feature/alta-empleados sin descartar cambios. Se releyeron AGENTS.md, plan, registro/login actuales y capturas de Figma del administrador y empleado. La interpretación inicial de un alta administrativa fue corregida posteriormente por el estudiante: el registro público conserva Cliente/Pendiente y el administrador cambia el rol de esa misma cuenta. No se agregaron entidades, endpoints, pantallas ni migraciones durante esta preparación.
+
+Figma: página 5 muestra inicio de empleado con saludo, referencia a tareas, acceso a tareas asignadas y cerrar sesión. El número de tareas mostrado es un ejemplo; no se tomará como dato real. Página 6 muestra Clientes y Empleados del administrador, pero no se identificó un formulario de alta de empleado ni su entrada. En esa revisión se pidió la referencia del supuesto formulario; el estudiante aclaró que ese formulario no existe y aportó la vista correcta para cambio de rol. Gestión de cuentas continúa siendo la única excepción visual autorizada.
+
+Dudas planteadas en la preparación inicial, **superadas por la corrección posterior y no aprobadas**: referencia visual del alta y su acceso; estado inicial del empleado (propuesta Activa, por alta administrativa); asignación de contraseña inicial (propuesta que el administrador la ingrese y la entregue fuera de la app, sin cambio obligatorio en este bloque). Son propuestas, no reglas confirmadas.
+
+Avance independiente: ConexionApi.cs selecciona UsarHosting=false para este bloque local: Windows https://localhost:7292, Android Debug http://127.0.0.1:5148 mediante adb reverse. appsettings.Development.json conserva LocalDB/BanosQuimicosDb. Antes de ejecutar habrá que comprobar que ninguna configuración externa reemplace la conexión por la alojada. No se consultó ni modificó MonsterASP. El cambio de destino invalida la restauración de la sesión anterior según la lógica existente; su comprobación manual en dispositivo sigue pendiente.
+
+No se ejecutaron compilaciones/tests en esta preparación ni se creó una cuenta. La respuesta posterior reemplazó la propuesta de alta directa por el cambio de rol descrito a continuación. Con el modelo actual, una cuenta de empleado cabe en USUARIOS/ROLES sin migración prevista; los futuros endpoints necesitarán publicación posterior para funcionar en hosting, que no se realizará en este bloque. Sin commit ni push.
+
+### Alcance corregido y confirmado
+
+El estudiante indicó la página 1 del PDF aprobado y adjuntó la captura ampliada de Clientes y Empleados (página 6): la persona se registra desde la app como cualquier usuario, inicia Cliente/Pendiente y conserva su contraseña. No hay formulario de alta de empleado, contraseña entregada por administrador ni creación de otra cuenta. Solo un administrador activo puede cambiar Cliente ↔ Empleado desde la cuenta existente. **Rol y estado son decisiones separadas: cambiar rol no activa la cuenta.** El recorrido confirmado activa primero al cliente con el endpoint existente y luego le asigna Empleado.
+
+Se inspeccionó la captura adjunta: se distinguen las pestañas Cliente/Empleado y un desplegable por tarjeta; los valores pequeños de ejemplo no se toman como reglas nuevas. El alcance solicitado define las dos opciones del selector. Se explicaron antes de modificar código la implementación dentro de la vista existente y el inicio de empleado de página 5. No se agregó otra pantalla administrativa; Gestión de cuentas sigue siendo la única excepción visual autorizada. El inicio Empleado ya tiene referencia aprobada.
+
+### Implementación y archivos
+
+- API/Contratos/Cuentas/ConsultaCuentas.cs: agrega filtro opcional Rol=Cliente/Empleado y CambioRolSolicitud con RolAnterior/NuevoRol, ambos requeridos y limitados a esas dos opciones. Rechaza campos JSON adicionales, incluido estadoCuenta.
+- API/Controllers/CuentasController.cs: PUT /api/cuentas/{id}/rol, bajo la política Administrador activo. Consulta ID del rol destino del catálogo existente y actualiza únicamente USUARIOS.IdRol, condicionado al rol anterior. No modifica usuario, contraseña/hash, perfil cliente, estado, fecha de registro ni referencias históricas. No permite otorgar Administrador ni modificar una cuenta Administrador; 204 éxito, 400 datos inválidos/mismo rol, 404 inexistente y 409 cambio concurrente o cuenta no compatible.
+- GET /api/cuentas admite filtro por rol en SQL, combinado con búsqueda, estado y paginación. Omitirlo conserva la consulta general de API y su contrato previo.
+- App/Autenticacion/ClienteAutenticacion.cs y SesionUsuario.cs: petición de cambio con Bearer por solicitud a la misma API, protección local de administrador y manejo de conflicto genérico sin confundirlo con correo duplicado. Se conservan 401/403, consulta actual de /yo, ocultamiento de identidad ante falta de conexión y SecureStorage asociado al destino.
+- Components/Cuentas/GestionCuentas.razor: vista Clientes y Empleados con pestañas, selector Cliente/Empleado por tarjeta, confirmación/cancelación y recarga del listado tras cambio o conflicto; sin repetir automáticamente la escritura. Al cambiar de rol la cuenta pasa a la otra pestaña; se ajusta paginación al quedar vacía la última página. Se preserva el detalle y activación existente. No se agregan alta de cuentas, edición, suspensión ni baja.
+- Components/Empleados/InicioEmpleado.razor y Home.razor: Empleado activo recibe inicio correspondiente a página 5, con saludo, rol, Tareas asignadas y cerrar sesión; no ve gestión administrativa. Tareas asignadas queda deshabilitado y explicado hasta su bloque funcional, sin cantidad ficticia ni tareas inventadas. Los estilos conservan la paleta, saludo amarillo y acceso verde de la referencia.
+- Se mantiene UsarHosting=false para local. docs/acceso-empleados.md contiene contratos y guía Windows/Android local; README y docs/autenticacion-app.md señalan el destino actual.
+
+La activación existente sigue limitada a Cliente/Pendiente: no se amplió silenciosamente. Un Pendiente cambiado a Empleado sigue restringido; para usar la activación existente debe volver a Cliente. El recorrido principal confirma el orden activar → cambiar rol. Cambiar de rol una cuenta Activa/Suspendida/BajaLogica tampoco modifica su estado.
+
+### Verificaciones ejecutadas
+
+- **60 pruebas automatizadas correctas, 0 fallidas y 0 omitidas**: 45 anteriores y 15 casos nuevos en CambioRolPruebas.cs. Cada clase usa su base nueva BanosQuimicosAuthPruebas_<GUID> en LocalDB; se conservan los datos, sin borrar bases ni tocar cuentas existentes.
+- Recorrido con el cliente C# real de la app y controladores reales en TestServer: registro Cliente/Pendiente, aviso restringido, activación por administrador, cambio a Empleado, cierre y login con el mismo correo/contraseña, /yo con mismo IdUsuario y rol Empleado. Vuelta a Cliente reflejada por /yo y filtros de rol.
+- Se comprobó conservación del hash, correo, fecha de registro, IdCliente, razón social, CUIT y dirección, un único perfil y una tarea realizada que mantiene IdEmpleado al volver a Cliente. Esa tarea y baño se crearon exclusivamente como datos de prueba aislados; no implementan endpoints ni pantallas de tareas.
+- Teorías de estado Pendiente/Activa/Suspendida/BajaLogica: cambio ida/vuelta conserva estado. Empleado Pendiente solo obtiene aviso, sin rol operativo, y falla acceso a operación/gestión. Anónimo 401; cliente activo, empleado y pendiente 403; administrador suspendido o dado de baja con token previo 401. Intentos rechazados no cambian el objetivo.
+- Rol Administrador/inventado/vacío, estado extra y mismo rol se rechazan; cuenta Administrador protegida. Dos cambios concurrentes con el mismo rol anterior: uno 204 y otro 409. Repetición 409 y usuario inexistente 404. No hay rowversion: no se promete detectar una ida/vuelta completa que termine en el mismo rol anterior.
+- Se corrigió un error de alias de namespace del archivo nuevo de pruebas antes del resultado final. La compilación MAUI aislada volvió a fallar sin diagnóstico y se repitió fuera del aislamiento. El empaquetador Android D8 falló por memoria nativa de Java según su informe local; se diagnosticó y se probó configuración temporal de menor consumo sin modificar el proyecto. Resultado definitivo de compilación en el cierre siguiente.
+- EF dbcontext info, con conexión de proceso explícita, mostró BanosQuimicosDb y (localdb)\MSSQLLocalDB; migrations has-pending-model-changes indicó que no hay cambios desde la migración inicial. No se modificaron entidades, configuraciones EF ni migraciones: permanecen las 12 tablas más historial técnico.
+- API local arrancada con conexión explícita a LocalDB, perfil https y puertos localhost 7292/5148. GET /api/estado devolvió 200 y PUT de rol sin token 401, sin cambios en BanosQuimicosDb. Se detuvo la API al terminar para liberar puertos. No se contactó ni modificó el hosting o db77593.
+
+### Pruebas manuales y publicación pendientes
+
+Seguir docs/acceso-empleados.md: fijar conexión local en una terminal nueva, revisar DbContext, iniciar API en esa terminal, verificar BaseAddress de la app en depurador y seleccionar Debug/Windows o Moto G9 Plus con adb reverse 5148. Probar registro, aviso Pendiente, activación, selector/cancelación/confirmación de rol, login con misma contraseña e inicio Empleado; vuelta a Cliente y rechazos administrativos. **TestServer y compilación no equivalen a prueba visual o interacción nativa**; el estudiante debe confirmar estos controles nuevos en ambas plataformas. No se usaron sus credenciales para automatizar la interfaz.
+
+Continúan pendientes el vencimiento real del token y alternar servidores en el dispositivo. No se publica esta función: una publicación futura de API y distribución de app serán necesarias para usar el endpoint nuevo en MonsterASP. No se requiere migración. No se hizo commit ni push; se conserva la rama feature/alta-empleados.
+
+### Cierre del bloque corregido
+
+Compilación Windows: correcta, 0 errores/advertencias. Android: correcta, 0 errores/advertencias, con parámetros temporales JavaMaximumHeapSize=512M y JavaOptions=-XX:+UseSerialGC, tras confirmar en el informe JVM que D8 fallaba por falta de memoria nativa. No se cambió el csproj, herramientas ni configuración global; la guía incluye el comando reproducible. El resultado de los 60 tests corresponde al código corregido; no se presenta el intento inicial con alias erróneo como ejecución satisfactoria.
+
+Diff y archivos nuevos revisados; git diff --check sin errores. 123 archivos versionados/candidatos, índice vacío, sin indicadores de secretos ni perfiles de publicación o generados entre los candidatos de texto examinados. Los informes Java quedaron ignorados como logs locales. PDF/PNG originales con SHA-256 sin cambios. No hay cambios en entidades, migraciones, manifiestos o almacenamiento de sesión; el cambio de destino local ya autorizado se conserva.
+
+Bloque cerrado para revisión con el alcance corregido: **cambio de rol de cuentas existentes**, no alta administrativa. No se hizo commit, push o publicación ni cambios en db77593. Pendiente confirmar interacción nativa de los controles nuevos y los pendientes históricos expresos. Mensaje sugerido: `feat: cambiar roles Cliente y Empleado y mostrar inicio de empleado`. Esperar confirmación antes del siguiente bloque.
+
+Confirmación final: la solución completa también compiló con 0 errores y 0 advertencias usando los parámetros temporales de Java ya documentados. Se actualizaron las referencias de README y la guía de gestión para que no sigan afirmando que el cambio de rol está ausente. No se repitieron tests después de esos ajustes exclusivamente documentales.
+
+### Bloque reabierto: discrepancia de rol informada en prueba manual
+
+El estudiante corrigió el resultado manual: en Gestión de cuentas seleccionó/cambió Cliente a Empleado y vio Empleado en la tarjeta, pero al ingresar con la misma cuenta continuó como Cliente. **Prueba manual fallida; bloque reabierto.** Los resultados automatizados anteriores no sustituyen esta prueba ni permiten dar por resuelto el recorrido nativo. Se investigará por el mismo IdUsuario: rol persistido en LocalDB, contrato real de login, /yo y rol que usa Home.razor para elegir inicio. Sin publicación ni cambios de hosting.
+
+### Causa reproducida y corrección de la confirmación
+
+El estudiante aclaró que **solo eligió Empleado en el desplegable**, sin pulsar Confirmar cambio de rol. Se reprodujo esa etapa: seleccionar modifica únicamente el valor propuesto en memoria; no hay PUT y SQL conserva Cliente. El desplegable mostraba Empleado y la confirmación aparecía arriba de la página, separada de la tarjeta. La diferencia estaba en la presentación del cambio pendiente, antes de la persistencia, no en una discrepancia entre SQL, login y /yo después de un guardado confirmado.
+
+Corrección en GestionCuentas.razor: mostrar «Rol guardado» separado del selector; etiquetar que requiere confirmación; mostrar «Cambio sin guardar» y los botones Confirmar/Cancelar dentro de la misma tarjeta. Después del PUT se consulta de nuevo el detalle y solo se informa éxito si el rol devuelto coincide con el destino. Se mantiene la confirmación, las reglas de rol/estado y la interfaz existente, sin pantallas nuevas ni cambios del Figma original.
+
+Nueva prueba Seleccionar_no_guarda_confirmar_persiste_y_login_abre_inicio_empleado: compila y renderiza los Razor reales de gestión, Home y sus componentes con HtmlRenderer de ASP.NET Core. No agrega paquetes: el proyecto de pruebas usa SDK Razor y enlaces a esos fuentes, conservando sus pruebas HTTP previas y el runtime net10.0 sin MAUI. Un activador de componentes de prueba permite invocar los callbacks reales y renderizar de nuevo en el dispatcher; no es una prueba de eventos de navegador ni automatización nativa.
+
+Reproducción aislada correcta: **IdUsuario=2** en una base nueva BanosQuimicosAuthPruebas_<GUID>. Selección sin confirmar: SQL=Cliente y /yo de un login nuevo=Cliente; cancelación retira el aviso pendiente. Tras confirmar: SQL=Empleado, login nuevo con sub=2 (sin rol en su contrato), /yo=Empleado, SesionUsuario.Cuenta.Rol=Empleado y Home renderiza InicioEmpleado con «Rol: Empleado» y «Tareas asignadas», sin «Gestionar cuentas». Se conservaron correo/contraseña; no se imprimieron tokens ni claves. No se leyó ni alteró la cuenta personal usada por el estudiante.
+
+La ejecución completa inicial de esta ronda falló en constructores de fixtures por conexión a LocalDB, antes del recorrido. Se verificó la instancia existente Running, sin borrar, reiniciar ni reparar bases. La regresión aislada pasó (1/1). Se repitió la suite sin compilar Android al mismo tiempo; su resultado se registra en el cierre. El comando EF de diagnóstico confirmó configuración local BanosQuimicosDb/(localdb)\MSSQLLocalDB; el test usa explícitamente su propia base nueva. No se contactó el hosting.
+
+App Debug Windows y Android compiladas con 0 errores/advertencias; Android mantiene los parámetros de memoria temporales documentados, sin cambios permanentes de proyecto. Se actualizó la guía con el paso exacto de confirmación. **Pendiente repetir la prueba manual corregida en Windows y Android:** la prueba original permanece registrada como fallida; el nuevo resultado automatizado no se presenta como confirmación manual del estudiante.
+
+Resultado final de esta corrección: suite completa **61 correctas, 0 fallidas, 0 omitidas**, después de comprobar LocalDB y terminar la compilación paralela. Se reforzó la regresión con la aserción explícita «Rol guardado: Cliente» y ausencia de «Rol guardado: Empleado» mientras el cambio está pendiente; se ejecutó de nuevo esa prueba y pasó (1/1). Windows y Android compilados con 0 errores/advertencias, sin migración ni publicación. Los fallos de conexión iniciales quedan registrados como intentos fallidos de infraestructura, no se atribuye una causa más precisa sin evidencia.
+
+Revisión final: git diff --check correcto, 123 candidatos examinados sin indicadores de secretos, perfiles de publicación ni generados; índice vacío. Los resultados TRX quedan en tmp ignorado y no se versionan. Cambios anteriores de feature/alta-empleados conservados, sin commit ni push. La corrección está lista para revisión, pero el **bloque permanece reabierto hasta repetir la prueba manual corregida**. No se marca como superada la prueba manual original ni los pendientes de vencimiento/alternancia de servidores. Mensaje sugerido: `fix: distinguir rol pendiente y confirmar el cambio en la tarjeta`.
+
+### Cierre final: prueba manual Windows aprobada (03/11/2026)
+
+El estudiante confirmó personalmente que, después de **confirmar** el cambio Cliente → Empleado desde Gestión de cuentas, la cuenta apareció en el filtro Empleado. Al cerrar y volver a ingresar con las mismas credenciales, se mostró el inicio de empleado. **Prueba manual de Windows aprobada.** Este resultado corresponde a la repetición corregida; se conserva el registro histórico de la prueba fallida y su causa.
+
+Esta confirmación manual es independiente de las 61 pruebas automatizadas y de las compilaciones previamente documentadas; no se ejecutaron nuevamente en esta actualización, que solo modifica el plan. No se registraron credenciales ni tokens.
+
+**Bloque de acceso de empleados por cambio de rol cerrado**, por indicación del estudiante, con estos pendientes explícitos:
+
+- Prueba manual del recorrido corregido en Android/Moto G9 Plus.
+- Vencimiento real del token.
+- Alternar servidores en el dispositivo y comprobar aislamiento de sesión.
+
+No se publica la función ni se hacen cambios en MonsterASP. Se conservan los cambios existentes de feature/alta-empleados; no se hizo commit ni push ni se inició otro bloque. Verificación documental: git diff --check sin errores. Mensaje de commit sugerido para el bloque: `feat: cambiar roles Cliente y Empleado y mostrar inicio de empleado`.

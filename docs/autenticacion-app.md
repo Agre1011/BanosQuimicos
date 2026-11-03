@@ -2,9 +2,13 @@
 
 Bloque de .NET MAUI Blazor Hybrid para Windows y Android físico por USB. Usa la API existente y sus 12 tablas; no agrega CRUD ni pantallas administrativas. Login y registro toman como referencia la captura de Figma del PDF aprobado: paleta marrón, acciones azul/rosa y campos acordados. El encabezado BQ es textual; no sustituye un logotipo original. Se aplica el cambio confirmado de «Nombre de usuario» a «Correo electrónico».
 
-## Destino seleccionado para esta ronda: hosting HTTPS
+## Destino actual: API local para cambio de rol
 
-En `BanosQuimicos.App/Plataforma/ConexionApi.cs`, `UsarHosting = true` selecciona **https://celeris.runasp.net/** en Windows y Android, tanto Debug como Release. La URL es pública; no se incluyen claves ni credenciales. El HttpClient conserva la validación normal del certificado y no sigue redirecciones.
+En feature/alta-empleados está seleccionado `UsarHosting = false`. Seguir [el recorrido local de empleados](acceso-empleados.md). El selector y la opción HTTPS alojada se conservan; el bloque nuevo todavía no se publicó. La sección siguiente describe la selección de hosting de la ronda anterior.
+
+## Destino de la ronda anterior: hosting HTTPS
+
+En `BanosQuimicos.App/Plataforma/ConexionApi.cs`, poner `UsarHosting = true` selecciona **https://celeris.runasp.net/** en Windows y Android, tanto Debug como Release. La URL es pública; no se incluyen claves ni credenciales. El HttpClient conserva la validación normal del certificado y no sigue redirecciones.
 
 Para probar en el Moto G9 Plus: abrir la solución en Visual Studio 2026, establecer BanosQuimicos.App como inicio, elegir Debug y el teléfono Android autorizado por USB, y ejecutar F5. El teléfono necesita Internet por Wi-Fi o datos. **No hace falta iniciar la API local ni usar adb reverse para el hosting.** En Windows elegir Windows Machine y ejecutar del mismo modo.
 

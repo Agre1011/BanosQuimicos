@@ -61,14 +61,18 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/gestion-cuentas`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/alta-empleados`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 ## Gestión de cuentas
 
-El administrador puede consultar cuentas con búsqueda, filtro y paginación, ver sus detalles y activar clientes pendientes con confirmación. Ver [guía y resultados esperados](docs/gestion-cuentas.md). No se incluyen edición, suspensión, baja ni cambio de rol.
+El administrador puede consultar cuentas con búsqueda, filtro y paginación, ver sus detalles y activar clientes pendientes con confirmación. Ver [guía y resultados esperados](docs/gestion-cuentas.md). No se incluyen edición, suspensión ni baja. El cambio Cliente ↔ Empleado se incorpora en el bloque de acceso de empleados, descrito más abajo.
 
 ## Base de datos
 
 La base local es `BanosQuimicosDb` en `(localdb)\MSSQLLocalDB`, con autenticación de Windows. La API registra el DbContext, pero no ejecuta migraciones automáticamente al iniciar. Ver [modelo, restricciones y pasos para consultar la base](docs/base-datos.md).
 
 Ver `docs/plan-trabajo.md` para evidencias de esta entrega, limitaciones y próximos pasos.
+
+## Acceso de empleados
+
+El usuario se registra como Cliente/Pendiente. Un administrador activo puede cambiar Cliente ↔ Empleado desde Clientes y Empleados, conservando la cuenta y sin modificar su estado. Este bloque usa API local/LocalDB; ver [recorrido y pruebas](docs/acceso-empleados.md). No se ha publicado el endpoint nuevo.

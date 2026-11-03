@@ -3,13 +3,17 @@
 @implements IDisposable
 
 <section class="tarjeta" aria-labelledby="titulo-cuentas" aria-busy="@ocupada">
-    <h1 id="titulo-cuentas">Gestionar cuentas</h1>
+    <h1 id="titulo-cuentas">Clientes y Empleados</h1>
     @if (!string.IsNullOrEmpty(aviso)) { <div class="aviso" role="status">@aviso</div> }
     @if (!string.IsNullOrEmpty(error)) { <div class="aviso error" role="alert">@error</div> }
     @if (ocupada) { <p role="status">Consultando cuentas…</p> }
     <fieldset disabled="@(ocupada || Sesion.Ocupada)">
     @if (idSeleccionado is null)
     {
+        <div class="pestanas-cuentas" role="group" aria-label="Tipo de cuenta">
+            <button class="secundario" aria-pressed="@(rolListado == "Cliente")" @onclick='() => FiltrarRolAsync("Cliente")'>Clientes</button>
+            <button class="secundario" aria-pressed="@(rolListado == "Empleado")" @onclick='() => FiltrarRolAsync("Empleado")'>Empleados</button>
+        </div>
         <form @onsubmit="BuscarAsync" @onsubmit:preventDefault>
             <label for="busqueda-cuentas">Nombre, apellido o correo</label>
             <input id="busqueda-cuentas" maxlength="254" @bind="busqueda" />
@@ -28,7 +32,23 @@
             {
                 <article class="cuenta-resumen" @key="item.IdUsuario">
                     <h2>@item.Nombre @item.Apellido</h2>
-                    <p>@item.Email</p><p>@item.Rol · @EstadoVisible(item.EstadoCuenta)</p>
+                    <p>@item.Email</p><p>Rol guardado: <strong>@item.Rol</strong> · @EstadoVisible(item.EstadoCuenta)</p>
+                    @if (item.Rol is "Cliente" or "Empleado")
+                    {
+                        <label for="@($"rol-{item.IdUsuario}")">Cambiar rol (requiere confirmación)</label>
+                        <select id="@($"rol-{item.IdUsuario}")" value="@(cambioRol?.IdUsuario == item.IdUsuario ? nuevoRol : item.Rol)" @onchange="e => PrepararRol(item, e.Value?.ToString())">
+                            <option>Cliente</option><option>Empleado</option>
+                        </select>
+                        @if (cambioRol?.IdUsuario == item.IdUsuario)
+                        {
+                            <div class="aviso" role="group" aria-labelledby="@($"confirmar-rol-{item.IdUsuario}")">
+                                <p id="@($"confirmar-rol-{item.IdUsuario}")"><strong>Cambio sin guardar:</strong> @item.Rol → @nuevoRol.</p>
+                                <p>¿Confirmás cambiar el rol de @item.Nombre @item.Apellido (@item.Email)? Esta operación no modifica el estado de cuenta.</p>
+                                <button class="principal" @onclick="ConfirmarRolAsync">Confirmar cambio de rol</button>
+                                <button class="secundario" @onclick="CancelarRol">Cancelar</button>
+                            </div>
+                        }
+                    }
                     <button class="principal" @onclick="() => AbrirAsync(item.IdUsuario)">Ver detalle</button>
                 </article>
             }
@@ -74,7 +94,8 @@
 @code {
     [Parameter] public EventCallback Volver { get; set; }
     private PaginaCuentas? listado;
-    private CuentaGestion? detalle;
+    private CuentaGestion? detalle, cambioRol;
+    private string nuevoRol = "", rolListado = "Cliente";
     private int pagina = 1;
     private int? idSeleccionado;
     private string busqueda = "", estado = "", filtroBusqueda = "", filtroEstado = "";
@@ -93,17 +114,46 @@
     }
     private async Task LeerListadoAsync()
     {
-        listado = null;
-        var resultado = await Sesion.ListarCuentasAsync(pagina, filtroBusqueda, filtroEstado);
+        listado = null; CancelarRol();
+        var resultado = await Sesion.ListarCuentasAsync(pagina, filtroBusqueda, filtroEstado, rolListado);
         // Activar la última cuenta de una página Pendiente puede dejar esa página vacía.
         var ultima = (int)Math.Max(1, ((long)resultado.Total + 9) / 10);
         if (pagina > ultima)
         {
             pagina = ultima;
-            resultado = await Sesion.ListarCuentasAsync(pagina, filtroBusqueda, filtroEstado);
+            resultado = await Sesion.ListarCuentasAsync(pagina, filtroBusqueda, filtroEstado, rolListado);
         }
         if (!dispuesto) listado = resultado;
     }
+    private Task FiltrarRolAsync(string rol)
+    {
+        if (ocupada) return Task.CompletedTask;
+        rolListado = rol; pagina = 1; aviso = null;
+        return CargarAsync();
+    }
+    private void PrepararRol(CuentaGestion cuenta, string? rol)
+    {
+        if (ocupada || rol is not ("Cliente" or "Empleado") || rol == cuenta.Rol) { CancelarRol(); return; }
+        cambioRol = cuenta; nuevoRol = rol; aviso = null; error = null;
+    }
+    private void CancelarRol() { cambioRol = null; nuevoRol = ""; }
+    private Task ConfirmarRolAsync() => EjecutarAsync(async () =>
+    {
+        if (cambioRol is not { } cuenta) return;
+        var destino = nuevoRol;
+        CancelarRol();
+        try
+        {
+            await Sesion.CambiarRolAsync(cuenta.IdUsuario, cuenta.Rol, destino);
+            var guardada = await Sesion.DetalleCuentaAsync(cuenta.IdUsuario);
+            if (guardada.Rol != destino)
+                throw new ErrorApi(TipoErrorApi.Conflicto, "El rol volvió a cambiar en otra sesión.");
+            aviso = $"Rol guardado: {guardada.Rol}. El cambio de rol no activa la cuenta. Consultá la pestaña {guardada.Rol}.";
+        }
+        catch (ErrorApi ex) when (ex.Tipo == TipoErrorApi.Conflicto)
+        { aviso = "El rol cambió en otra sesión. Se actualizó el listado; revisá la pestaña correspondiente."; }
+        await LeerListadoAsync();
+    });
     private Task CargarAsync() => EjecutarAsync(LeerListadoAsync);
     private Task BuscarAsync()
     {
@@ -120,7 +170,7 @@
     private Task AbrirAsync(int id)
     {
         if (ocupada) return Task.CompletedTask;
-        idSeleccionado = id; aviso = null;
+        idSeleccionado = id; aviso = null; CancelarRol();
         return RecargarDetalleAsync();
     }
     private Task RecargarDetalleAsync() => EjecutarAsync(async () =>
@@ -148,5 +198,5 @@
         if (!dispuesto) detalle = actual;
         await LeerListadoAsync();
     });
-    public void Dispose() { dispuesto = true; listado = null; detalle = null; }
+    public void Dispose() { dispuesto = true; listado = null; detalle = null; CancelarRol(); }
 }
