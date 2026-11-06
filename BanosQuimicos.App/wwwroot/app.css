@@ -51,3 +51,8 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .accion-tarea { background: #19c7c2; color: #123331; }
 .estado-tarea.realizada { background: #2ac86b; color: #12331c; }
 .texto-trabajo { white-space: pre-wrap; overflow-wrap: anywhere; }
+.estado-bano { background: #efefea; margin-bottom: 1.2rem; }
+.estado-bano h2 { font-size: 1.2rem; }
+.asignacion-bano { margin-top: .8rem; }
+.solicitudes-admin { background: #ffe06b; color: #17331e; }
+.estado-banos-admin { background: #ff4343; color: #291616; }

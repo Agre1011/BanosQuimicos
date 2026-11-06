@@ -32,20 +32,20 @@ public class AplicacionTareasPruebas : AplicacionPruebas
 public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<AplicacionTareasPruebas>
 {
     private CancellationToken Ct => TestContext.Current.CancellationToken;
-    private HttpClient Http(string? token = null)
+    internal HttpClient Http(string? token = null)
     {
         var http = app.CreateClient();
         if (token is not null) http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return http;
     }
-    private async Task<string> Token(string email, string contrasena)
+    internal async Task<string> Token(string email, string contrasena)
     {
         using var http = Http();
         var r = await http.PostAsJsonAsync("/api/autenticacion/login", new { email, contrasena }, Ct);
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         return (await r.Content.ReadFromJsonAsync<LoginRespuesta>(Ct))!.AccessToken;
     }
-    private async Task<(int Id, string Token, string Email, string Clave)> Usuario(string rol = "Empleado", bool activar = true)
+    internal async Task<(int Id, string Token, string Email, string Clave)> Usuario(string rol = "Empleado", bool activar = true)
     {
         var email = "prueba-tareas-" + Guid.NewGuid().ToString("N") + "@example.invalid";
         var contrasena = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
@@ -60,7 +60,7 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
         if (rol == "Empleado") Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync($"/api/cuentas/{id}/rol", new { rolAnterior = "Cliente", nuevoRol = "Empleado" }, Ct)).StatusCode);
         return (id, await Token(email, contrasena), email, contrasena);
     }
-    private async Task<TareaOperativa> Tarea(int? empleado, DateTimeOffset? fecha, bool conServicio = true, int estado = 6)
+    internal async Task<TareaOperativa> Tarea(int? empleado, DateTimeOffset? fecha, bool conServicio = true, int estado = 6)
     {
         using var db = app.NuevoContexto();
         var bano = new BanoQuimico { CodigoInterno = "PT-" + Guid.NewGuid().ToString("N")[..10], IdTipoBano = 1, IdEstadoBano = 1, FechaAlta = AplicacionTareasPruebas.Ahora.AddDays(-10) };

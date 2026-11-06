@@ -81,9 +81,25 @@ public class ClienteAutenticacion
         using var response = await EnviarAsync(request);
         await ComprobarAsync(response, "rol");
     }
-    public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerTareasAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
-    public Task<List<TareaAsignada>> TareasAsync(string token) => LeerTareasAsync<List<TareaAsignada>>(token, "api/tareas/mias");
-    public Task<TareaAsignada> DetalleTareaAsync(string token, int id) => LeerTareasAsync<TareaAsignada>(token, $"api/tareas/{id}");
+    public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerAutenticadoAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
+    public Task<List<EstadoBano>> EstadoBanosAsync(string token) => LeerAutenticadoAsync<List<EstadoBano>>(token, "api/banos/estado", "banos");
+    public Task<List<EmpleadoAsignable>> EmpleadosAsignablesAsync(string token) => LeerAutenticadoAsync<List<EmpleadoAsignable>>(token, "api/banos/empleados-asignables", "banos");
+    public async Task<EstadoBano> AsignarResponsableAsync(string token, int id, int empleado, int? anterior)
+    {
+        using var request = PeticionCuenta(HttpMethod.Put, $"api/banos/{id}/responsable-limpieza", token);
+        request.Content = JsonContent.Create(new { idEmpleado = empleado, idResponsableAnterior = anterior });
+        using var response = await EnviarAsync(request); await ComprobarAsync(response, "banos");
+        return await LeerAsync<EstadoBano>(response);
+    }
+    public async Task<LimpiezaProgramada> ProgramarLimpiezaAsync(string token, int id, ProgramarLimpieza datos)
+    {
+        using var request = PeticionCuenta(HttpMethod.Post, $"api/banos/{id}/limpiezas", token);
+        request.Content = JsonContent.Create(datos);
+        using var response = await EnviarAsync(request); await ComprobarAsync(response, "banos");
+        return await LeerAsync<LimpiezaProgramada>(response);
+    }
+    public Task<List<TareaAsignada>> TareasAsync(string token) => LeerAutenticadoAsync<List<TareaAsignada>>(token, "api/tareas/mias");
+    public Task<TareaAsignada> DetalleTareaAsync(string token, int id) => LeerAutenticadoAsync<TareaAsignada>(token, $"api/tareas/{id}");
     public async Task<TareaAsignada> GuardarTrabajoAsync(string token, int id, bool finalizar)
     {
         using var request = PeticionCuenta(HttpMethod.Post, $"api/tareas/{id}/{(finalizar ? "finalizar" : "registrar-trabajo")}", token);
@@ -91,11 +107,11 @@ public class ClienteAutenticacion
         await ComprobarAsync(response, "tareas");
         return await LeerAsync<TareaAsignada>(response);
     }
-    private async Task<T> LeerTareasAsync<T>(string token, string ruta)
+    private async Task<T> LeerAutenticadoAsync<T>(string token, string ruta, string operacion = "tareas")
     {
         using var request = PeticionCuenta(HttpMethod.Get, ruta, token);
         using var response = await EnviarAsync(request);
-        await ComprobarAsync(response, "tareas");
+        await ComprobarAsync(response, operacion);
         return await LeerAsync<T>(response);
     }
     private static HttpRequestMessage PeticionCuenta(HttpMethod metodo, string ruta, string token)
@@ -129,10 +145,13 @@ public class ClienteAutenticacion
             throw new ErrorApi(operacion == "login" ? TipoErrorApi.CuentaNoHabilitada : TipoErrorApi.SinPermiso,
                 operacion == "login" ? "La cuenta no está habilitada. Consultá al administrador." : "No tenés permiso para realizar esta operación.");
         if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            if (operacion == "banos") throw new ErrorApi(TipoErrorApi.Conflicto, "El baño, servicio o empleado cambió, o la programación no es válida. Consultá nuevamente antes de intentar otra operación.");
             throw new ErrorApi(operacion == "registro" ? TipoErrorApi.Duplicado : TipoErrorApi.Conflicto,
                 operacion == "registro" ? "El correo electrónico ya está registrado." : operacion == "tareas" ? "La tarea cambió o no reúne las condiciones para esta acción. Volvé a consultar el detalle; si fue reasignada o cancelada, consultá al administrador." : "La cuenta cambió o no cumple las condiciones para esta operación.");
+        }
         if (response.StatusCode == HttpStatusCode.NotFound)
-            throw new ErrorApi(TipoErrorApi.NoEncontrado, operacion == "tareas" ? "La tarea no está disponible." : "La cuenta ya no está disponible.");
+            throw new ErrorApi(TipoErrorApi.NoEncontrado, operacion == "banos" ? "El baño no está disponible." : operacion == "tareas" ? "La tarea no está disponible." : "La cuenta ya no está disponible.");
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
             var mensaje = "Revisá los datos ingresados y los campos obligatorios.";

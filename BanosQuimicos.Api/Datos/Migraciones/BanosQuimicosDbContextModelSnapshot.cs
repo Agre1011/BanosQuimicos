@@ -42,6 +42,9 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                     b.Property<int>("IdEstadoBano")
                         .HasColumnType("int");
 
+                    b.Property<int?>("IdResponsableLimpieza")
+                        .HasColumnType("int");
+
                     b.Property<int>("IdTipoBano")
                         .HasColumnType("int");
 
@@ -55,6 +58,8 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                         .IsUnique();
 
                     b.HasIndex("IdEstadoBano");
+
+                    b.HasIndex("IdResponsableLimpieza");
 
                     b.HasIndex("IdTipoBano");
 
@@ -436,6 +441,9 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                     b.Property<bool>("BloqueaAsignacion")
                         .HasColumnType("bit");
 
+                    b.Property<Guid?>("ClaveProgramacion")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTimeOffset?>("FechaCancelacion")
                         .HasColumnType("datetimeoffset");
 
@@ -489,6 +497,10 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                         .HasColumnType("bit");
 
                     b.HasKey("IdTarea");
+
+                    b.HasIndex("ClaveProgramacion")
+                        .IsUnique()
+                        .HasFilter("[ClaveProgramacion] IS NOT NULL");
 
                     b.HasIndex("IdEmpleado");
 
@@ -803,6 +815,11 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("BanosQuimicos.Api.Modelos.Usuario", "ResponsableLimpieza")
+                        .WithMany()
+                        .HasForeignKey("IdResponsableLimpieza")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("BanosQuimicos.Api.Modelos.TipoBano", "TipoBano")
                         .WithMany()
                         .HasForeignKey("IdTipoBano")
@@ -810,6 +827,8 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                         .IsRequired();
 
                     b.Navigation("EstadoBano");
+
+                    b.Navigation("ResponsableLimpieza");
 
                     b.Navigation("TipoBano");
                 });

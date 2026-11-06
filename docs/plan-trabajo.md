@@ -896,3 +896,66 @@ Detalle de la migración aplicada **20261106204848_RegistroTrabajoTarea** en Loc
 **Pendiente para la futura publicación:** revisar el estado y las migraciones de db77593 y aplicar esta migración aditiva en MonsterASP antes de utilizar allí la API de este bloque. Todavía no se aplicó al hosting ni se publicó la API. El script 0→Inicial no incluye este cambio y no debe repetirse sobre la base alojada existente; el despliegue deberá llevarla desde su migración efectivamente aplicada hasta RegistroTrabajoTarea, conservando los datos. Esta anotación no autoriza ejecutar la publicación.
 
 **Bloque cerrado y listo para commit**, conservando como pendientes la prueba manual Android, la migración/publicación en hosting, el vencimiento real del token y la alternancia de servidores en el dispositivo. No se hizo commit ni push ni se inició otro bloque. Mensaje sugerido: **feat: registrar cumplimiento y finalizar tareas del empleado**.
+
+## 19. Administrador: Estado Baños, responsable habitual y limpieza manual
+
+### Inicio y decisiones confirmadas (06/11/2026)
+
+El estudiante informó integración/pull del bloque anterior. Se verificó master limpio en 898e3f5 (merge PR #8) y se creó feature/estado-banos desde ese punto. No se hizo fetch/pull adicional ni se descartaron cambios. Se leyeron AGENTS.md, el plan, texto funcional del PDF, página 6 renderizada, DER original, capturas ampliadas aportadas y código actual. Los originales se conservan.
+
+Decisiones confirmadas que prevalecen sobre las propuestas anteriores:
+
+- Cada baño tendrá responsable habitual de limpieza. Solicitudes/reclamos admiten un empleado puntual distinto, sin cambiar al habitual.
+- **Programación manual por fecha de cada tarea**; frecuencia del servicio solo referencial. Esto reemplaza la intención de generación semanal automática registrada en la sección 18. No se agrega ningún generador.
+- Al programar se propone el habitual, pudiendo elegir otro para ese trabajo. Asignar ▾ abre selección de empleados dentro de la tarjeta.
+- El cliente completa los datos de servicio nuevo; administración lo recibe en Solicitudes y Reclamos y selecciona baños disponibles. Ese recorrido queda documentado para el bloque posterior.
+- Autorización visual explícita del estudiante: selector de fecha y futura pantalla para resolver servicio nuevo basada en Resolver solicitudes y reclamos, con selección de baños. Es una ampliación concreta de las autorizaciones visuales anteriores; no permite inventar otras pantallas. Aquí solo se usa la primera, en Estado Baños.
+
+### Verificación del modelo y migración explicada previamente
+
+IdEmpleado/FechaProgramada de TAREAS_OPERATIVAS ya representan empleado puntual y planificación, pero ni el DER ni BanoQuimico tenían un responsable habitual independiente. Se explicó el mínimo ajuste antes de editar o aplicar: **20261106222844_ResponsableLimpiezaYProgramacion**, agregando BANOS_QUIMICOS.IdResponsableLimpieza opcional (FK NoAction a USUARIOS e índice) y TAREAS_OPERATIVAS.ClaveProgramacion opcional (uniqueidentifier e índice único filtrado para reintentos). Se mantienen 12 tablas; no se reutilizan observaciones ni el empleado de una tarea pasada para inventar responsables. Las unidades existentes quedan Sin asignar hasta intervención administrativa.
+
+Migración generada con EF, revisada y aplicada solo en (localdb)\MSSQLLocalDB/BanosQuimicosDb, después de comprobar nombre e IsLocalDB=1. Verificación posterior: 12 tablas de negocio, historial con Inicial/RegistroTrabajoTarea/ResponsableLimpiezaYProgramacion, 6 usuarios, 1 baño y 1 tarea conservados. PRUEBA-TAREAS-01 permanece con responsable null y la tarea 1 Realizada con clave null. No se crearon programaciones ni se alteraron asignaciones operativas existentes para las pruebas automatizadas.
+
+Pendiente para publicación: revisar el historial real de db77593 y aplicar las migraciones faltantes de RegistroTrabajoTarea y ResponsableLimpiezaYProgramacion antes de utilizar esta API. No se ejecutó nada ni se contactó MonsterASP. El script inicial histórico no se modifica ni se repite sobre bases existentes.
+
+### Implementación y comprobaciones de negocio
+
+- BanosController y Contratos/Banos: GET /api/banos/estado y /empleados-asignables, PUT /api/banos/{id}/responsable-limpieza, POST /api/banos/{id}/limpiezas. Solo Administrador/Activa; empleados elegibles Empleado/Activa. Se revalidan cuentas en la transacción. DTOs de lectura limitados a contexto y nombres/IDs necesarios, sin hashes/contraseñas/tokens.
+- Disponibilidad derivada de Apto + sin servicio asignado (Pendiente de entrega/Entregado) + sin mantenimiento bloqueante Pendiente/En curso. Condición, servicio y mantenimiento se muestran separados. Asignar responsable no es asignar un servicio y admite unidades disponibles, asignadas o No apto. No cambia condición ni historial.
+- Programar limpieza semanal crea Tarea/Pendiente y fija servicio entregado del mismo baño, ubicación actual, empleado elegido y fecha. No crea servicios para unidades libres ni programa contra pendientes de entrega o ubicaciones obsoletas. No apto/bloqueos restringen nuevas asignaciones de servicio, no la limpieza de uno ya entregado; se advierte en la tarjeta sin liberar/asignar el baño ni cambiar su condición. Limpieza pendiente no bloquea por sí sola. El empleado puede registrar y finalizar con los endpoints anteriores.
+- Fecha elegida se guarda como día argentino a las 00:00 UTC−3, separada de fechas de registro/realización. No se inventa hora efectiva, observaciones o papel. La frecuencia no limita ni genera tareas. Se conserva el empleado de cada tarea aunque cambie el habitual.
+- Repetición con la misma ClaveProgramacion/datos devuelve el mismo IdTarea; primera creación 201, reintento 200, clave con otros datos 409. También se rechaza una programación nueva idéntica en baño/servicio/ubicación/empleado/fecha mientras la anterior no esté cancelada, para evitar duplicados al volver a entrar. No se limita a una limpieza por semana ni se prohíbe elegir otro empleado o fecha. ResponsableAnterior evita pisar cambios concurrentes de responsable (no detecta una ida/vuelta completa al mismo valor). Transacciones Serializable con el mismo bloqueo de aplicación de cumplimiento ordenan operaciones; índice único refuerza la clave.
+- App: nuevos ContratosBanos y Components/Administracion/EstadoBanos.razor; ampliación de ClienteAutenticacion/SesionUsuario/Home/CSS. Tarjetas según referencia, Asignar ▾, selector de empleados activos, guardado habitual, fecha requerida y programación, confirmación solo tras respuesta persistida, carga/vacío/error/reintento/regreso. Propone el habitual activo al abrir. Los datos del reintento se mantienen inmutables mientras su resultado no se confirma; no se envían duplicados durante procesamiento. Baños y Servicios/Solicitudes y Reclamos siguen sin implementar y deshabilitados en el inicio. Conservados local/USB/certificados/almacenamiento de sesión.
+
+### Pruebas y compilación
+
+- **100 pruebas automatizadas correctas, 0 fallidas, 0 omitidas**: 85 anteriores y 15 casos nuevos. TestServer, cliente C# real y LocalDB en bases nuevas BanosQuimicosAuthPruebas_<GUID> conservadas. Ninguna usa la base alojada o las cuentas operativas locales.
+- Recorrido administrador → asignación habitual A → limpieza puntual B → lista/contador de B → registro/cierre por B; A recibe 404 al consultar el detalle ajeno. Se conserva habitual A y empleado de la tarea anterior, ubicación actual al programar y fecha UTC−3. No se completan papel/observaciones ficticios.
+- Cuatro envíos concurrentes con una clave generan una tarea y devuelven el mismo ID; clave alterada y nueva clave/datos idénticos no duplican. Cambios concurrentes de habitual: uno se guarda y otro 409; repetición del guardado inocua. Cliente/Empleado/Pendiente 403, anónimo y suspendido 401. Selección rechaza Cliente, Pendiente, Suspendida y BajaLogica; lista solo empleados activos.
+- Disponible con mantenimiento no bloqueante, bloqueo real que impide disponibilidad, No apto ya entregado que conserva servicio/condición y puede programar limpieza; unidad sin servicio y pendiente de entrega rechazadas para esta operación. Ubicación histórica/servicio desactualizado, datos extra/incompletos y baño inexistente rechazados sin crear tareas.
+- Renderer de Razor real: tarjeta, apertura de Asignar, confirmación visible de responsable, propuesta del habitual, programación y pulsación repetida sin crear otra tarea. Se enlazó el nuevo componente en el proyecto de pruebas; se reutilizaron helpers existentes de datos. No equivale a eventos nativos ni prueba manual Windows/Android.
+- Intento inicial de compilación de tests falló por alias App ambiguo; se corrigió a ClienteApp y se resolvieron advertencias del analizador. Primera suite: 97 correctas/3 fallidas. La escritura de habitual funcionaba, pero el filtro aplicado sobre DTO record no era traducible por EF y fallaba su respuesta. Se reprodujo aisladamente, movió el filtro por ID antes de la proyección y reforzó el test Razor para exigir la confirmación. Suite corregida: 100 correctas. Tras finalizar validación de fecha y lectura autenticada compartida, se repitió la suite: **100 correctas**.
+- API/pruebas compilaron en salida tmp/pruebas-estado-banos; app Debug Windows y Android con **0 errores y 0 advertencias**, usando los parámetros temporales JavaMaximumHeapSize=512M/JavaOptions=-XX:+UseSerialGC ya documentados, sin modificar configuración global ni paquetes. EF usó configuración de compilación TrabajoLocal para evitar tocar los binarios de una API abierta. No se detuvo el proceso del estudiante: debe reiniciarlo con la versión actual para su prueba.
+
+### Guía, próximo alcance y cierre
+
+docs/estado-banos.md contiene prueba manual con la unidad local PRUEBA-TAREAS-01, pasos administrador → empleado, contratos, migración y recorrido de servicio nuevo para el bloque siguiente. La futura resolución seleccionará baños realmente disponibles, creará un servicio/ubicación por unidad y trabajos puntuales, conservará solicitud origen y distinguirá aprobación de resolución. La pantalla autorizada de selección de baños no se implementó en este bloque.
+
+Pendientes: prueba manual de este bloque en Windows y Android; migraciones/publicación futura en hosting; vencimiento real del token y alternar servidores en el dispositivo. Las aprobaciones Windows de consulta/cumplimiento previas se conservan para esos alcances, sin extenderlas a la programación administrativa nueva.
+
+Bloque implementado y listo para revisión, sin commit, push ni publicación ni comienzo de otro bloque. Mensaje sugerido: **feat: asignar responsables y programar limpiezas desde Estado Baños**.
+
+Revisión final: EF confirmó modelo sin cambios pendientes de migrar; git diff --check correcto. 141 archivos versionados/candidatos examinados, sin rutas de generados/perfiles privados ni indicadores de credenciales, tokens o claves privadas en los textos revisados; índice vacío. PDF y PNG originales mantienen los SHA-256 anteriores. Las últimas modificaciones fueron documentales; no se repitieron tests ni compilaciones después de ellas.
+
+### Cierre: prueba manual Windows aprobada
+
+El estudiante confirmó personalmente el recorrido completo en Windows con API local y LocalDB: guardar responsable habitual → programar limpieza para el **07/11/2026** → ingresar como empleado → consultar la tarea → Registrar Trabajo → Actualizar Estado/finalizar. **Prueba manual aprobada.** La fecha indicada es la programación de la limpieza, no una fecha de ejecución inferida. No se atribuye a esta confirmación la prueba manual de otros empleados, concurrencia o errores; esas evidencias automatizadas permanecen separadas.
+
+Se conserva el resultado y el historial de la prueba; no se restablecen tareas ni se modifican datos en este cierre documental. Las 100 pruebas automatizadas y las compilaciones previas no se repitieron porque no cambió código. No se documentaron credenciales ni tokens.
+
+Migración local a incluir en la futura actualización del hosting: **20261106222844_ResponsableLimpiezaYProgramacion**. Agregó IdResponsableLimpieza (int opcional) a BANOS_QUIMICOS, con índice y FK a USUARIOS sin cascada; agregó ClaveProgramacion (uniqueidentifier opcional) a TAREAS_OPERATIVAS, con índice único filtrado para valores no nulos. Su aplicación se registró en __EFMigrationsHistory, conservando las 12 tablas, catálogos y datos existentes. Los registros anteriores quedaron sin valores inventados.
+
+**Hosting pendiente:** antes de publicar, consultar el historial real de db77593 y aplicar las migraciones faltantes en orden, incluyendo RegistroTrabajoTarea y ResponsableLimpiezaYProgramacion según corresponda. No repetir el script inicial sobre la base existente ni copiar usuarios o datos locales. Esta actualización no aplicó migraciones en MonsterASP ni autoriza su publicación.
+
+**Bloque cerrado y listo para commit**, por indicación del estudiante. Continúan pendientes Android, migraciones/publicación en hosting, vencimiento real del token y alternancia de servidores en el dispositivo. Sin commit, push ni inicio de otro bloque. Mensaje sugerido: **feat: asignar responsables y programar limpiezas desde Estado Baños**.

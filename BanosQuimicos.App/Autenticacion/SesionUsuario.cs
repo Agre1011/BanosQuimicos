@@ -105,6 +105,10 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     public Task<bool> ActivarCuentaAsync(int id) => ComoAdministradorAsync(async t => { await api.ActivarCuentaAsync(t, id); return true; });
 
     public Task<ResumenTareas> ResumenTareasAsync() => ComoRolAsync("Empleado", api.ResumenTareasAsync);
+    public Task<List<EstadoBano>> EstadoBanosAsync() => ComoAdministradorAsync(api.EstadoBanosAsync);
+    public Task<List<EmpleadoAsignable>> EmpleadosAsignablesAsync() => ComoAdministradorAsync(api.EmpleadosAsignablesAsync);
+    public Task<EstadoBano> AsignarResponsableAsync(int id, int empleado, int? anterior) => ComoAdministradorAsync(t => api.AsignarResponsableAsync(t, id, empleado, anterior));
+    public Task<LimpiezaProgramada> ProgramarLimpiezaAsync(int id, ProgramarLimpieza datos) => ComoAdministradorAsync(t => api.ProgramarLimpiezaAsync(t, id, datos));
     public Task<List<TareaAsignada>> TareasAsync() => ComoRolAsync("Empleado", api.TareasAsync);
     public Task<TareaAsignada> DetalleTareaAsync(int id) => ComoRolAsync("Empleado", t => api.DetalleTareaAsync(t, id));
     public Task<TareaAsignada> GuardarTrabajoAsync(int id, bool finalizar) => ComoRolAsync("Empleado", t => api.GuardarTrabajoAsync(t, id, finalizar));
