@@ -836,3 +836,63 @@ Actualización de la preparación anterior: por autorización del estudiante se 
 - Vencimiento real del token y alternancia de servidores en el dispositivo, pendientes históricos.
 
 La aprobación corresponde al recorrido y datos confirmados en Windows; no se atribuyen pruebas manuales adicionales de desconexión, vacío o permisos a esta confirmación. Sin publicación, commit, push ni inicio de otro bloque. Mensaje sugerido: feat: consultar tareas asignadas y detalle del empleado.
+
+## 18. Registrar Trabajo y Actualizar Estado: cumplimiento local
+
+### Alcance y adaptación autorizados (06/11/2026)
+
+El estudiante confirmó integración/pull del bloque de consulta. Se comprobó master limpio en 26ee141 (merge PR #7) y se creó feature/registrar-trabajo desde ese punto, conservando la versión existente. Se revisaron AGENTS.md, el plan, texto del PDF aprobado (páginas 1 y 2), referencia visual de página 5, captura ampliada adjunta, modelo y código. No se modificaron los documentos originales. No se hizo pull/fetch adicional ni se publicó.
+
+La nueva definición resuelve el pendiente anterior: **todo ocurre en el detalle de tarea existente**, sin formularios, desplegables ni pantallas adicionales. Registrar Trabajo persiste autor y fecha/hora del cumplimiento declarado sin cambiar el estado; Actualizar Estado, habilitado después, finaliza con el estado interno Realizada y muestra Realizado en verde. Registro/estado se recuperan desde la API al volver o reiniciar sesión. No se cargan observaciones ni valores de papel higiénico ficticios. El alcance no incluye captura de esos dos campos: solo se muestran si ya existen.
+
+### Ajuste del modelo explicado antes de aplicarlo
+
+FechaRegistro correspondía a creación de la tarea y FechaRealizada a su cierre; ninguna identificaba el primer paso de manera independiente. Se explicó la necesidad de dos columnas opcionales en TAREAS_OPERATIVAS: FechaTrabajoRegistrado e IdEmpleadoRegistroTrabajo. Migración **20261106204848_RegistroTrabajoTarea**, con FK NoAction, índice y CHECK de autor/fecha juntos. Se conservan las 12 tablas; tareas históricas sin esos datos siguen nulas. No se utiliza FechaInicioReal, observaciones ni papel como sustitutos del registro. Migración generada por EF y revisada antes de aplicar.
+
+Se verificó la conexión explícita a (localdb)\MSSQLLocalDB/BanosQuimicosDb e IsLocalDB=1. Se aplicó allí y se comprobaron ambas migraciones en el historial, 12 tablas de negocio, 27 filas de catálogos y conservación de 6 usuarios y 1 tarea. La tarea de prueba 1/PRUEBA-TAREAS-01/IdEmpleado=1004 sigue Pendiente y sin registro para la prueba personal. No se usaron credenciales del estudiante ni se ejecutó cumplimiento sobre su tarea. MonsterASP/db77593 no se contactó ni modificó. Una futura publicación requerirá aplicar esta nueva migración antes de usar la API nueva; el script anterior 0→Inicial conserva su alcance histórico y no incluye este cambio.
+
+### Implementación y reglas
+
+- TareasController y contratos: POST /api/tareas/{id}/registrar-trabajo y /finalizar, sin cuerpo, devuelven detalle persistido. Política Empleado/Activa y verificación de cuenta dentro de la transacción. Propiedad por identidad autenticada, sin aceptar autor/fecha desde la app. Ajena/inexistente 404; cancelada o contexto incompatible 409.
+- Transacción Serializable, bloqueo de aplicación de SQL por base y UPDLOCK/HOLDLOCK de tarea ordenan estas escrituras, incluidas distintas tareas de una solicitud. Registro repetido conserva fecha/autor; cierre repetido no duplica efectos. Pendiente/En curso conservan su estado en el primer paso. Una Realizada histórica no se reescribe para simular registro. Reasignación sin registro permite al nuevo dueño operar; con registro de otro empleado exige revisión administrativa, conservando autor original. No hay endpoint administrativo de reasignación en este bloque.
+- Cierre atómico: entrega confirma servicio; retiro lo finaliza y libera asignación; traslado cambia vigencia de ubicaciones preparadas y fecha efectiva, conservando referencias históricas. Validaciones de baño/servicio/ubicaciones y solicitud/cliente. Limpieza/mantenimiento no cambian condición física a Apto ni rellenan papel/observaciones. Realizada elimina el bloqueo de mantenimiento derivado de estados Pendiente/En curso.
+- Resolución de solicitud directamente vinculada: requiere Aprobada y todas sus tareas Realizadas, sin excluir Canceladas. Nuevo servicio/baño adicional comprueban cantidad de servicios y entregas cumplidas; baja, servicio finalizado; traslado, fecha efectiva. No resolver una solicitud sin tareas, rechazada o cancelada. Un caso con tarea cancelada se conserva para revisión administrativa: el modelo no identifica por sí solo qué trabajo la reemplaza, y no se inventa esa equivalencia.
+- DTO de consulta ampliado con origen/descripción de solicitud (o la de origen del servicio si falta vínculo directo), observaciones asociadas, reposición ya guardada, autor y fechas, y permisos de los dos botones. Sin hashes ni tokens. No se agrega un tipo de tarea Reposición al catálogo: las indicaciones disponibles pueden venir de la descripción del reclamo/solicitud.
+- ClienteAutenticacion, SesionUsuario y TareasAsignadas.razor: peticiones autenticadas al destino existente, sin envíos duplicados mientras está ocupado, confirmación solo con respuesta guardada, lectura al reabrir, errores/reintento y botones según datos del servidor. El estado Realizada se presenta como Realizado en verde. Se conserva navegación y manejo de sesión; el error retira el detalle anterior hasta volver a consultarlo. CSS solo amplía estado verde y texto largo. Sin cambios en manifiestos, certificados o selección del servidor (UsarHosting=false).
+
+### Pruebas y compilación realizadas
+
+- **85 pruebas automatizadas correctas, 0 fallidas, 0 omitidas**, frente a 72 anteriores. Primera ejecución de esta ronda: 82 correctas; se agregaron tres escenarios y se repitió la suite final de 85. TestServer y SQL Server LocalDB en bases nuevas BanosQuimicosAuthPruebas_<GUID>, conservadas, sin borrar ni alterar cuentas existentes.
+- Dos pasos y nuevo login con las mismas credenciales: primer paso deja estado/FechaRealizada intactos y guarda autor/fecha; nuevo cliente HTTP recupera el registro y finaliza. Repeticiones conservan autor/fechas; no generan registros adicionales ni rellenan observaciones/papel. Se conserva condición física.
+- Cuatro registros y cuatro cierres simultáneos de la misma tarea; dos tareas de una solicitud con cierre simultáneo; estados correctos y resolución única. Entrega/retiro y traslado conservan efectos al repetir; histórico de ubicaciones sin redirección. Solicitud de varios baños no se resuelve por una sola entrega; reclamo muestra descripción y no se resuelve mientras quede trabajo cancelado/pendiente.
+- Otro empleado 404; reasignación después del registro impide al anterior operar y al nuevo apropiarse del registro. Cancelada e histórica Realizada rechazan escrituras; En curso conserva estado al registrar, y cancelar entre pasos impide cierre. Traslado incompleto falla sin efectos parciales. Las pruebas de permisos existentes se ampliaron a ambos POST: anónimo 401, Cliente/Administrador/Pendiente 403, suspendida/baja 401.
+- Razor reales con HtmlRenderer: registro visible, recuperación al abrir detalle, cierre con Realizado y clase verde, regreso al listado y vacío. Son pruebas de componentes/callbacks, no interacción nativa, SecureStorage real o reinicio del teléfono.
+- API/pruebas compiladas correctamente en tmp/pruebas-trabajo; app Debug Windows y Android compiladas con **0 errores y 0 advertencias**, con parámetros temporales JavaMaximumHeapSize=512M / JavaOptions=-XX:+UseSerialGC ya documentados. No se cambiaron herramientas ni paquetes.
+- La API abierta en Visual Studio (proceso 11272) bloqueó apphost de Debug y frustró la generación inicial. Se conservó ese proceso y se usó configuración de compilación TrabajoLocal para generar/aplicar migración y salida tmp para tests. No se detuvo la API del estudiante ni se modificó el csproj para esa configuración. Es necesario detenerla, recompilar y reiniciar para probar los endpoints nuevos.
+
+### Aclaración semanal para el futuro bloque administrativo
+
+El acuerdo previo era programación manual de cada tarea, con frecuencia del servicio solo referencial. El estudiante aclaró ahora su intención: **asignar baños a empleados y que esas asignaciones generen las tareas semanales**. Se registra como cambio de intención para el futuro bloque administrativo, separado de lo ya implementado; no se genera ninguna tarea automáticamente aquí. Allí se concretarán días/fechas, repetición sin duplicados, cambios/final de asignación y su representación en el modelo antes de implementarlo. Este bloque solo registra y finaliza tareas existentes.
+
+### Revisión y pendientes
+
+Guía reproducible: docs/registrar-trabajo.md. Pruebas manuales de los dos pasos en Windows y Android pendientes: registrar, recuperar entre sesiones, finalizar, reabrir y comprobar verde/fechas. La aprobación Windows del bloque de consulta permanece válida para aquel alcance; no se extiende a estos controles. Continúan pendientes vencimiento real del token y alternancia de servidores en el dispositivo.
+
+Bloque implementado y listo para revisión; no se inicia otro bloque. Sin commit, push ni publicación. Mensaje sugerido: **feat: registrar cumplimiento y finalizar tareas del empleado**.
+
+Revisión final: EF indicó que no hay cambios del modelo pendientes de migrar; git diff --check correcto. 133 archivos versionados/candidatos examinados: sin rutas de generados, perfiles de publicación ni indicadores de credenciales/tokens/claves privadas en los textos revisados; índice de Git vacío. PDF y dos PNG originales mantienen sus SHA-256 anteriores. No se volvieron a ejecutar tests tras los cambios finales exclusivamente documentales.
+
+### Cierre para commit: prueba manual Windows aprobada (06/11/2026)
+
+El estudiante confirmó que probó el recorrido indicado en docs/registrar-trabajo.md en Windows y funcionó correctamente: registro del trabajo, recuperación del registro al volver o iniciar sesión, actualización del estado y persistencia del cierre. **Prueba manual Windows aprobada**, independiente de las 85 pruebas automatizadas y las compilaciones ya registradas. No se repitieron tests ni compilaciones para esta actualización documental. La condición Pendiente/sin registro de la tarea de prueba descrita arriba corresponde a su preparación anterior a esta prueba; no se restablece ni se modifica su resultado.
+
+Detalle de la migración aplicada **20261106204848_RegistroTrabajoTarea** en LocalDB/BanosQuimicosDb:
+
+- Agregó FechaTrabajoRegistrado, tipo datetimeoffset, opcional, e IdEmpleadoRegistroTrabajo, tipo int, opcional, a TAREAS_OPERATIVAS.
+- Creó IX_TAREAS_OPERATIVAS_IdEmpleadoRegistroTrabajo y la FK a USUARIOS.IdUsuario sin borrado en cascada.
+- Agregó CK_TAREAS_OPERATIVAS_RegistroTrabajo: autor y fecha deben ser ambos nulos o ambos tener valor.
+- Registró la nueva migración en __EFMigrationsHistory. Conservó las 12 tablas de negocio, catálogos y datos; no creó usuarios ni completó retrospectivamente registros de trabajo. FechaRealizada sigue representando el segundo paso, sin reutilizar observaciones ni papel higiénico.
+
+**Pendiente para la futura publicación:** revisar el estado y las migraciones de db77593 y aplicar esta migración aditiva en MonsterASP antes de utilizar allí la API de este bloque. Todavía no se aplicó al hosting ni se publicó la API. El script 0→Inicial no incluye este cambio y no debe repetirse sobre la base alojada existente; el despliegue deberá llevarla desde su migración efectivamente aplicada hasta RegistroTrabajoTarea, conservando los datos. Esta anotación no autoriza ejecutar la publicación.
+
+**Bloque cerrado y listo para commit**, conservando como pendientes la prueba manual Android, la migración/publicación en hosting, el vencimiento real del token y la alternancia de servidores en el dispositivo. No se hizo commit ni push ni se inició otro bloque. Mensaje sugerido: **feat: registrar cumplimiento y finalizar tareas del empleado**.

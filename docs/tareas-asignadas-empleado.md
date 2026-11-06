@@ -61,3 +61,7 @@ Windows: **aprobada por el estudiante**. Inicio → Tareas asignadas → Detalle
 Preparación ejecutada solo en LocalDB/BanosQuimicosDb: tarea 1 para PRUEBA CUENTAS Windows (IdEmpleado 1004), baño PRUEBA-TAREAS-01, Limpieza extra/Pendiente, cliente Cliente Prueba, dirección PRUEBA LOCAL - Av. de ejemplo 123, fecha 06/11/2026 10:00 UTC−3. Se verificó la asignación con consulta SQL; no se modificaron cuentas ni contraseñas. Si se usa sqlcmd, agregar -I para habilitar QUOTED_IDENTIFIER, requerido por los índices filtrados.
 
 Bloque de consulta cerrado. Pendientes: recorrido manual Android; definición e implementación de Registrar Trabajo y Actualizar Estado (ambos deshabilitados); vencimiento real del token y alternancia de servidores en el dispositivo. No se publicó ni se hizo commit/push.
+
+### Ampliación posterior: cumplimiento en dos pasos
+
+La adaptación autorizada del bloque siguiente habilita ambos botones en este mismo detalle, sin formularios nuevos. Las referencias anteriores a acciones deshabilitadas describen el cierre del bloque de consulta. Ver [guía de registro y finalización](registrar-trabajo.md) y sección 18 del plan para la migración local, reglas y pruebas nuevas.

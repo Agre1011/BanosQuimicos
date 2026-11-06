@@ -45,7 +45,7 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         return (await r.Content.ReadFromJsonAsync<LoginRespuesta>(Ct))!.AccessToken;
     }
-    private async Task<(int Id, string Token)> Usuario(string rol = "Empleado", bool activar = true)
+    private async Task<(int Id, string Token, string Email, string Clave)> Usuario(string rol = "Empleado", bool activar = true)
     {
         var email = "prueba-tareas-" + Guid.NewGuid().ToString("N") + "@example.invalid";
         var contrasena = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
@@ -58,7 +58,7 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
         using var admin = Http(await Token(app.CorreoAdmin, app.ClaveAdmin));
         if (activar) Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"/api/cuentas/{id}/activar", null, Ct)).StatusCode);
         if (rol == "Empleado") Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync($"/api/cuentas/{id}/rol", new { rolAnterior = "Cliente", nuevoRol = "Empleado" }, Ct)).StatusCode);
-        return (id, await Token(email, contrasena));
+        return (id, await Token(email, contrasena), email, contrasena);
     }
     private async Task<TareaOperativa> Tarea(int? empleado, DateTimeOffset? fecha, bool conServicio = true, int estado = 6)
     {
@@ -162,6 +162,8 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
         using var http = Http(token);
         foreach (var ruta in new[] { "/api/tareas/mias", "/api/tareas/mias/resumen", "/api/tareas/1" })
             Assert.Equal((HttpStatusCode)codigo, (await http.GetAsync(ruta, Ct)).StatusCode);
+        foreach (var accion in new[] { "registrar-trabajo", "finalizar" })
+            Assert.Equal((HttpStatusCode)codigo, (await http.PostAsync("/api/tareas/1/" + accion, null, Ct)).StatusCode);
     }
 
     [Fact]
@@ -211,6 +213,14 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
             Assert.Contains("PRUEBA DIRECCION HISTORICA", detalle); Assert.Contains("Pendiente", detalle);
             Assert.Contains("Registrar Trabajo", detalle); Assert.Contains("Actualizar Estado", detalle);
             Assert.Contains("disabled", detalle); Assert.Contains("Volver", detalle);
+            await Callback(componente, "GuardarAsync", false);
+            Assert.Contains("Trabajo registrado por", lista.ToHtmlString());
+            Assert.DoesNotContain("Realizado</p>", lista.ToHtmlString());
+            await Callback(componente, "AbrirAsync", tarea.IdTarea);
+            Assert.Contains("Trabajo registrado por", lista.ToHtmlString());
+            await Callback(componente, "GuardarAsync", true);
+            Assert.Contains("Realizado</p>", lista.ToHtmlString());
+            Assert.Contains("estado-tarea realizada", lista.ToHtmlString());
             await Callback(componente, "CargarAsync");
             Assert.Contains("Tareas asignadas", lista.ToHtmlString());
             Assert.DoesNotContain("Registrar Trabajo", lista.ToHtmlString());
@@ -226,5 +236,244 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
             Assert.Contains("0 tarea(s)", (await rendererVacio.RenderComponentAsync<Vistas.InicioEmpleado>()).ToHtmlString());
             Assert.Contains("No ten", (await rendererVacio.RenderComponentAsync<Vistas.TareasAsignadas>()).ToHtmlString());
         });
+    }
+
+    [Fact]
+    public async Task Dos_pasos_persisten_entre_logins_y_repeticiones_no_reemplazan_fechas_ni_campos()
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, AplicacionTareasPruebas.Ahora, false);
+        using var http = Http(a.Token);
+        var ruta = $"/api/tareas/{tarea.IdTarea}";
+        Assert.Equal(HttpStatusCode.Conflict, (await http.PostAsync(ruta + "/finalizar", null, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await http.PostAsync(ruta + "/registrar-trabajo", null, Ct)).StatusCode);
+        using (var db = app.NuevoContexto())
+        {
+            var guardada = await db.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+            Assert.Equal(6, guardada.IdEstadoOperacion); Assert.Null(guardada.FechaRealizada);
+            Assert.Equal(a.Id, guardada.IdEmpleadoRegistroTrabajo); Assert.Equal(AplicacionTareasPruebas.Ahora, guardada.FechaTrabajoRegistrado);
+            Assert.Null(guardada.PapelHigienicoRepuesto); Assert.Null(guardada.ObservacionesEmpleado);
+        }
+        using var nueva = Http(await Token(a.Email, a.Clave));
+        var detalle = (await nueva.GetFromJsonAsync<TareaAsignadaRespuesta>(ruta, Ct))!;
+        Assert.True(detalle.PuedeFinalizar); Assert.False(detalle.PuedeRegistrar);
+        Assert.Equal(HttpStatusCode.OK, (await nueva.PostAsync(ruta + "/finalizar", null, Ct)).StatusCode);
+        foreach (var accion in new[] { "registrar-trabajo", "finalizar", "finalizar" })
+            Assert.Equal(HttpStatusCode.OK, (await nueva.PostAsync(ruta + "/" + accion, null, Ct)).StatusCode);
+        var final = (await nueva.GetFromJsonAsync<TareaAsignadaRespuesta>(ruta, Ct))!;
+        Assert.Equal("Realizada", final.Estado); Assert.False(final.PuedeRegistrar); Assert.False(final.PuedeFinalizar);
+        Assert.Equal(detalle.FechaTrabajoRegistrado, final.FechaTrabajoRegistrado);
+        Assert.Equal(AplicacionTareasPruebas.Ahora, final.FechaRealizada);
+        using var dbFinal = app.NuevoContexto();
+        Assert.Equal(1, await dbFinal.TareasOperativas.CountAsync(x => x.IdTarea == tarea.IdTarea, Ct));
+        Assert.Equal(1, (await dbFinal.BanosQuimicos.SingleAsync(x => x.IdBano == tarea.IdBano, Ct)).IdEstadoBano);
+    }
+
+    [Fact]
+    public async Task Peticiones_simultaneas_registran_y_finalizan_una_sola_vez()
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, null, false);
+        using var http = Http(a.Token); var ruta = $"/api/tareas/{tarea.IdTarea}";
+        foreach (var accion in new[] { "registrar-trabajo", "finalizar" })
+        {
+            var respuestas = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => http.PostAsync(ruta + "/" + accion, null, Ct)));
+            Assert.All(respuestas, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
+            foreach (var r in respuestas) r.Dispose();
+        }
+        using var db = app.NuevoContexto();
+        var guardada = await db.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+        Assert.Equal(a.Id, guardada.IdEmpleadoRegistroTrabajo); Assert.Equal(8, guardada.IdEstadoOperacion);
+    }
+
+    [Fact]
+    public async Task Otro_empleado_y_reasignacion_no_permiten_apropiarse_del_registro()
+    {
+        var a = await Usuario(); var b = await Usuario(); var tarea = await Tarea(a.Id, null, false);
+        using var uno = Http(a.Token); using var dos = Http(b.Token); var ruta = $"/api/tareas/{tarea.IdTarea}";
+        foreach (var accion in new[] { "registrar-trabajo", "finalizar" })
+            Assert.Equal(HttpStatusCode.NotFound, (await dos.PostAsync(ruta + "/" + accion, null, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await uno.PostAsync(ruta + "/registrar-trabajo", null, Ct)).StatusCode);
+        using (var db = app.NuevoContexto())
+            await db.TareasOperativas.Where(x => x.IdTarea == tarea.IdTarea).ExecuteUpdateAsync(s => s.SetProperty(x => x.IdEmpleado, b.Id), Ct);
+        Assert.Equal(HttpStatusCode.NotFound, (await uno.PostAsync(ruta + "/finalizar", null, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await dos.PostAsync(ruta + "/finalizar", null, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await dos.PostAsync(ruta + "/registrar-trabajo", null, Ct)).StatusCode);
+        var detalle = (await dos.GetFromJsonAsync<TareaAsignadaRespuesta>(ruta, Ct))!;
+        Assert.False(detalle.PuedeRegistrar); Assert.False(detalle.PuedeFinalizar); Assert.Equal(a.Id, detalle.IdEmpleadoRegistroTrabajo);
+    }
+
+    [Theory]
+    [InlineData(9)]
+    [InlineData(8)]
+    public async Task Canceladas_y_finalizadas_historicas_no_se_reescriben(int estado)
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, null, false, estado);
+        using var http = Http(a.Token);
+        foreach (var accion in new[] { "registrar-trabajo", "finalizar" })
+            Assert.Equal(HttpStatusCode.Conflict, (await http.PostAsync($"/api/tareas/{tarea.IdTarea}/" + accion, null, Ct)).StatusCode);
+        using var db = app.NuevoContexto();
+        var guardada = await db.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+        Assert.Equal(estado, guardada.IdEstadoOperacion); Assert.Null(guardada.FechaTrabajoRegistrado);
+    }
+
+    [Fact]
+    public async Task Solicitud_con_descripcion_solo_resuelve_con_todos_los_trabajos_no_por_cancelar()
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, null);
+        int idSolicitud, segunda;
+        using (var db = app.NuevoContexto())
+        {
+            var servicio = await db.Servicios.SingleAsync(x => x.IdServicio == tarea.IdServicio, Ct);
+            var solicitud = new SolicitudCliente { IdCliente = servicio.IdCliente, IdServicioReferencia = servicio.IdServicio,
+                IdTipoOperacion = 5, IdEstadoOperacion = 2, FechaSolicitud = AplicacionTareasPruebas.Ahora, Descripcion = "PRUEBA: falta papel; revisar limpieza." };
+            var otra = new TareaOperativa { IdBano = tarea.IdBano, IdServicio = tarea.IdServicio, IdEmpleado = a.Id,
+                IdTipoOperacion = 3, IdEstadoOperacion = 9, FechaRegistro = AplicacionTareasPruebas.Ahora, Solicitud = solicitud };
+            db.TareasOperativas.Add(otra);
+            var primera = await db.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct); primera.Solicitud = solicitud;
+            await db.SaveChangesAsync(Ct); idSolicitud = solicitud.IdSolicitud; segunda = otra.IdTarea;
+        }
+        using var http = Http(a.Token); var ruta = $"/api/tareas/{tarea.IdTarea}";
+        var detalle = (await http.GetFromJsonAsync<TareaAsignadaRespuesta>(ruta, Ct))!;
+        Assert.Equal("Reclamo", detalle.TipoSolicitud); Assert.Contains("falta papel", detalle.DescripcionSolicitud);
+        Assert.Equal(HttpStatusCode.OK, (await http.PostAsync(ruta + "/registrar-trabajo", null, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await http.PostAsync(ruta + "/finalizar", null, Ct)).StatusCode);
+        using (var db = app.NuevoContexto())
+        {
+            Assert.Equal(2, (await db.SolicitudesCliente.SingleAsync(x => x.IdSolicitud == idSolicitud, Ct)).IdEstadoOperacion);
+            // Preparación aislada: representa un segundo trabajo necesario aún pendiente.
+            await db.TareasOperativas.Where(x => x.IdTarea == segunda).ExecuteUpdateAsync(s => s.SetProperty(x => x.IdEstadoOperacion, 6), Ct);
+        }
+        foreach (var accion in new[] { "registrar-trabajo", "finalizar", "finalizar" })
+            Assert.Equal(HttpStatusCode.OK, (await http.PostAsync($"/api/tareas/{segunda}/" + accion, null, Ct)).StatusCode);
+        using var final = app.NuevoContexto(); var resuelta = await final.SolicitudesCliente.SingleAsync(x => x.IdSolicitud == idSolicitud, Ct);
+        Assert.Equal(4, resuelta.IdEstadoOperacion); Assert.Equal(AplicacionTareasPruebas.Ahora, resuelta.FechaResolucion);
+    }
+
+    [Theory]
+    [InlineData(7, "Entregado")]
+    [InlineData(8, "Finalizado")]
+    public async Task Cierre_entrega_o_retiro_actualiza_servicio_una_vez(int tipo, string resultado)
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, null);
+        using (var db = app.NuevoContexto())
+        {
+            var t = await db.TareasOperativas.Include(x => x.Servicio).SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+            t.IdTipoOperacion = tipo;
+            if (tipo == 7) { t.Servicio!.EstadoServicio = "Pendiente de entrega"; t.Servicio.FechaEntregaReal = null; }
+            await db.SaveChangesAsync(Ct);
+        }
+        using var http = Http(a.Token);
+        foreach (var accion in new[] { "registrar-trabajo", "finalizar", "finalizar" })
+            Assert.Equal(HttpStatusCode.OK, (await http.PostAsync($"/api/tareas/{tarea.IdTarea}/" + accion, null, Ct)).StatusCode);
+        using var final = app.NuevoContexto(); var servicio = await final.Servicios.SingleAsync(x => x.IdServicio == tarea.IdServicio, Ct);
+        Assert.Equal(resultado, servicio.EstadoServicio);
+        if (tipo == 7) Assert.Equal(AplicacionTareasPruebas.Ahora, servicio.FechaEntregaReal);
+        else { Assert.Equal(AplicacionTareasPruebas.Ahora, servicio.FechaRetiroReal); Assert.Equal(servicio.FechaRetiroReal, servicio.FechaFinalizacion); }
+    }
+
+    [Fact]
+    public async Task Traslado_cierra_ubicacion_anterior_sin_redirigir_trabajo_historico()
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, null); int origenId, destinoId;
+        using (var db = app.NuevoContexto())
+        {
+            var t = await db.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+            var origen = await db.UbicacionesServicio.SingleAsync(x => x.IdServicio == tarea.IdServicio && x.EsActual, Ct);
+            var destino = new UbicacionServicio { IdServicio = tarea.IdServicio!.Value, Direccion = "PRUEBA DESTINO", FechaRegistro = AplicacionTareasPruebas.Ahora };
+            db.UbicacionesServicio.Add(destino); await db.SaveChangesAsync(Ct);
+            t.IdTipoOperacion = 10; t.IdUbicacion = origen.IdUbicacion; t.IdUbicacionDestino = destino.IdUbicacion;
+            await db.SaveChangesAsync(Ct); origenId = origen.IdUbicacion; destinoId = destino.IdUbicacion;
+        }
+        using var http = Http(a.Token);
+        foreach (var accion in new[] { "registrar-trabajo", "finalizar", "finalizar" })
+            Assert.Equal(HttpStatusCode.OK, (await http.PostAsync($"/api/tareas/{tarea.IdTarea}/" + accion, null, Ct)).StatusCode);
+        using var final = app.NuevoContexto();
+        var anterior = await final.UbicacionesServicio.SingleAsync(x => x.IdUbicacion == origenId, Ct);
+        var actual = await final.UbicacionesServicio.SingleAsync(x => x.IdUbicacion == destinoId, Ct);
+        Assert.False(anterior.EsActual); Assert.True(actual.EsActual); Assert.Equal(anterior.FechaHasta, actual.FechaDesde);
+        Assert.Equal(AplicacionTareasPruebas.Ahora, actual.FechaDesde);
+        Assert.Equal(origenId, (await final.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct)).IdUbicacion);
+    }
+
+    [Fact]
+    public async Task Pedido_multibano_no_resuelve_por_completar_una_sola_entrega()
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, null); int solicitudId;
+        using (var db = app.NuevoContexto())
+        {
+            var t = await db.TareasOperativas.Include(x => x.Servicio).SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+            var solicitud = new SolicitudCliente { IdCliente = t.Servicio!.IdCliente, IdTipoOperacion = 1, IdEstadoOperacion = 2,
+                CantidadBanos = 2, FechaSolicitud = AplicacionTareasPruebas.Ahora };
+            t.Solicitud = solicitud; t.IdTipoOperacion = 7; t.Servicio.SolicitudOrigen = solicitud;
+            t.Servicio.EstadoServicio = "Pendiente de entrega"; t.Servicio.FechaEntregaReal = null;
+            await db.SaveChangesAsync(Ct); solicitudId = solicitud.IdSolicitud;
+        }
+        using var http = Http(a.Token);
+        foreach (var accion in new[] { "registrar-trabajo", "finalizar" })
+            Assert.Equal(HttpStatusCode.OK, (await http.PostAsync($"/api/tareas/{tarea.IdTarea}/" + accion, null, Ct)).StatusCode);
+        using var final = app.NuevoContexto();
+        Assert.Equal(2, (await final.SolicitudesCliente.SingleAsync(x => x.IdSolicitud == solicitudId, Ct)).IdEstadoOperacion);
+    }
+
+    [Fact]
+    public async Task Cancelacion_entre_pasos_impide_finalizar_y_conserva_el_registro()
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, null, false, 7);
+        using var http = Http(a.Token); var ruta = $"/api/tareas/{tarea.IdTarea}";
+        Assert.Equal(HttpStatusCode.OK, (await http.PostAsync(ruta + "/registrar-trabajo", null, Ct)).StatusCode);
+        using (var db = app.NuevoContexto())
+        {
+            var t = await db.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+            Assert.Equal(7, t.IdEstadoOperacion);
+            t.IdEstadoOperacion = 9; t.FechaCancelacion = AplicacionTareasPruebas.Ahora;
+            await db.SaveChangesAsync(Ct);
+        }
+        Assert.Equal(HttpStatusCode.Conflict, (await http.PostAsync(ruta + "/finalizar", null, Ct)).StatusCode);
+        using var final = app.NuevoContexto();
+        var guardada = await final.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+        Assert.Equal(9, guardada.IdEstadoOperacion); Assert.Equal(a.Id, guardada.IdEmpleadoRegistroTrabajo); Assert.Null(guardada.FechaRealizada);
+    }
+
+    [Fact]
+    public async Task Error_de_cierre_no_guarda_estado_ni_efectos_parciales()
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, null);
+        using (var db = app.NuevoContexto())
+        {
+            var t = await db.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+            t.IdTipoOperacion = 10; // Sin destino: debe revisarlo administración, no inventar uno.
+            await db.SaveChangesAsync(Ct);
+        }
+        using var http = Http(a.Token);
+        Assert.Equal(HttpStatusCode.OK, (await http.PostAsync($"/api/tareas/{tarea.IdTarea}/registrar-trabajo", null, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await http.PostAsync($"/api/tareas/{tarea.IdTarea}/finalizar", null, Ct)).StatusCode);
+        using var final = app.NuevoContexto();
+        var guardada = await final.TareasOperativas.SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+        Assert.Equal(6, guardada.IdEstadoOperacion); Assert.Null(guardada.FechaRealizada); Assert.NotNull(guardada.FechaTrabajoRegistrado);
+        Assert.Equal(1, await final.UbicacionesServicio.CountAsync(x => x.IdServicio == tarea.IdServicio && x.EsActual, Ct));
+    }
+
+    [Fact]
+    public async Task Dos_tareas_de_una_solicitud_finalizan_simultaneamente_y_resuelven_una_vez()
+    {
+        var a = await Usuario(); var b = await Usuario(); var tarea = await Tarea(a.Id, null); int segundaId, solicitudId;
+        using (var db = app.NuevoContexto())
+        {
+            var primera = await db.TareasOperativas.Include(x => x.Servicio).SingleAsync(x => x.IdTarea == tarea.IdTarea, Ct);
+            var solicitud = new SolicitudCliente { IdCliente = primera.Servicio!.IdCliente, IdServicioReferencia = tarea.IdServicio,
+                IdTipoOperacion = 3, IdEstadoOperacion = 2, FechaSolicitud = AplicacionTareasPruebas.Ahora };
+            primera.Solicitud = solicitud;
+            var segunda = new TareaOperativa { IdEmpleado = b.Id, IdBano = tarea.IdBano, IdServicio = tarea.IdServicio,
+                IdTipoOperacion = 3, IdEstadoOperacion = 6, FechaRegistro = AplicacionTareasPruebas.Ahora, Solicitud = solicitud };
+            db.TareasOperativas.Add(segunda); await db.SaveChangesAsync(Ct); segundaId = segunda.IdTarea; solicitudId = solicitud.IdSolicitud;
+        }
+        using var uno = Http(a.Token); using var dos = Http(b.Token);
+        Assert.Equal(HttpStatusCode.OK, (await uno.PostAsync($"/api/tareas/{tarea.IdTarea}/registrar-trabajo", null, Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await dos.PostAsync($"/api/tareas/{segundaId}/registrar-trabajo", null, Ct)).StatusCode);
+        var respuestas = await Task.WhenAll(uno.PostAsync($"/api/tareas/{tarea.IdTarea}/finalizar", null, Ct), dos.PostAsync($"/api/tareas/{segundaId}/finalizar", null, Ct));
+        Assert.All(respuestas, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
+        foreach (var r in respuestas) r.Dispose();
+        using var final = app.NuevoContexto();
+        Assert.Equal(4, (await final.SolicitudesCliente.SingleAsync(x => x.IdSolicitud == solicitudId, Ct)).IdEstadoOperacion);
+        Assert.Equal(2, await final.TareasOperativas.CountAsync(x => x.IdSolicitud == solicitudId && x.IdEstadoOperacion == 8, Ct));
     }
 }

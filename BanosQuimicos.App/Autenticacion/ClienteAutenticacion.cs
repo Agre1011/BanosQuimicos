@@ -84,6 +84,13 @@ public class ClienteAutenticacion
     public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerTareasAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
     public Task<List<TareaAsignada>> TareasAsync(string token) => LeerTareasAsync<List<TareaAsignada>>(token, "api/tareas/mias");
     public Task<TareaAsignada> DetalleTareaAsync(string token, int id) => LeerTareasAsync<TareaAsignada>(token, $"api/tareas/{id}");
+    public async Task<TareaAsignada> GuardarTrabajoAsync(string token, int id, bool finalizar)
+    {
+        using var request = PeticionCuenta(HttpMethod.Post, $"api/tareas/{id}/{(finalizar ? "finalizar" : "registrar-trabajo")}", token);
+        using var response = await EnviarAsync(request);
+        await ComprobarAsync(response, "tareas");
+        return await LeerAsync<TareaAsignada>(response);
+    }
     private async Task<T> LeerTareasAsync<T>(string token, string ruta)
     {
         using var request = PeticionCuenta(HttpMethod.Get, ruta, token);
@@ -123,7 +130,7 @@ public class ClienteAutenticacion
                 operacion == "login" ? "La cuenta no está habilitada. Consultá al administrador." : "No tenés permiso para realizar esta operación.");
         if (response.StatusCode == HttpStatusCode.Conflict)
             throw new ErrorApi(operacion == "registro" ? TipoErrorApi.Duplicado : TipoErrorApi.Conflicto,
-                operacion == "registro" ? "El correo electrónico ya está registrado." : "La cuenta cambió o no cumple las condiciones para esta operación.");
+                operacion == "registro" ? "El correo electrónico ya está registrado." : operacion == "tareas" ? "La tarea cambió o no reúne las condiciones para esta acción. Volvé a consultar el detalle; si fue reasignada o cancelada, consultá al administrador." : "La cuenta cambió o no cumple las condiciones para esta operación.");
         if (response.StatusCode == HttpStatusCode.NotFound)
             throw new ErrorApi(TipoErrorApi.NoEncontrado, operacion == "tareas" ? "La tarea no está disponible." : "La cuenta ya no está disponible.");
         if (response.StatusCode == HttpStatusCode.BadRequest)

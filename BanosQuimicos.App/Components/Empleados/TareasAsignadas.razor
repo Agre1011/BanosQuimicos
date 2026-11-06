@@ -31,7 +31,7 @@
         @if (detalle is { } tarea)
         {
             <article class="tarjeta tarea-asignada">
-                <p class="aviso estado-tarea">@tarea.Estado</p>
+                <p class="aviso estado-tarea @(tarea.Estado == "Realizada" ? "realizada" : "")">@(tarea.Estado == "Realizada" ? "Realizado" : tarea.Estado)</p>
                 <dl class="cuenta-detalle">
                     <dt>Tipo de tarea</dt><dd>@tarea.Tipo</dd>
                     <dt>Cliente</dt><dd>@(tarea.Cliente ?? "Sin servicio asociado")</dd>
@@ -39,10 +39,20 @@
                     <dt>Dirección</dt><dd>@(tarea.Direccion ?? "Sin dirección registrada")</dd>
                     <dt>Fecha</dt><dd>@Fecha(tarea.FechaProgramada)</dd>
                 </dl>
+                @if (!string.IsNullOrWhiteSpace(tarea.TipoSolicitud)) { <p><strong>Origen:</strong> @tarea.TipoSolicitud</p> }
+                @if (!string.IsNullOrWhiteSpace(tarea.DescripcionSolicitud)) { <p class="texto-trabajo"><strong>Descripción de la solicitud:</strong> @tarea.DescripcionSolicitud</p> }
+                @if (!string.IsNullOrWhiteSpace(tarea.ObservacionesSolicitud)) { <p class="texto-trabajo"><strong>Observaciones de la solicitud:</strong> @tarea.ObservacionesSolicitud</p> }
+                @if (!string.IsNullOrWhiteSpace(tarea.ObservacionesServicio)) { <p class="texto-trabajo"><strong>Observaciones del servicio:</strong> @tarea.ObservacionesServicio</p> }
+                @if (!string.IsNullOrWhiteSpace(tarea.ObservacionesEmpleado)) { <p class="texto-trabajo"><strong>Observaciones registradas:</strong> @tarea.ObservacionesEmpleado</p> }
+                @if (tarea.PapelHigienicoRepuesto is { } papel) { <p>Papel higiénico repuesto: @(papel ? "Sí" : "No")</p> }
             </article>
-            <button class="accion-tarea" disabled>Registrar Trabajo</button>
-            <button class="accion-tarea" disabled>Actualizar Estado</button>
-            <p>Las acciones de registro y estado todavía no están disponibles.</p>
+            @if (tarea.FechaTrabajoRegistrado is { } registro)
+            {
+                <p class="aviso" role="status">Trabajo registrado por @tarea.EmpleadoRegistroTrabajo el @Momento(registro).@(tarea.Estado == "Realizada" ? "" : " El estado todavía no se ha finalizado.")</p>
+            }
+            @if (tarea.FechaRealizada is { } cierre) { <p role="status">Tarea finalizada el @Momento(cierre).</p> }
+            <button class="accion-tarea" disabled="@(cargando || !tarea.PuedeRegistrar)" @onclick="() => GuardarAsync(false)">Registrar Trabajo</button>
+            <button class="accion-tarea" disabled="@(cargando || !tarea.PuedeFinalizar)" @onclick="() => GuardarAsync(true)">Actualizar Estado</button>
         }
         <button class="salir" disabled="@cargando" @onclick="CargarAsync">Volver</button>
     }
@@ -56,6 +66,7 @@
     private string? error;
     private bool cargando, dispuesto;
     private static string Fecha(DateTimeOffset? fecha) => fecha?.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy") ?? "Sin programar";
+    private static string Momento(DateTimeOffset fecha) => fecha.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy HH:mm:ss") + " (Argentina)";
     protected override Task OnInitializedAsync() => CargarAsync();
     private async Task EjecutarAsync(Func<Task> accion)
     {
@@ -78,5 +89,13 @@
         if (!dispuesto) detalle = resultado;
     });
     private Task ReintentarAsync() => idDetalle is { } id ? AbrirAsync(id) : CargarAsync();
+    private Task GuardarAsync(bool finalizar) => EjecutarAsync(async () =>
+    {
+        if (idDetalle is not { } id || detalle is null) return;
+        // Retirar el detalle anterior evita mostrar una confirmación vieja si el guardado falla.
+        detalle = null;
+        var resultado = await Sesion.GuardarTrabajoAsync(id, finalizar);
+        if (!dispuesto) detalle = resultado;
+    });
     public void Dispose() { dispuesto = true; tareas = null; detalle = null; }
 }
