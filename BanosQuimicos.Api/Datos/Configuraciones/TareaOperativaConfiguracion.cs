@@ -18,6 +18,7 @@ public class TareaOperativaConfiguracion : IEntityTypeConfiguration<TareaOperati
             t.HasCheckConstraint("CK_TAREAS_OPERATIVAS_RegistroTrabajo", "([FechaTrabajoRegistrado] IS NULL AND [IdEmpleadoRegistroTrabajo] IS NULL) OR ([FechaTrabajoRegistrado] IS NOT NULL AND [IdEmpleadoRegistroTrabajo] IS NOT NULL)");
         });
         b.HasKey(x => x.IdTarea);
+        b.HasIndex(x => x.ClaveProgramacion).IsUnique().HasFilter("[ClaveProgramacion] IS NOT NULL");
         b.Property(x => x.ObservacionesEmpleado).HasMaxLength(2000);
         b.HasOne(x => x.Bano).WithMany().HasForeignKey(x => x.IdBano);
         b.HasOne(x => x.TipoOperacion).WithMany().HasForeignKey(x => x.IdTipoOperacion);

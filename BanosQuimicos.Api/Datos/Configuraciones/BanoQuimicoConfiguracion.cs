@@ -18,5 +18,6 @@ public class BanoQuimicoConfiguracion : IEntityTypeConfiguration<BanoQuimico>
         b.HasIndex(x => x.CodigoInterno).IsUnique();
         b.HasOne(x => x.TipoBano).WithMany().HasForeignKey(x => x.IdTipoBano);
         b.HasOne(x => x.EstadoBano).WithMany().HasForeignKey(x => x.IdEstadoBano);
+        b.HasOne(x => x.ResponsableLimpieza).WithMany().HasForeignKey(x => x.IdResponsableLimpieza);
     }
 }

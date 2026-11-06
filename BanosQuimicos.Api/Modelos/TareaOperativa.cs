@@ -3,6 +3,8 @@ namespace BanosQuimicos.Api.Modelos;
 public class TareaOperativa
 {
     public int IdTarea { get; set; }
+    // Identifica una programación manual para que reenviarla no cree otra tarea.
+    public Guid? ClaveProgramacion { get; set; }
     public int IdBano { get; set; }
     public int IdTipoOperacion { get; set; }
     public int IdEstadoOperacion { get; set; }

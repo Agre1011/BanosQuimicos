@@ -1,0 +1,106 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+@implements IDisposable
+
+<section aria-labelledby="titulo-banos" aria-busy="@ocupada">
+    <h1 id="titulo-banos">Estado Baños</h1>
+    @if (ocupada) { <p role="status">Procesando…</p> }
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    @if (aviso is not null) { <p class="aviso" role="status">@aviso</p> }
+    <button class="secundario" disabled="@ocupada" @onclick="CargarAsync">Consultar nuevamente</button>
+    @if (banos is { Count: 0 }) { <p class="aviso">No hay baños registrados.</p> }
+    @if (banos is not null)
+    {
+        @foreach (var bano in banos)
+        {
+            <article class="tarjeta estado-bano" @key="bano.IdBano">
+                <h2>@bano.Codigo</h2>
+                <dl class="cuenta-detalle">
+                    <dt>Tipo de baño</dt><dd>@bano.TipoBano</dd>
+                    <dt>Servicio</dt><dd>@(bano.TipoUso ?? "Sin servicio vigente") @(bano.EstadoServicio is null ? "" : "— " + bano.EstadoServicio)</dd>
+                    <dt>Dirección</dt><dd>@(bano.Direccion ?? "Sin dirección de servicio")</dd>
+                    <dt>Cliente</dt><dd>@(bano.Cliente ?? "Sin cliente de servicio")</dd>
+                    <dt>Limpieza</dt><dd>@(bano.LimpiezasSemana is { } cantidad ? cantidad + " por semana (referencia)" : "Sin frecuencia de servicio")</dd>
+                    <dt>Condición</dt><dd>@bano.Condicion</dd>
+                    <dt>Disponibilidad</dt><dd>@Disponibilidad(bano)</dd>
+                    <dt>Responsable habitual</dt><dd>@(bano.Responsable ?? "Sin asignar") @(bano.IdResponsable is not null && !bano.ResponsableActivo ? "(ya no es un empleado activo)" : "")</dd>
+                </dl>
+                <button class="tareas-empleado" disabled="@ocupada" aria-expanded="@(abierto == bano.IdBano)" @onclick="() => Abrir(bano)">Asignar ▾</button>
+                @if (abierto == bano.IdBano)
+                {
+                    <div class="asignacion-bano">
+                        <label for="empleado-bano">Empleado para esta operación</label>
+                        <select id="empleado-bano" disabled="@(ocupada || intento is not null)" @bind="empleado">
+                            <option value="0">Elegir empleado activo</option>
+                            @foreach (var e in empleados) { <option value="@e.IdUsuario">@e.Nombre (ID @e.IdUsuario)</option> }
+                        </select>
+                        @if (empleados.Count == 0) { <p>No hay empleados activos disponibles.</p> }
+                        <button class="tareas-empleado" disabled="@(ocupada || empleado == 0 || intento is not null)" @onclick="() => GuardarResponsableAsync(bano)">Guardar responsable habitual</button>
+                        @if (bano.EstadoServicio == "Entregado" && bano.IdUbicacion is not null)
+                        {
+                            <label for="fecha-limpieza">Fecha de limpieza semanal</label>
+                            <InputDate id="fecha-limpieza" @bind-Value="fecha" disabled="@(ocupada || intento is not null)" />
+                            @if (fecha is null) { <p class="validation-message">Elegí la fecha de la limpieza.</p> }
+                            <p>Se propone el responsable habitual. Elegir otro empleado para la limpieza no cambia ese responsable. La condición y los mantenimientos no se modifican.</p>
+                            @if (bano.Condicion != "Apto" || bano.MantenimientoBloqueante) { <p class="aviso">Atención: @bano.Condicion. @(bano.MantenimientoBloqueante ? "Tiene mantenimiento bloqueante." : "") Esta limpieza no habilita nuevas asignaciones del baño.</p> }
+                            <button class="principal" disabled="@(ocupada || empleado == 0 || fecha is null || programada is not null)" @onclick="() => ProgramarAsync(bano)">@(intento is null ? "Programar limpieza" : "Reintentar la misma programación")</button>
+                        }
+                        else { <p>Para programar una limpieza se necesita un servicio entregado con ubicación actual. Asignar responsable no crea un servicio.</p> }
+                        @if (programada is { } idTarea) { <p role="status">Limpieza programada. Tarea @idTarea.</p> }
+                        @if (intento is not null && programada is null) { <p>El resultado puede estar pendiente de confirmar. Reintentá con estos mismos datos para evitar duplicados.</p> }
+                    </div>
+                }
+            </article>
+        }
+    }
+    <button class="salir" disabled="@ocupada" @onclick="Volver">Volver</button>
+</section>
+
+@code {
+    [Parameter] public EventCallback Volver { get; set; }
+    private List<EstadoBano>? banos;
+    private List<EmpleadoAsignable> empleados = [];
+    private int? abierto, programada;
+    private int empleado;
+    private DateOnly? fecha = DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).Date);
+    private ProgramarLimpieza? intento;
+    private bool ocupada, dispuesto;
+    private string? error, aviso;
+    private static string Disponibilidad(EstadoBano b) => b.Disponible ? "Disponible" :
+        (b.IdServicio is not null ? "Asignado a servicio. " : "No disponible. ") + (b.MantenimientoBloqueante ? "Mantenimiento bloqueante. " : "") + (b.Condicion != "Apto" ? "No apto." : "");
+    protected override Task OnInitializedAsync() => CargarAsync();
+    private async Task EjecutarAsync(Func<Task> accion)
+    {
+        if (ocupada) return;
+        ocupada = true; error = null; aviso = null;
+        try { await accion(); }
+        catch (ErrorApi ex) { if (!dispuesto) error = ex.Message; }
+        finally { ocupada = false; }
+    }
+    private Task CargarAsync() => EjecutarAsync(async () =>
+    {
+        banos = null; abierto = null; intento = null; programada = null;
+        var lista = await Sesion.EstadoBanosAsync(); var activos = await Sesion.EmpleadosAsignablesAsync();
+        if (!dispuesto) { banos = lista; empleados = activos; }
+    });
+    private void Abrir(EstadoBano bano)
+    {
+        if (ocupada) return;
+        abierto = abierto == bano.IdBano ? null : bano.IdBano;
+        empleado = bano.ResponsableActivo ? bano.IdResponsable!.Value : 0;
+        intento = null; programada = null; error = null; aviso = null;
+    }
+    private Task GuardarResponsableAsync(EstadoBano bano) => EjecutarAsync(async () =>
+    {
+        var guardado = await Sesion.AsignarResponsableAsync(bano.IdBano, empleado, bano.IdResponsable);
+        if (!dispuesto && banos is not null) { banos[banos.FindIndex(x => x.IdBano == bano.IdBano)] = guardado; aviso = "Responsable habitual guardado."; }
+    });
+    private Task ProgramarAsync(EstadoBano bano) => EjecutarAsync(async () =>
+    {
+        if (programada is not null || fecha is not { } dia || bano.IdServicio is not { } servicio || bano.IdUbicacion is not { } ubicacion) return;
+        intento ??= new ProgramarLimpieza(Guid.NewGuid(), empleado, servicio, ubicacion, dia);
+        var resultado = await Sesion.ProgramarLimpiezaAsync(bano.IdBano, intento);
+        if (!dispuesto) { programada = resultado.IdTarea; aviso = "La tarea fue guardada. El responsable habitual se conserva."; }
+    });
+    public void Dispose() { dispuesto = true; banos = null; empleados = []; }
+}

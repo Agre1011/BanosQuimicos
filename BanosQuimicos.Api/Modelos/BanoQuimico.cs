@@ -8,6 +8,8 @@ public class BanoQuimico
     public int IdEstadoBano { get; set; }
     public DateTimeOffset FechaAlta { get; set; }
     public string? Observaciones { get; set; }
+    public int? IdResponsableLimpieza { get; set; }
+    public Usuario? ResponsableLimpieza { get; set; }
     public TipoBano TipoBano { get; set; } = null!;
     public EstadoBano EstadoBano { get; set; } = null!;
 }

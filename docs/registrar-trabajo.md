@@ -54,4 +54,6 @@ El estudiante confirmó el recorrido indicado en Windows como **aprobado**. La p
 
 La migración 20261106204848_RegistroTrabajoTarea ya aplicada en LocalDB agregó a TAREAS_OPERATIVAS FechaTrabajoRegistrado (datetimeoffset nullable) e IdEmpleadoRegistroTrabajo (int nullable), su índice y FK a USUARIOS sin cascada y un CHECK para mantener autor/fecha juntos. EF registró su aplicación en __EFMigrationsHistory. Se mantienen las 12 tablas y sus datos.
 
+Actualización posterior de programación: el estudiante confirmó planificación manual por fecha, reemplazando su intención anterior de generación automática semanal. Ver [Estado Baños](estado-banos.md); el texto de la sección anterior conserva la evolución de esa decisión.
+
 **Hosting pendiente para el futuro bloque de publicación:** revisar el historial de db77593 y aplicar la migración aditiva antes de utilizar la API nueva; no volver a ejecutar el script inicial en la base existente. No se contactó ni modificó MonsterASP en este cierre. Bloque listo para commit, sin commit/push ni publicación del agente.
