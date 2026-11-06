@@ -16,6 +16,10 @@ public class TareaOperativa
     public DateTimeOffset? FechaProgramada { get; set; }
     public DateTimeOffset? FechaInicioReal { get; set; }
     public DateTimeOffset? FechaRealizada { get; set; }
+    // Cumplimiento registrado por el empleado; todavía no implica cierre de la tarea.
+    public DateTimeOffset? FechaTrabajoRegistrado { get; set; }
+    public int? IdEmpleadoRegistroTrabajo { get; set; }
+    public Usuario? EmpleadoRegistroTrabajo { get; set; }
     public DateTimeOffset? FechaCancelacion { get; set; }
     public bool? PapelHigienicoRepuesto { get; set; }
     public string? ObservacionesEmpleado { get; set; }

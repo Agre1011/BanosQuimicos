@@ -61,7 +61,7 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/tareas-asignadas-empleado`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/registrar-trabajo`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 ## Gestión de cuentas
 
@@ -79,4 +79,4 @@ El usuario se registra como Cliente/Pendiente. Un administrador activo puede cam
 
 ## Consulta de tareas del empleado
 
-Contador real de hoy, listado y detalle propios con regreso según Figma. API local/LocalDB: [guía y tarea de prueba identificable](docs/tareas-asignadas-empleado.md). Registrar Trabajo y Actualizar Estado esperan definición de sus acciones y referencia de formularios.
+Contador real de hoy, listado y detalle propios con regreso según Figma. API local/LocalDB: [guía y tarea de prueba identificable](docs/tareas-asignadas-empleado.md). [Registrar Trabajo y Actualizar Estado](docs/registrar-trabajo.md) se realizan en el mismo detalle, según la adaptación autorizada, con persistencia independiente y cierre posterior.

@@ -49,3 +49,5 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .tarea-asignada .cuenta-detalle { margin: 0; }
 .estado-tarea { display: inline-block; background: #ffe06b; font-weight: bold; }
 .accion-tarea { background: #19c7c2; color: #123331; }
+.estado-tarea.realizada { background: #2ac86b; color: #12331c; }
+.texto-trabajo { white-space: pre-wrap; overflow-wrap: anywhere; }

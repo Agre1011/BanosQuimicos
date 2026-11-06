@@ -107,6 +107,7 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     public Task<ResumenTareas> ResumenTareasAsync() => ComoRolAsync("Empleado", api.ResumenTareasAsync);
     public Task<List<TareaAsignada>> TareasAsync() => ComoRolAsync("Empleado", api.TareasAsync);
     public Task<TareaAsignada> DetalleTareaAsync(int id) => ComoRolAsync("Empleado", t => api.DetalleTareaAsync(t, id));
+    public Task<TareaAsignada> GuardarTrabajoAsync(int id, bool finalizar) => ComoRolAsync("Empleado", t => api.GuardarTrabajoAsync(t, id, finalizar));
     private Task<T> ComoAdministradorAsync<T>(Func<string, Task<T>> operacion) => ComoRolAsync("Administrador", operacion);
     private async Task<T> ComoRolAsync<T>(string rol, Func<string, Task<T>> operacion)
     {

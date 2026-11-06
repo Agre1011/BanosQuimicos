@@ -451,10 +451,16 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                     b.Property<DateTimeOffset>("FechaRegistro")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<DateTimeOffset?>("FechaTrabajoRegistrado")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<int>("IdBano")
                         .HasColumnType("int");
 
                     b.Property<int?>("IdEmpleado")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdEmpleadoRegistroTrabajo")
                         .HasColumnType("int");
 
                     b.Property<int>("IdEstadoOperacion")
@@ -486,6 +492,8 @@ namespace BanosQuimicos.Api.Datos.Migraciones
 
                     b.HasIndex("IdEmpleado");
 
+                    b.HasIndex("IdEmpleadoRegistroTrabajo");
+
                     b.HasIndex("IdEstadoOperacion");
 
                     b.HasIndex("IdServicio");
@@ -505,6 +513,8 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                             t.HasCheckConstraint("CK_TAREAS_OPERATIVAS_Bloqueo", "[BloqueaAsignacion] = 0 OR [IdTipoOperacion] = 11");
 
                             t.HasCheckConstraint("CK_TAREAS_OPERATIVAS_Empleado", "[IdEstadoOperacion] NOT IN (7, 8) OR [IdEmpleado] IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_TAREAS_OPERATIVAS_RegistroTrabajo", "([FechaTrabajoRegistrado] IS NULL AND [IdEmpleadoRegistroTrabajo] IS NULL) OR ([FechaTrabajoRegistrado] IS NOT NULL AND [IdEmpleadoRegistroTrabajo] IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_TAREAS_OPERATIVAS_Servicio", "[IdServicio] IS NOT NULL OR [IdTipoOperacion] = 11");
                         });
@@ -895,6 +905,11 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                         .HasForeignKey("IdEmpleado")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("BanosQuimicos.Api.Modelos.Usuario", "EmpleadoRegistroTrabajo")
+                        .WithMany()
+                        .HasForeignKey("IdEmpleadoRegistroTrabajo")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("BanosQuimicos.Api.Modelos.EstadoOperacion", "EstadoOperacion")
                         .WithMany()
                         .HasForeignKey("IdEstadoOperacion")
@@ -930,6 +945,8 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                     b.Navigation("Bano");
 
                     b.Navigation("Empleado");
+
+                    b.Navigation("EmpleadoRegistroTrabajo");
 
                     b.Navigation("EstadoOperacion");
 
