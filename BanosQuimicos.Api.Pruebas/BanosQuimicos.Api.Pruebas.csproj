@@ -24,7 +24,7 @@
     <!-- Los componentes reales permiten probar el paso de selección/confirmación, no solo HTTP. -->
     <RazorComponent Include="../BanosQuimicos.App/Components/_Imports.razor" Link="Components/_Imports.razor" />
     <RazorComponent Include="../BanosQuimicos.App/Components/Cuentas/GestionCuentas.razor" Link="Components/Cuentas/GestionCuentas.razor" />
-    <RazorComponent Include="../BanosQuimicos.App/Components/Empleados/InicioEmpleado.razor" Link="Components/Empleados/InicioEmpleado.razor" />
+    <RazorComponent Include="../BanosQuimicos.App/Components/Empleados/*.razor" Link="Components/Empleados/%(Filename)%(Extension)" />
     <RazorComponent Include="../BanosQuimicos.App/Components/Pages/Home.razor" Link="Components/Pages/Home.razor" />
     <RazorComponent Include="../BanosQuimicos.App/Components/Autenticacion/*.razor" Link="Components/Autenticacion/%(Filename)%(Extension)" />
     <RazorComponent Include="../BanosQuimicos.App/Components/Layout/MainLayout.razor" Link="Components/Layout/MainLayout.razor" />

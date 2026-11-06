@@ -1,14 +1,30 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
 <section class="inicio-empleado" aria-labelledby="saludo-empleado">
     <div class="aviso saludo-empleado">
         <h1 id="saludo-empleado">Hola, @Nombre</h1>
         <p>Rol: Empleado</p>
-        <p>La consulta de tareas estará disponible en su bloque correspondiente.</p>
+        @if (cargando) { <p role="status">Consultando tus tareas de hoy…</p> }
+        else if (resumen is { } hoy) { <p>Tenés @hoy.Cantidad tarea(s) programada(s) para hoy (@hoy.Fecha.ToString("dd/MM/yyyy")).</p> }
     </div>
-    <button class="tareas-empleado" disabled>Tareas asignadas</button>
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    <button class="tareas-empleado" disabled="@cargando" @onclick="VerTareas">Tareas asignadas</button>
     <button class="salir" @onclick="Salir">Cerrar sesión</button>
 </section>
 
 @code {
     [Parameter] public string? Nombre { get; set; }
     [Parameter] public EventCallback Salir { get; set; }
+    [Parameter] public EventCallback VerTareas { get; set; }
+    private ResumenTareas? resumen;
+    private bool cargando;
+    private string? error;
+    protected override async Task OnInitializedAsync()
+    {
+        cargando = true;
+        try { resumen = await Sesion.ResumenTareasAsync(); }
+        catch (ErrorApi ex) { error = ex.Message; }
+        finally { cargando = false; }
+    }
 }

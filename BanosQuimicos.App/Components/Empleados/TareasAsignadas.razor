@@ -1,0 +1,82 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+@implements IDisposable
+
+<section aria-labelledby="titulo-tareas" aria-busy="@cargando">
+    <h1 id="titulo-tareas">@(idDetalle is null ? "Tareas asignadas" : "Detalle de tarea")</h1>
+    @if (cargando) { <p role="status">Consultando tarea(s)…</p> }
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> <button class="secundario" @onclick="ReintentarAsync">Volver a intentar</button> }
+    @if (idDetalle is null)
+    {
+        @if (tareas is { Count: 0 }) { <p class="aviso" role="status">No tenés tareas asignadas.</p> }
+        @if (tareas is not null)
+        {
+            @foreach (var tarea in tareas)
+            {
+                <article class="tarjeta tarea-asignada" @key="tarea.IdTarea">
+                    <h2>@tarea.Tipo</h2>
+                    <dl class="cuenta-detalle">
+                        <dt>Baño</dt><dd>@tarea.CodigoBano</dd>
+                        <dt>Dirección</dt><dd>@(tarea.Direccion ?? "Sin dirección registrada")</dd>
+                        <dt>Fecha</dt><dd>@Fecha(tarea.FechaProgramada)</dd>
+                    </dl>
+                    <button class="tareas-empleado" disabled="@cargando" @onclick="() => AbrirAsync(tarea.IdTarea)">Ver detalle →</button>
+                </article>
+            }
+        }
+        <button class="salir" disabled="@cargando" @onclick="Volver">Volver</button>
+    }
+    else
+    {
+        @if (detalle is { } tarea)
+        {
+            <article class="tarjeta tarea-asignada">
+                <p class="aviso estado-tarea">@tarea.Estado</p>
+                <dl class="cuenta-detalle">
+                    <dt>Tipo de tarea</dt><dd>@tarea.Tipo</dd>
+                    <dt>Cliente</dt><dd>@(tarea.Cliente ?? "Sin servicio asociado")</dd>
+                    <dt>Baño</dt><dd>@tarea.CodigoBano</dd>
+                    <dt>Dirección</dt><dd>@(tarea.Direccion ?? "Sin dirección registrada")</dd>
+                    <dt>Fecha</dt><dd>@Fecha(tarea.FechaProgramada)</dd>
+                </dl>
+            </article>
+            <button class="accion-tarea" disabled>Registrar Trabajo</button>
+            <button class="accion-tarea" disabled>Actualizar Estado</button>
+            <p>Las acciones de registro y estado todavía no están disponibles.</p>
+        }
+        <button class="salir" disabled="@cargando" @onclick="CargarAsync">Volver</button>
+    }
+</section>
+
+@code {
+    [Parameter] public EventCallback Volver { get; set; }
+    private List<TareaAsignada>? tareas;
+    private TareaAsignada? detalle;
+    private int? idDetalle;
+    private string? error;
+    private bool cargando, dispuesto;
+    private static string Fecha(DateTimeOffset? fecha) => fecha?.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy") ?? "Sin programar";
+    protected override Task OnInitializedAsync() => CargarAsync();
+    private async Task EjecutarAsync(Func<Task> accion)
+    {
+        if (cargando) return;
+        cargando = true; error = null;
+        try { await accion(); }
+        catch (ErrorApi ex) { if (!dispuesto) error = ex.Message; }
+        finally { cargando = false; }
+    }
+    private Task CargarAsync() => EjecutarAsync(async () =>
+    {
+        idDetalle = null; detalle = null; tareas = null;
+        var resultado = await Sesion.TareasAsync();
+        if (!dispuesto) tareas = resultado;
+    });
+    private Task AbrirAsync(int id) => EjecutarAsync(async () =>
+    {
+        idDetalle = id; tareas = null; detalle = null;
+        var resultado = await Sesion.DetalleTareaAsync(id);
+        if (!dispuesto) detalle = resultado;
+    });
+    private Task ReintentarAsync() => idDetalle is { } id ? AbrirAsync(id) : CargarAsync();
+    public void Dispose() { dispuesto = true; tareas = null; detalle = null; }
+}

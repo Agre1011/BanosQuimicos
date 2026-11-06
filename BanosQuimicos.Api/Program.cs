@@ -6,6 +6,7 @@ var crearAdministrador = args.Contains("--crear-admin-local");
 var builder = WebApplication.CreateBuilder(args.Where(x => x != "--crear-admin-local").ToArray());
 
 builder.Services.AddControllers();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddDbContext<BanosQuimicosDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("BanosQuimicos")
         ?? throw new InvalidOperationException("Falta ConnectionStrings:BanosQuimicos.")));

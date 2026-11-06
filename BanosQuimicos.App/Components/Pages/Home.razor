@@ -46,7 +46,8 @@ else if (Sesion.Estado == EstadoSesion.Activa && Sesion.Cuenta is { } cuenta)
     }
     else if (cuenta.Rol == "Empleado")
     {
-        <InicioEmpleado Nombre="@cuenta.Nombre" Salir="SalirAsync" />
+        @if (verTareas) { <TareasAsignadas Volver="() => verTareas = false" /> }
+        else { <InicioEmpleado Nombre="@cuenta.Nombre" Salir="SalirAsync" VerTareas="() => verTareas = true" /> }
     }
     else
     {
@@ -73,7 +74,7 @@ else
 }
 
 @code {
-    private bool registro, gestion;
+    private bool registro, gestion, verTareas;
     private string correoInicial = "";
     private string? avisoRegistro;
     protected override async Task OnInitializedAsync()
@@ -84,6 +85,7 @@ else
     private void ActualizarVista() => _ = InvokeAsync(() =>
     {
         if (Sesion.Estado == EstadoSesion.SinSesion) gestion = false;
+        if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Empleado") verTareas = false;
         StateHasChanged();
     });
     private void MostrarRegistro() { registro = true; avisoRegistro = null; }
@@ -95,7 +97,7 @@ else
     }
     private async Task SalirAsync()
     {
-        registro = false; gestion = false; avisoRegistro = null; correoInicial = "";
+        registro = false; gestion = false; verTareas = false; avisoRegistro = null; correoInicial = "";
         await Sesion.CerrarAsync();
     }
     public void Dispose() => Sesion.Cambio -= ActualizarVista;

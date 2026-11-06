@@ -81,6 +81,16 @@ public class ClienteAutenticacion
         using var response = await EnviarAsync(request);
         await ComprobarAsync(response, "rol");
     }
+    public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerTareasAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
+    public Task<List<TareaAsignada>> TareasAsync(string token) => LeerTareasAsync<List<TareaAsignada>>(token, "api/tareas/mias");
+    public Task<TareaAsignada> DetalleTareaAsync(string token, int id) => LeerTareasAsync<TareaAsignada>(token, $"api/tareas/{id}");
+    private async Task<T> LeerTareasAsync<T>(string token, string ruta)
+    {
+        using var request = PeticionCuenta(HttpMethod.Get, ruta, token);
+        using var response = await EnviarAsync(request);
+        await ComprobarAsync(response, "tareas");
+        return await LeerAsync<T>(response);
+    }
     private static HttpRequestMessage PeticionCuenta(HttpMethod metodo, string ruta, string token)
     {
         var request = new HttpRequestMessage(metodo, ruta);
@@ -115,7 +125,7 @@ public class ClienteAutenticacion
             throw new ErrorApi(operacion == "registro" ? TipoErrorApi.Duplicado : TipoErrorApi.Conflicto,
                 operacion == "registro" ? "El correo electrónico ya está registrado." : "La cuenta cambió o no cumple las condiciones para esta operación.");
         if (response.StatusCode == HttpStatusCode.NotFound)
-            throw new ErrorApi(TipoErrorApi.NoEncontrado, "La cuenta ya no está disponible.");
+            throw new ErrorApi(TipoErrorApi.NoEncontrado, operacion == "tareas" ? "La tarea no está disponible." : "La cuenta ya no está disponible.");
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
             var mensaje = "Revisá los datos ingresados y los campos obligatorios.";

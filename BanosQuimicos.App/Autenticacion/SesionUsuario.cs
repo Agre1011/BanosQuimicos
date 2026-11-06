@@ -104,13 +104,17 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     public Task<CuentaGestion> DetalleCuentaAsync(int id) => ComoAdministradorAsync(t => api.DetalleCuentaAsync(t, id));
     public Task<bool> ActivarCuentaAsync(int id) => ComoAdministradorAsync(async t => { await api.ActivarCuentaAsync(t, id); return true; });
 
-    private async Task<T> ComoAdministradorAsync<T>(Func<string, Task<T>> operacion)
+    public Task<ResumenTareas> ResumenTareasAsync() => ComoRolAsync("Empleado", api.ResumenTareasAsync);
+    public Task<List<TareaAsignada>> TareasAsync() => ComoRolAsync("Empleado", api.TareasAsync);
+    public Task<TareaAsignada> DetalleTareaAsync(int id) => ComoRolAsync("Empleado", t => api.DetalleTareaAsync(t, id));
+    private Task<T> ComoAdministradorAsync<T>(Func<string, Task<T>> operacion) => ComoRolAsync("Administrador", operacion);
+    private async Task<T> ComoRolAsync<T>(string rol, Func<string, Task<T>> operacion)
     {
         await exclusión.WaitAsync();
         try
         {
-            if (token is null || Estado != EstadoSesion.Activa || Cuenta?.Rol != "Administrador")
-                throw new ErrorApi(TipoErrorApi.SinPermiso, "Solo un administrador activo puede gestionar cuentas.");
+            if (token is null || Estado != EstadoSesion.Activa || Cuenta?.Rol != rol)
+                throw new ErrorApi(TipoErrorApi.SinPermiso, $"Se requiere una cuenta activa con rol {rol}.");
             Ocupada = true; Notificar();
             return await operacion(token);
         }

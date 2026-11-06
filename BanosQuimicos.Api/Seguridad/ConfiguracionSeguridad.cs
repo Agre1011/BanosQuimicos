@@ -71,6 +71,8 @@ public static class ConfiguracionSeguridad
             options.FallbackPolicy = activa;
             options.AddPolicy(Politicas.CuentaActiva, activa);
             options.AddPolicy(Politicas.CuentaIdentificada, p => p.RequireAuthenticatedUser());
+            options.AddPolicy(Politicas.Empleado, p => p.RequireAuthenticatedUser()
+                .RequireClaim(Politicas.EstadoClaim, "Activa").RequireRole("Empleado"));
             options.AddPolicy(Politicas.Administrador, p => p.RequireAuthenticatedUser()
                 .RequireClaim(Politicas.EstadoClaim, "Activa").RequireRole("Administrador"));
         });
