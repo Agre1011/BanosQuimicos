@@ -61,7 +61,7 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/alta-empleados`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/tareas-asignadas-empleado`, sin commit ni push del agente. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 ## Gestión de cuentas
 
@@ -76,3 +76,7 @@ Ver `docs/plan-trabajo.md` para evidencias de esta entrega, limitaciones y próx
 ## Acceso de empleados
 
 El usuario se registra como Cliente/Pendiente. Un administrador activo puede cambiar Cliente ↔ Empleado desde Clientes y Empleados, conservando la cuenta y sin modificar su estado. Este bloque usa API local/LocalDB; ver [recorrido y pruebas](docs/acceso-empleados.md). No se ha publicado el endpoint nuevo.
+
+## Consulta de tareas del empleado
+
+Contador real de hoy, listado y detalle propios con regreso según Figma. API local/LocalDB: [guía y tarea de prueba identificable](docs/tareas-asignadas-empleado.md). Registrar Trabajo y Actualizar Estado esperan definición de sus acciones y referencia de formularios.

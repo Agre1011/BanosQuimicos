@@ -43,3 +43,9 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .inicio-empleado { text-align: center; }
 .saludo-empleado { background: #ffe06b; text-align: left; }
 .tareas-empleado { background: #2ac86b; color: #17331e; margin: 1rem 0 2rem; }
+
+.tarea-asignada { margin-bottom: 1.2rem; background: #efefea; }
+.tarea-asignada h2 { font-size: 1.1rem; }
+.tarea-asignada .cuenta-detalle { margin: 0; }
+.estado-tarea { display: inline-block; background: #ffe06b; font-weight: bold; }
+.accion-tarea { background: #19c7c2; color: #123331; }

@@ -779,3 +779,60 @@ Esta confirmación manual es independiente de las 61 pruebas automatizadas y de 
 - Alternar servidores en el dispositivo y comprobar aislamiento de sesión.
 
 No se publica la función ni se hacen cambios en MonsterASP. Se conservan los cambios existentes de feature/alta-empleados; no se hizo commit ni push ni se inició otro bloque. Verificación documental: git diff --check sin errores. Mensaje de commit sugerido para el bloque: `feat: cambiar roles Cliente y Empleado y mostrar inicio de empleado`.
+
+## 17. Tareas asignadas del empleado: consulta local
+
+### Punto de partida y alcance
+
+El estudiante informó merge/pull del cambio de rol. Se revisaron AGENTS.md, PDF aprobado (texto funcional y referencia de página 5), la captura ampliada adjunta, UML y entidades/configuraciones existentes. Master estaba limpio en bc70d33, coincidente con la referencia local origin/master. Se creó feature/tareas-asignadas-empleado desde ese punto sin descartar cambios. No se hizo fetch/pull adicional ni operaciones de publicación.
+
+Se explicó antes de implementar el recorrido Inicio → Tareas asignadas → Ver detalle, con regreso por las mismas vistas. Solo consulta: listado con tipo/baño/dirección/fecha y detalle con estado/tipo/cliente/baño/dirección/fecha. Datos de Figma tratados como ejemplos. No se inventaron usuarios, tareas, nombres ni cantidades para rellenar la interfaz.
+
+El texto permite registrar trabajo, observaciones, reposición y marcar realizada; el UML incluye actualizar estado al registrar entrega/retiro/limpieza/mantenimiento. Ninguna referencia revisada define qué guarda cada uno de los dos botones de Figma ni muestra su formulario/confirmación. Registrar Trabajo y Actualizar Estado se conservan visibles y deshabilitados. La única decisión pendiente de esas acciones es cómo repartir y confirmar los datos entre ambos botones; si requieren otra pantalla se pedirá su captura aprobada antes de crearla. No se implementó borrado por el icono de ejemplo de Figma.
+
+### Implementación
+
+- API/Controllers/TareasController.cs y Contratos/Tareas/: GET /api/tareas/mias/resumen, GET /api/tareas/mias y GET /api/tareas/{id}. Política Empleado/Activa agregada en Politicas/ConfiguracionSeguridad. La consulta SQL siempre filtra por IdEmpleado obtenido del usuario autenticado; no se acepta elegir empleado por parámetro. Detalle ajeno e inexistente responden 404 sin revelar existencia.
+- DTOs explícitos: IdTarea, tipo, código de baño, dirección, FechaProgramada, estado y nombre de cliente. No se serializan entidades, hashes, contraseñas, contacto del cliente ni observaciones privadas.
+- Hoy se calcula en la API con reloj TimeProvider (registrado en Program.cs), día UTC−3 de Argentina, usando FechaProgramada >= inicio y < día siguiente. Cuenta todas las tareas propias programadas ese día, en cualquier estado; no equivale a tareas pendientes. Sin programación no suma. El listado es de todas las asignadas, ordenadas por fecha/IdTarea y con fechas nulas al final; no se lo limita a hoy.
+- Dirección tomada exclusivamente de la ubicación vinculada a la tarea, preservando contexto histórico. Cliente viene del servicio de la tarea. Mantenimiento sin servicio o ubicación admite valores nulos; la app muestra el dato ausente sin inventar dirección ni sustituir la programación por fecha de registro.
+- App/Autenticacion/ContratosTareas.cs, ClienteAutenticacion.cs y SesionUsuario.cs incorporan las consultas autenticadas, conservando token por petición y gestión de errores. El acceso serializado por rol se comparte con administración; 401 invalida sesión y 403/desconexión ocultan la identidad según el manejo anterior.
+- Components/Empleados/InicioEmpleado.razor consulta contador real, habilita Tareas asignadas y conserva cierre de sesión. TareasAsignadas.razor contiene listado y detalle con carga, vacío, error/reintento, fecha legible y navegación Volver según Figma. Home.razor integra el recorrido dentro de la sesión Empleado, sin nuevas pantallas fuera de las referencias. Al perder rol/sesión se abandona la vista de tareas. Estilos conservan paleta y tarjetas.
+- No hay endpoints de escritura de tareas en este bloque: POST/PUT/PATCH/DELETE se rechazan sin modificar registros. Las futuras acciones deben volver a comprobar propiedad por IdEmpleado al escribir; la ausencia de botones no es una autorización. No se prometen reglas de transición/registro todavía no confirmadas.
+
+### Verificaciones ejecutadas
+
+- **72 pruebas correctas, 0 fallidas y 0 omitidas**: 61 previas y 11 nuevas en TareasEmpleadoPruebas.cs. Se ejecutaron en TestServer con SQL Server LocalDB y bases nuevas BanosQuimicosAuthPruebas_<GUID>, conservadas. No se usó db77593 ni se modificaron cuentas operativas existentes.
+- Dos empleados distintos: cada uno lista solo sus propias tareas; IdEmpleado en query no permite elegir al otro; tareas sin asignar quedan fuera; detalle ajeno/inexistente 404. PUT/PATCH/POST/DELETE sobre la tarea ajena 405 y su estado/observaciones permanecen intactos.
+- Anónimo 401; Cliente, Administrador y Pendiente 403; Suspendida/BajaLogica con token anterior 401. Empleado cambiado a Cliente pierde acceso con el mismo token. Empleado sin tareas recibe lista vacía y contador 0.
+- Reloj fijo solo en el host de pruebas: 5/4/2030 UTC todavía 4/4 en Argentina. Se comprueban ambos límites de medianoche, fecha nula, otra fecha y otro empleado. Incluye una tarea Cancelada del mismo día para comprobar que el contador no representa pendientes.
+- Detalle conserva dirección histórica de la tarea aunque el servicio tenga otra ubicación actual. Mantenimiento sin servicio/cliente/ubicación/programación devuelve nulos seguros. Respuestas sin hash ni correo del cliente.
+- Razor reales enlazados al proyecto de pruebas existente: contador 1/0, listado, detalle propio, acciones deshabilitadas, Volver al listado y mensaje vacío. Se ejecutan callbacks en el dispatcher con HtmlRenderer; no equivalen a clics ni teclado nativo. No se agregaron paquetes.
+- Primer intento de pruebas falló al copiar binarios bloqueados por una API abierta. No se detuvo ese proceso: se compiló/ejecutó con --output en tmp/pruebas-tareas, fuera de Git. Un intento de omitir apphost no era compatible con xUnit v3 y se abandonó, sin cambiar proyectos para esa opción. En la primera suite, 69 pasaron y 3 fallaron por FechaDesde omitida en ubicaciones actuales de los datos de prueba; se completaron las fechas/intervalos sin cambiar restricciones y pasó la suite final.
+- App Debug Android y Windows compilada con **0 errores/advertencias**, usando los parámetros temporales de Java ya documentados (heap 512M/SerialGC). API y pruebas compilaron en la salida aislada. La API abierta debe detenerse/recompilarse/reiniciarse antes de probar manualmente las nuevas rutas; no se afirma que su proceso viejo ya las esté atendiendo.
+- EF migrations has-pending-model-changes indicó que no hay cambios desde la migración inicial; git confirma sin cambios en entidades/configuraciones/migraciones. Se conservan las 12 tablas de negocio y el historial técnico EF. No se crearon bases o migraciones en hosting.
+
+### Preparación de datos y prueba manual
+
+Se dejó scripts/preparar-tarea-empleado-local.sql, con comprobación de base BanosQuimicosDb e IsLocalDB antes de escribir. Exige empleado y cliente locales de prueba ya registrados/activados por la app; el primero con rol Empleado. No crea cuentas, contraseñas ni cambia roles. Prepara baño PRUEBA-TAREAS-01, servicio entregado, ubicación ficticia marcada y tarea Limpieza extra/Pendiente para hoy a las 10:00 UTC−3. Reutiliza su preparación al repetir el mismo día y no sobrescribe datos ajenos con el código. **Revisado estáticamente, no ejecutado sobre la base principal.** El usuario puede prepararlo según docs/tareas-asignadas-empleado.md, que contiene recorrido, resultados y comandos locales/USB.
+
+Pendiente del estudiante: reiniciar API local con esta versión, preparar esa tarea, recorrer Inicio/listado/detalle/Volver en Windows y Android, comprobar contador, vacío, errores y controles con teclado/desplazamiento/rotación. La API y app usan local/LocalDB; no se publicó ni se contactó MonsterASP. Siguen pendientes vencimiento real del token y alternar servidores en el dispositivo. Registrar Trabajo/Actualizar Estado esperan únicamente la definición y referencia visual indicadas arriba.
+
+### Cierre para revisión
+
+Diff y archivos nuevos revisados; git diff --check correcto. 130 archivos candidatos examinados, índice vacío, sin indicadores de secretos, perfiles de publicación ni generados en los textos/rutas examinados. PDF y PNG originales mantienen hashes SHA-256. Se conserva UsarHosting=false y la conexión USB/certificados existentes; sin cambios de firewall. No se hicieron commits, push ni publicación.
+
+Bloque de **consulta de tareas asignadas listo para revisión**; las acciones de escritura quedan pendientes de definición, sin inventar su flujo. Mensaje sugerido: `feat: consultar tareas asignadas y detalle del empleado`. Esperar confirmación antes de otro bloque.
+
+### Cierre de consulta: prueba manual Windows aprobada (06/11/2026)
+
+El estudiante confirmó personalmente el recorrido **Inicio → Tareas asignadas → Detalle → Volver al listado → Volver al inicio** en Windows, con API local y LocalDB. Todo funcionó y los datos coincidieron con la tarea preparada. **Prueba manual aprobada**, separada de las 72 pruebas automatizadas y compilaciones ya registradas; no se repitieron estas últimas en esta actualización documental.
+
+Actualización de la preparación anterior: por autorización del estudiante se ejecutó el script exclusivamente en LocalDB / BanosQuimicosDb. Se comprobó IsLocalDB=1. Quedó IdTarea=1, asignada a IdEmpleado=1004 (PRUEBA CUENTAS Windows, Empleado/Activa), baño PRUEBA-TAREAS-01, Limpieza extra/Pendiente, cliente Cliente Prueba, dirección ficticia PRUEBA LOCAL - Av. de ejemplo 123 y programación 06/11/2026 a las 10:00 UTC−3. No se modificaron cuentas ni contraseñas. El primer intento revirtió la transacción porque sqlcmd requería QUOTED_IDENTIFIER; se repitió con -I y se verificó la asignación mediante SELECT. Esta evidencia reemplaza la indicación anterior de script aún no ejecutado.
+
+**Bloque de consulta cerrado para commit por indicación del estudiante.** Permanecen pendientes:
+- Prueba manual del recorrido en Android.
+- Registrar Trabajo y Actualizar Estado: definición del reparto de datos/confirmación y referencia aprobada si requieren otra pantalla; continúan deshabilitados.
+- Vencimiento real del token y alternancia de servidores en el dispositivo, pendientes históricos.
+
+La aprobación corresponde al recorrido y datos confirmados en Windows; no se atribuyen pruebas manuales adicionales de desconexión, vacío o permisos a esta confirmación. Sin publicación, commit, push ni inicio de otro bloque. Mensaje sugerido: feat: consultar tareas asignadas y detalle del empleado.

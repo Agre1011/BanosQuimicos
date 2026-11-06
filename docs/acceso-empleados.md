@@ -92,3 +92,7 @@ La regresión nueva renderiza los Razor reales con HtmlRenderer de ASP.NET Core 
 | Home.razor | No renderizado en este paso | InicioEmpleado, Rol: Empleado, sin Gestionar cuentas |
 
 El login no devuelve rol: el JWT identifica al usuario y /yo aporta el rol actual que utiliza la app. La tabla resume una cuenta de prueba aislada, no una consulta de credenciales del estudiante. El renderer verifica componentes y callbacks reales, pero no reemplaza repetir los clics, el desplazamiento y la visualización en Windows/Android. Los pendientes de vencimiento real y alternar servidores en dispositivo continúan abiertos.
+
+## Ampliación posterior: consulta de tareas
+
+El bloque Tareas asignadas habilita el acceso del inicio y agrega contador/listado/detalle reales: [guía local](tareas-asignadas-empleado.md). Las referencias anteriores al botón deshabilitado describen el bloque de cambio de rol, anterior a esta ampliación.
