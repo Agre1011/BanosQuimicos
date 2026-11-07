@@ -15,6 +15,8 @@ public class SolicitudClienteConfiguracion : IEntityTypeConfiguration<SolicitudC
             t.HasCheckConstraint("CK_SOLICITUDES_CLIENTE_Modalidad", "[ModalidadCambioDireccion] IS NULL OR [ModalidadCambioDireccion] IN (N'Solicitado', N'Informado')");
         });
         b.HasKey(x => x.IdSolicitud);
+        // Los pedidos anteriores sin clave se conservan; solo claves no nulas son únicas.
+        b.HasIndex(x => x.ClaveEnvio).IsUnique().HasFilter("[ClaveEnvio] IS NOT NULL");
         b.Property(x => x.Descripcion).HasMaxLength(2000);
         b.Property(x => x.TipoUsoSolicitado).HasMaxLength(10);
         b.Property(x => x.DireccionSolicitada).HasMaxLength(300);

@@ -3,6 +3,7 @@ namespace BanosQuimicos.Api.Modelos;
 public class SolicitudCliente
 {
     public int IdSolicitud { get; set; }
+    public Guid? ClaveEnvio { get; set; }
     public int IdCliente { get; set; }
     public int IdTipoOperacion { get; set; }
     public int IdEstadoOperacion { get; set; }

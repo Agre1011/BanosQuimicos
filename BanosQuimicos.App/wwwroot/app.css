@@ -78,3 +78,8 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .cliente-baja { background: #ff4343; color: #291616; }
 .cliente-pendiente { font-size: .9rem; text-align: center; }
 .cliente-vista button:disabled { cursor: not-allowed; }
+.indicador-solicitud { display: inline-block; border-radius: 1.5rem; padding: .6rem .9rem; font-weight: bold; }
+.indicador-solicitud.pendiente { background: #ffe06b; color: #241e18; }
+.indicador-solicitud.resuelta { background: #2ac86b; color: #12331c; }
+.indicador-solicitud.cerrada { background: #eab5b5; color: #571c1c; }
+.solicitud-propia { margin-top: 1.5rem; }

@@ -14,15 +14,16 @@
         <button class="principal" disabled="@cargando" @onclick="Cargar">Volver a consultar</button>
     }
     <button class="cliente-opcion" disabled="@cargando" @onclick="VerServicios">Mis Servicios</button>
-    <button class="cliente-opcion" disabled>Mis Solicitudes</button>
-    <button class="cliente-opcion" disabled>Solicitar un nuevo servicio</button>
-    <p class="cliente-pendiente">Mis Solicitudes y Solicitar un nuevo servicio todavía no están disponibles.</p>
+    <button class="cliente-opcion" disabled="@cargando" @onclick="VerSolicitudes">Mis Solicitudes</button>
+    <button class="cliente-opcion" disabled="@cargando" @onclick="SolicitarServicio">Solicitar un nuevo servicio</button>
     <button class="salir" @onclick="Salir">Cerrar Sesión</button>
 </section>
 
 @code {
     [Parameter] public string? Nombre { get; set; }
     [Parameter] public EventCallback VerServicios { get; set; }
+    [Parameter] public EventCallback VerSolicitudes { get; set; }
+    [Parameter] public EventCallback SolicitarServicio { get; set; }
     [Parameter] public EventCallback Salir { get; set; }
     private ResumenServiciosCliente? resumen;
     private bool cargando;

@@ -66,7 +66,9 @@ else if (Sesion.Estado == EstadoSesion.Activa && Sesion.Cuenta is { } cuenta)
     else if (cuenta.Rol == "Cliente")
     {
         @if (verMisServicios) { <MisServicios Volver="() => verMisServicios = false" /> }
-        else { <InicioCliente Nombre="@cuenta.Nombre" Salir="SalirAsync" VerServicios="() => verMisServicios = true" /> }
+        else if (verMisSolicitudes) { <MisSolicitudes Volver="() => verMisSolicitudes = false" /> }
+        else if (nuevoServicio) { <NuevoServicio Volver="() => nuevoServicio = false" VerSolicitudes="AbrirMisSolicitudes" /> }
+        else { <InicioCliente Nombre="@cuenta.Nombre" Salir="SalirAsync" VerServicios="() => verMisServicios = true" VerSolicitudes="AbrirMisSolicitudes" SolicitarServicio="() => nuevoServicio = true" /> }
     }
     else
     {
@@ -97,6 +99,8 @@ else
 
 @code {
     private bool registro, gestion, verTareas, verBanos, verSolicitudes, verServicios, verMisServicios;
+    private bool verMisSolicitudes, nuevoServicio;
+    private void AbrirMisSolicitudes() { nuevoServicio = false; verMisSolicitudes = true; }
     private string correoInicial = "";
     private string? avisoRegistro;
     protected override async Task OnInitializedAsync()
@@ -109,7 +113,7 @@ else
         if (Sesion.Estado == EstadoSesion.SinSesion) gestion = false;
         if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Administrador") { gestion = false; verBanos = false; verSolicitudes = false; verServicios = false; }
         if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Empleado") verTareas = false;
-        if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Cliente") verMisServicios = false;
+        if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Cliente") { verMisServicios = false; verMisSolicitudes = false; nuevoServicio = false; }
         StateHasChanged();
     });
     private void MostrarRegistro() { registro = true; avisoRegistro = null; }
@@ -122,6 +126,7 @@ else
     private async Task SalirAsync()
     {
         verMisServicios = false;
+        verMisSolicitudes = false; nuevoServicio = false;
         registro = false; gestion = false; verTareas = false; verBanos = false; verSolicitudes = false; verServicios = false; avisoRegistro = null; correoInicial = "";
         await Sesion.CerrarAsync();
     }

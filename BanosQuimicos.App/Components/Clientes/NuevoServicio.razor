@@ -1,0 +1,78 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+<section class="cliente-vista">
+    <h1>Solicitar un nuevo servicio</h1>
+    @if (cargando) { <p role="status">Consultando tipos de baño…</p> }
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    @if (guardada is not null)
+    {
+        <p class="aviso" role="status">Solicitud @guardada.IdSolicitud guardada. Estado: @guardada.Estado. El administrador revisará el pedido; todavía no se asignaron baños ni se confirmaron entregas.</p>
+        <button class="cliente-opcion" @onclick="VerSolicitudes">Mis Solicitudes</button>
+        <button class="principal" @onclick="Nueva">Crear otra solicitud</button>
+    }
+    else if (datos is not null && tipos.Count > 0)
+    {
+        <EditForm Model="datos" OnValidSubmit="Enviar">
+            <DataAnnotationsValidator /><ValidationSummary />
+            <fieldset disabled="@(enviando || datos.Intentado)">
+                <label for="pedido-direccion">Dirección</label>
+                <InputText id="pedido-direccion" @bind-Value="datos.Direccion" maxlength="300" />
+                <label for="pedido-cantidad">Cantidad de baños</label>
+                <InputNumber id="pedido-cantidad" @bind-Value="datos.CantidadBanos" min="1" />
+                <label for="pedido-tipo">Tipo de baño solicitado</label>
+                <InputSelect id="pedido-tipo" @bind-Value="datos.IdTipoBano">
+                    <option value="0">Seleccioná un tipo</option>
+                    @foreach (var tipo in tipos) { <option value="@tipo.IdTipoBano">@tipo.Nombre</option> }
+                </InputSelect>
+                <label for="pedido-uso">Uso del servicio</label>
+                <InputSelect id="pedido-uso" @bind-Value="datos.TipoUso">
+                    <option value="">Seleccioná el uso</option><option>Obra</option><option>Evento</option>
+                </InputSelect>
+                <label for="pedido-fecha">Fecha deseada de inicio</label>
+                <InputDate id="pedido-fecha" @bind-Value="datos.FechaDeseada" />
+            </fieldset>
+            <p>La fecha es deseada, no una entrega confirmada. El tipo de baño puede diferir del uso.</p>
+            <button type="submit" class="principal" disabled="@enviando">@(enviando ? "Enviando…" : datos.Intentado ? "Reintentar el mismo envío" : "Solicitar nuevo servicio")</button>
+        </EditForm>
+        @if (datos.Intentado)
+        {
+            <p class="aviso">El contenido y la clave se conservan para evitar duplicados. Consultá Mis Solicitudes si no recibiste confirmación.</p>
+            <button class="cliente-opcion" @onclick="VerSolicitudes">Mis Solicitudes</button>
+        }
+    }
+    else if (!cargando) { <button class="principal" @onclick="Cargar">Volver a consultar tipos</button> }
+    <button class="volver" disabled="@enviando" @onclick="Volver">Volver</button>
+</section>
+
+@code {
+    [Parameter] public EventCallback Volver { get; set; }
+    [Parameter] public EventCallback VerSolicitudes { get; set; }
+    private DatosNuevoServicio? datos;
+    private List<TipoBanoPedido> tipos = [];
+    private SolicitudPropia? guardada;
+    private bool cargando, enviando;
+    private string? error;
+    protected override Task OnInitializedAsync() { datos = Sesion.BorradorServicio(); return Cargar(); }
+    private async Task Cargar()
+    {
+        cargando = true; error = null;
+        try { tipos = await Sesion.TiposBanoPedidoAsync(); if (tipos.Count == 0) error = "No hay tipos de baño disponibles para solicitar."; }
+        catch (ErrorApi ex) { error = ex.Message; }
+        finally { cargando = false; }
+    }
+    private async Task Enviar()
+    {
+        if (enviando || datos is null) return;
+        enviando = true; error = null; datos.Intentado = true;
+        try { guardada = await Sesion.SolicitarServicioAsync(datos); Sesion.NuevoBorradorServicio(); }
+        catch (ErrorApi ex)
+        {
+            error = ex.Message;
+            // Una validación rechazada confirma que no se guardó: permite corregir el mismo borrador.
+            if (ex.Tipo == TipoErrorApi.Validacion) datos.Intentado = false;
+        }
+        finally { enviando = false; }
+    }
+    private void Nueva() { Sesion.NuevoBorradorServicio(); datos = Sesion.BorradorServicio(); guardada = null; error = null; }
+}
