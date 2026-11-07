@@ -31,7 +31,7 @@
             <article class="tarjeta solicitud-admin">
                 <h2>@s.Cliente</h2>
                 <dl class="cuenta-detalle">
-                    <dt>Baño</dt><dd>@(s.CodigoBano ?? "Sin baño seleccionado")</dd>
+                    <dt>Baño</dt><dd>@(s.CodigoBano ?? (s.Servicios is { Count: > 0 } ? "Ver servicios asignados" : "Sin baño seleccionado"))</dd>
                     <dt>Tipo</dt><dd>@s.Tipo</dd>
                     <dt>Estado</dt><dd>@s.Estado</dd>
                     <dt>Dirección de referencia</dt><dd>@(s.Direccion ?? "Sin dirección de servicio")</dd>
@@ -46,11 +46,19 @@
                 @if (!string.IsNullOrWhiteSpace(s.ObservacionesAdministrador)) { <p class="texto-trabajo">Respuesta administrativa: @s.ObservacionesAdministrador</p> }
                 @if (s.FechaResolucion is { } resuelta) { <p>Resolución: @Fecha(resuelta)</p> }
                 <p class="aviso">@Explicacion(s)</p>
+                @foreach (var servicio in s.Servicios ?? [])
+                {
+                    <p>Servicio @servicio.IdServicio · @servicio.CodigoBano · @servicio.Estado · Uso @servicio.TipoUso · @servicio.LimpiezasSemana limpieza(s)/semana · @servicio.Direccion</p>
+                }
                 @foreach (var trabajo in s.Trabajos)
                 {
-                    <p>Tarea @trabajo.IdTarea: @trabajo.Tipo · @trabajo.Estado · @(trabajo.Empleado ?? "Sin empleado asignado") · @(trabajo.FechaProgramada is { } programada ? Fecha(programada) : "Sin programar")</p>
+                    <p>Tarea @trabajo.IdTarea: @trabajo.Tipo · @trabajo.CodigoBano · @trabajo.Estado · @(trabajo.Empleado ?? "Sin empleado asignado") · @(trabajo.FechaProgramada is { } programada ? Fecha(programada) : "Sin programar")</p>
                 }
                 @if (aviso is not null) { <p class="aviso" role="status">@aviso</p> }
+                @if (s.IdTipoOperacion == 1 && s.IdEstadoOperacion is 1 or 2 && s.Trabajos.Count == 0 && s.Servicios is not { Count: > 0 })
+                {
+                    <AsignarBanosServicio @key="s.IdSolicitud" Solicitud="s" Guardada="PedidoGuardado" />
+                }
                 @if (PuedeAsignar(s))
                 {
                     <button class="tareas-empleado" disabled="@ocupada" aria-expanded="@seleccion" @onclick="() => seleccion = !seleccion">Asignar ▾</button>
@@ -106,7 +114,8 @@
         && (s.IdTipoOperacion is 3 or 5 or 6 || s.IdTipoOperacion == 4 && s.ModalidadCambioDireccion == "Solicitado");
     private static string Explicacion(SolicitudDetalle s) => s.IdTipoOperacion switch
     {
-        1 or 2 => "Requiere seleccionar baños disponibles y crear servicios. Se atenderá en su bloque; no se procesa como limpieza ni se resuelve asignando un empleado.",
+        1 => "Seleccionar exactamente la cantidad solicitada. Los servicios quedan asignados antes de entregarlos; el pedido se resuelve al completar todas las entregas.",
+        2 => "El baño adicional requiere su tratamiento con servicio de referencia. No se procesa como limpieza ni mediante el alta de servicio nuevo de esta pantalla.",
         4 when s.ModalidadCambioDireccion == "Informado" => "Es un aviso de traslado ya realizado. Requiere validación administrativa de ubicación y fecha efectiva; no corresponde enviar otro traslado.",
         4 => "El traslado solicitado cambia la ubicación al completar su tarea, conservando la anterior.",
         5 => "Un reclamo puede requerir un trabajo o una respuesta administrativa. Aquí se asignan los que necesitan limpieza o mantenimiento. La respuesta sin tareas requiere su tratamiento administrativo, no una tarea ficticia.",
@@ -123,6 +132,7 @@
         finally { ocupada = false; }
     }
     private void Cancelar() { seleccion = false; intento = null; empleado = 0; tipoReclamo = 0; bloquea = false; }
+    private void PedidoGuardado(SolicitudDetalle resultado) { detalle = resultado; aviso = "Pedido guardado. Los servicios y entregas se muestran con su estado actual."; }
     private Task CargarAsync() => EjecutarAsync(async () =>
     {
         idDetalle = null; detalle = null; solicitudes = null; Cancelar();

@@ -85,6 +85,14 @@ public class ClienteAutenticacion
     public Task<List<EstadoBano>> EstadoBanosAsync(string token) => LeerAutenticadoAsync<List<EstadoBano>>(token, "api/banos/estado", "banos");
     public Task<List<SolicitudResumen>> SolicitudesAsync(string token) => LeerAutenticadoAsync<List<SolicitudResumen>>(token, "api/solicitudes", "solicitudes");
     public Task<SolicitudDetalle> DetalleSolicitudAsync(string token, int id) => LeerAutenticadoAsync<SolicitudDetalle>(token, $"api/solicitudes/{id}", "solicitudes");
+    public Task<List<BanoDisponible>> BanosDisponiblesAsync(string token, int id) => LeerAutenticadoAsync<List<BanoDisponible>>(token, $"api/solicitudes/{id}/banos-disponibles", "solicitudes");
+    public async Task<SolicitudDetalle> AsignarBanosAsync(string token, int id, AsignacionBanos datos)
+    {
+        using var request = PeticionCuenta(HttpMethod.Post, $"api/solicitudes/{id}/asignar-banos", token);
+        request.Content = JsonContent.Create(datos);
+        using var response = await EnviarAsync(request); await ComprobarAsync(response, "solicitudes");
+        return await LeerAsync<SolicitudDetalle>(response);
+    }
     public async Task<SolicitudDetalle> AsignarSolicitudAsync(string token, int id, AsignacionSolicitud datos)
     {
         using var request = PeticionCuenta(HttpMethod.Post, $"api/solicitudes/{id}/asignar", token);
@@ -155,7 +163,7 @@ public class ClienteAutenticacion
                 operacion == "login" ? "La cuenta no está habilitada. Consultá al administrador." : "No tenés permiso para realizar esta operación.");
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
-            if (operacion == "solicitudes") throw new ErrorApi(TipoErrorApi.Conflicto, "La solicitud ya tiene trabajos, cambió su estado o sus datos no permiten esta asignación. Consultá el detalle actual antes de continuar.");
+            if (operacion == "solicitudes") throw new ErrorApi(TipoErrorApi.Conflicto, "La solicitud ya tiene servicios o trabajos, cambió su estado o algún baño o empleado no permite la asignación. Consultá el detalle y la disponibilidad antes de continuar.");
             if (operacion == "banos") throw new ErrorApi(TipoErrorApi.Conflicto, "El baño, servicio o empleado cambió, o la programación no es válida. Consultá nuevamente antes de intentar otra operación.");
             throw new ErrorApi(operacion == "registro" ? TipoErrorApi.Duplicado : TipoErrorApi.Conflicto,
                 operacion == "registro" ? "El correo electrónico ya está registrado." : operacion == "tareas" ? "La tarea cambió o no reúne las condiciones para esta acción. Volvé a consultar el detalle; si fue reasignada o cancelada, consultá al administrador." : "La cuenta cambió o no cumple las condiciones para esta operación.");

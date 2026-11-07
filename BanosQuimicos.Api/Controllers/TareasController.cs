@@ -141,6 +141,14 @@ public class TareasController(BanosQuimicosDbContext db, TimeProvider reloj) : C
         {
             case 7: // Entrega: asignar no equivalía a entregar.
                 if (servicio.EstadoServicio != "Pendiente de entrega" || ahora < servicio.FechaAsignacion) return "El servicio no admite la entrega.";
+                if (!await db.UbicacionesServicio.AnyAsync(x => x.IdServicio == servicio.IdServicio && x.EsActual, ct))
+                {
+                    var entrega = await db.UbicacionesServicio.SingleOrDefaultAsync(x => x.IdUbicacion == tarea.IdUbicacion && x.IdServicio == servicio.IdServicio, ct);
+                    if (entrega is null || entrega.FechaDesde is not null || entrega.FechaHasta is not null)
+                        return "La entrega no tiene un destino preparado válido.";
+                    // La dirección preparada se vuelve vigente al entregar, sin falsificar la fecha efectiva.
+                    entrega.EsActual = true; entrega.FechaDesde = ahora;
+                }
                 servicio.EstadoServicio = "Entregado"; servicio.FechaEntregaReal = ahora;
                 break;
             case 8: // Retiro: recién al cierre se libera la asignación vigente.
