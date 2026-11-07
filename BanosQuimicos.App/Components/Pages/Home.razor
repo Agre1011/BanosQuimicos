@@ -53,6 +53,10 @@ else if (Sesion.Estado == EstadoSesion.Activa && Sesion.Cuenta is { } cuenta)
     {
         <SolicitudesReclamos Volver="() => verSolicitudes = false" />
     }
+    else if (verServicios && cuenta.Rol == "Administrador")
+    {
+        <BanosServicios Volver="() => verServicios = false" />
+    }
     else if (cuenta.Rol == "Empleado")
     {
         @if (verTareas) { <TareasAsignadas Volver="() => verTareas = false" /> }
@@ -66,7 +70,7 @@ else if (Sesion.Estado == EstadoSesion.Activa && Sesion.Cuenta is { } cuenta)
         @if (cuenta.Rol == "Administrador")
         {
             <button class="principal" disabled="@Sesion.Ocupada" @onclick="() => gestion = true">Gestionar cuentas</button>
-            <button class="principal" disabled>Baños y Servicios</button>
+            <button class="principal" disabled="@Sesion.Ocupada" @onclick="() => verServicios = true">Baños y Servicios</button>
             <button class="solicitudes-admin" disabled="@Sesion.Ocupada" @onclick="() => verSolicitudes = true">Solicitudes y Reclamos</button>
             <button class="estado-banos-admin" disabled="@Sesion.Ocupada" @onclick="() => verBanos = true">Estado Baños</button>
         }
@@ -86,7 +90,7 @@ else
 }
 
 @code {
-    private bool registro, gestion, verTareas, verBanos, verSolicitudes;
+    private bool registro, gestion, verTareas, verBanos, verSolicitudes, verServicios;
     private string correoInicial = "";
     private string? avisoRegistro;
     protected override async Task OnInitializedAsync()
@@ -97,7 +101,7 @@ else
     private void ActualizarVista() => _ = InvokeAsync(() =>
     {
         if (Sesion.Estado == EstadoSesion.SinSesion) gestion = false;
-        if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Administrador") { gestion = false; verBanos = false; verSolicitudes = false; }
+        if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Administrador") { gestion = false; verBanos = false; verSolicitudes = false; verServicios = false; }
         if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Empleado") verTareas = false;
         StateHasChanged();
     });
@@ -110,7 +114,7 @@ else
     }
     private async Task SalirAsync()
     {
-        registro = false; gestion = false; verTareas = false; verBanos = false; verSolicitudes = false; avisoRegistro = null; correoInicial = "";
+        registro = false; gestion = false; verTareas = false; verBanos = false; verSolicitudes = false; verServicios = false; avisoRegistro = null; correoInicial = "";
         await Sesion.CerrarAsync();
     }
     public void Dispose() => Sesion.Cambio -= ActualizarVista;

@@ -1081,3 +1081,73 @@ El estudiante confirmó personalmente la **solicitud 4** en Windows, con API loc
 Esta evidencia manual se registra separada de los 9 casos nuevos y la suite automatizada de 134 casos anteriores (143 ejecuciones contando las focalizadas), y de las compilaciones ya documentadas. No se repitieron pruebas ni compilaciones: este cierre solo modifica documentación. La preparación Pendiente/sin servicios descrita arriba corresponde al estado previo a la prueba; se conserva el resultado final, sin liberar unidades ni restablecer tareas.
 
 **Bloque cerrado y listo para commit.** Continúan pendientes la integral manual Android local al finalizar los bloques y, después, migraciones/republicación del hosting, además de vencimiento real del token y alternancia de servidores. Este bloque no agregó migraciones. Sin cambios en hosting, commit, push, merge ni inicio de otro bloque. Mensaje sugerido: **feat: asignar baños y programar entregas de servicios nuevos**.
+
+## 22. Administrador: Baños y Servicios y retiro
+
+### Revisión, rama y decisiones confirmadas (07/11/2026)
+
+Master estaba limpio en ea92843 (merge PR #11), actualizado por el estudiante. Se creó feature/banos-servicios sin descartar cambios ni hacer pull/fetch adicional. Se revisaron AGENTS.md, texto funcional del PDF, página 6 renderizada de Figma, DER previamente inspeccionado, reglas C8/C9 del plan y código/modelo actual. Las tarjetas y navegación corresponden a Baños y Servicios de la referencia; los controles de empleado/fecha y revisión de tareas se mantienen dentro de esa vista.
+
+Se consultaron las reglas no definidas y se adoptó la respuesta final del estudiante:
+
+- Reutilizar una baja Pendiente/Aprobada existente, mostrando cuál se atiende; elegir explícitamente si hay varias. Sin ninguna, crear solo el retiro administrativo, sin inventar solicitud del cliente.
+- Permitir programar el retiro. Antes de finalizar, mostrar otros trabajos para que administración decida explícitamente qué pendientes ya no corresponden y cancela, y cuáles conserva para completar. No se cancelan automáticamente ni se fuerzan limpiezas futuras innecesarias.
+- En curso debe completarse antes del cierre. Un cumplimiento ya registrado tampoco se cancela como si no hubiera ocurrido. Los mantenimientos bloqueantes Pendientes se conservan y pueden continuar después del retiro, impidiendo disponibilidad; si están En curso, deben resolverse antes del cierre.
+
+La propuesta inicial de exigir completar todos los pendientes sin opción de revisión no se adopta. La decisión final se representa por cancelaciones explícitas o conservación del estado actual, sin agregar estados ficticios ni modificar solicitudes silenciosamente.
+
+### Modelo e implementación
+
+**Sin cambios de entidades, configuraciones EF o migraciones nuevas**: se conservan las 12 tablas, relaciones e historial. Se reutilizan estados de tarea, FechaCancelacion, ClaveProgramacion, IdSolicitud y fechas del ciclo del servicio. No se escriben decisiones administrativas en ObservacionesEmpleado ni se inventa reposición de papel.
+
+- ServiciosController y Contratos/Servicios: GET /api/servicios y /{id}, POST /{id}/retiro y /{id}/resolver-pendientes. Política Administrador/Activa, revalidada al escribir; empleado Empleado/Activa, servicio Entregado y ubicación actual esperada. Tarjetas con tipo/uso, cliente, dirección, frecuencia, estado, habitual actual del baño, empleados por tarea, solicitudes de baja y fechas. DTOs sin credenciales; orden estable y sin borrado de finalizados. Disponibilidad global por baño, considerando Apto, otra asignación vigente y mantenimiento activo.
+- Programación de retiro deja servicio Entregado y asignación vigente, crea solo Retiro/Pendiente. Vincula y aprueba la baja elegida cuando existe; otras solicitudes no cambian. La inexistencia de solicitud no crea una ficticia. Misma clave/datos recupera el retiro; otra clave no genera un segundo. Se protege también SolicitudesController.Asignar para impedir duplicarlo desde esa ruta. Estados Finalizado/Cancelado/Pendiente de entrega no admiten esta programación; la cancelación antes de entrega queda para tratamiento separado, sin retiro ficticio.
+- Resolver pendientes requiere servicio entregado con retiro programado y snapshot explícito de IDs a cancelar/conservar. Si aparecen trabajos nuevos o cambian estados, devuelve 409 antes de modificar. No permite cancelar En curso, cumplimiento registrado ni bloqueante. Cancelar cambia solo estado y FechaCancelacion, conserva contexto/empleado/solicitud/observaciones y es idempotente mientras el retiro siga activo; no cancela ni resuelve solicitudes. Lo conservado mantiene estado y debe completarse salvo mantenimiento bloqueante Pendiente, que puede continuar después.
+- TareasController revalida al cerrar: bloquea retiro por otros trabajos Pendientes/En curso que requieren atención, conservando cumplimiento ya guardado para reintentar; no cancela automáticamente. Permite mantenimiento con servicio Finalizado sin desvincular historial. Retiro guarda FechaRetiroReal/FechaFinalizacion, estado Finalizado y libera la asignación; no cambia condición física ni otros bloqueos. La baja vinculada usa la resolución existente por trabajos requeridos, sin ignorar cancelados. Transacciones Serializable y bloqueo SQL común protegen programación, decisiones y cierres concurrentes.
+- App/ContratosServicios, ClienteAutenticacion/SesionUsuario, BanosServicios.razor, Home/CSS: acceso habilitado, tarjetas, carga/vacío/error/consultar/Volver, Baja con empleado/fecha/solicitud y confirmación, revisión explícita en la tarjeta, estados recuperados y avisos solo después del guardado. No se confunde el habitual con el empleado de entrega/retiro. Mantiene local/USB/HTTPS y reglas de sesión. Sin otras funciones administrativas.
+
+### Pruebas, recursos y compilación
+
+Se conservaron las **134 pruebas anteriores** y se agregaron **13 casos nuevos** en ServiciosPruebas.cs para riesgos/reglas, sin nuevas pruebas visuales simples. Se ejecutaron:
+
+- **20 casos afectados** en desarrollo (13 nuevos + 7 existentes), todos correctos.
+- **Una única suite completa de cierre: 147 correctos, 0 fallidos y 0 omitidos**.
+- Total **167 ejecuciones de casos**, con 147 casos distintos. No se repitieron por cambios exclusivamente documentales.
+
+Cobertura nueva: retiro vinculado a baja, conservación del habitual/historial y fechas; sin liberación al programar; cancelación explícita e idempotente de limpieza futura sin resolver su solicitud; En curso/registro de cumplimiento protegido y cierre bloqueado hasta completarlo; mantenimiento bloqueante conservado después del retiro y completado después, sin volver Apto automáticamente; permisos en rutas nuevas, duplicados concurrentes y entre módulos, empleado/contexto inválido, elección entre varias bajas y revisión desactualizada sin cancelaciones ocultas.
+
+Se ajustó únicamente la preparación auxiliar del caso existente de baja en SolicitudesPruebas: la tarea usada para obtener el contexto del fixture se prepara Cancelada cuando no representa un trabajo real pendiente del caso. No se eliminaron pruebas ni se cambiaron sus resultados esperados. Esta preparación se hace solo en su base aislada, no en trabajos locales existentes. TestServer y LocalDB usan bases nuevas BanosQuimicosAuthPruebas_<GUID>, conservadas.
+
+API/pruebas compilaron en tmp/pruebas-servicios. App Debug Windows y Android compiló con **0 errores y 0 advertencias**, con parámetros temporales JavaMaximumHeapSize=512M/JavaOptions=-XX:+UseSerialGC ya documentados. Sin cambios de paquetes, herramientas o configuración global. No se ejecutó la interfaz nativa; pruebas manuales Windows pendientes. Reiniciar la API con esta versión antes de probar.
+
+### Datos locales y guía
+
+Se ejecutó scripts/preparar-banos-servicios-local.sql solo en (localdb)\MSSQLLocalDB/BanosQuimicosDb tras verificar IsLocalDB=1 y conteos. Crea registros dedicados de prueba, sin modificar cuentas/contraseñas/trabajos anteriores:
+
+- Servicio **4 / PRUEBA-RETIRO-01**, Entregado/Apto, baja Pendiente y tarea **7 Limpieza semanal** futura, para decidir explícitamente si se cancela.
+- Servicio **5 / PRUEBA-RETIRO-02**, Entregado/Apto, sin baja de cliente y tarea **8 Mantenimiento bloqueante** Pendiente vinculada al servicio, para comprobar que continúa después del retiro.
+
+No se crearon sus tareas de retiro: quedan para la confirmación manual. Los nuevos trabajos usan el empleado de prueba existente IdUsuario 1004 sin cambiarlo. Antes: 6 usuarios, 3 baños/3 servicios/6 tareas/4 solicitudes. Después: mismos 6 usuarios y datos anteriores, con 5 baños/5 servicios/8 tareas/5 solicitudes. El script reutiliza sus registros sin reabrirlos ni restablecer estados. No se contactó ni modificó MonsterASP/db77593.
+
+Guía en docs/banos-servicios.md: administrador programa y revisa pendientes → empleado realiza retiro → servicio Finalizado y disponibilidad según condición/mantenimiento → solicitud vinculada actualizada cuando se cumplen sus trabajos. El escenario bloqueante permite comprobar mantenimiento posterior al retiro, sin cancelar reparaciones por omisión.
+
+### Pendientes y cierre
+
+Prueba manual Windows de ambos recorridos aprobada según el cierre siguiente. Integral manual Android al terminar bloques contra API local; después actualización/migraciones pendientes del hosting y republicación. Se mantienen pendientes vencimiento real del token y alternancia de servidores. Este bloque no agrega migraciones ni publica.
+
+Bloque implementado y listo para revisión, sin commit, push, merge ni inicio de otro bloque. Mensaje sugerido: **feat: gestionar servicios y programar retiros con revisión de pendientes**. Esperar confirmación antes de continuar.
+
+Revisión final: EF confirmó modelo sin cambios pendientes; entidades/configuraciones/migraciones sin diff. git diff --check correcto. Se revisaron diff/archivos nuevos y 162 candidatos no ignorados, sin generados, perfiles privados ni indicadores de credenciales/tokens/claves privadas en los textos/rutas examinados; índice vacío. PDF y PNG originales conservan SHA-256. Las últimas modificaciones fueron documentales: no se repitieron pruebas ni compilaciones.
+
+### Cierre: pruebas manuales Windows aprobadas
+
+El estudiante confirmó ambos recorridos con API local y LocalDB:
+
+- **Primer retiro aprobado:** Actualizar Estado impidió finalizar mientras existía una limpieza pendiente. El administrador canceló explícitamente esa limpieza y confirmó la revisión; después el empleado pudo finalizar el retiro. Se confirmó el resto del recorrido previsto de ese caso.
+- **Retiro con mantenimiento bloqueante aprobado:** se completó el retiro conservando el mantenimiento y el bloqueo de disponibilidad del baño después del cierre.
+
+Estas evidencias son **manuales** y se registran separadas de las **147 pruebas automatizadas anteriores**, de las 20 ejecuciones afectadas previas y de las compilaciones. No se atribuye a esta confirmación la reparación posterior opcional, ni otros escenarios no mencionados. No se repitieron pruebas ni compilaciones: este cierre solo modifica documentación.
+
+Se conservan los resultados guardados como historial; no se restablecen servicios, solicitudes o tareas ni se libera un mantenimiento por fuera del recorrido. Los estados iniciales de los ejemplos descritos arriba corresponden a la preparación anterior a la prueba.
+
+**Bloque cerrado y listo para commit.** La integral Android local y la posterior actualización/republicación del hosting siguen para el final de los bloques. Permanecen pendientes vencimiento real del token y alternancia de servidores. Sin migración nueva, cambios en hosting, commit, push, merge ni inicio de otro bloque. Mensaje sugerido: **feat: gestionar servicios y programar retiros con revisión de pendientes**.

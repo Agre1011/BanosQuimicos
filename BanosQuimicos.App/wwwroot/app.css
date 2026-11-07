@@ -60,3 +60,7 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .solicitud-admin h2 { font-size: 1.2rem; }
 .solicitud-admin input[type="checkbox"] { display: inline-block; width: 1.2rem; min-height: 1.2rem; vertical-align: middle; }
 .opcion-bano { background: #fffaf3; border: 1px solid #94712b; border-radius: .4rem; padding: .7rem; }
+.servicio-admin { background: #efefea; margin-bottom: 1.2rem; }
+.servicio-admin h2 { font-size: 1.2rem; }
+.decision-pendiente { border: 1px solid #94712b; border-radius: .4rem; padding: .7rem; margin-top: .7rem; }
+.decision-pendiente input[type="checkbox"] { display: inline-block; width: 1.2rem; min-height: 1.2rem; vertical-align: middle; }

@@ -136,7 +136,9 @@ public class TareasController(BanosQuimicosDbContext db, TimeProvider reloj) : C
         if (servicio.IdBano != tarea.IdBano) return "El servicio corresponde a otro baño.";
         if (tarea.IdUbicacion is { } ubicacion && !await db.UbicacionesServicio.AnyAsync(x => x.IdUbicacion == ubicacion && x.IdServicio == servicio.IdServicio, ct))
             return "La ubicación corresponde a otro servicio.";
-        if (servicio.EstadoServicio is "Cancelado" or "Finalizado") return "El servicio ya no está vigente.";
+        // El mantenimiento conserva su contexto y puede completarse después del retiro del baño.
+        if (servicio.EstadoServicio == "Cancelado" || servicio.EstadoServicio == "Finalizado" && tarea.IdTipoOperacion != 11)
+            return "El servicio ya no está vigente.";
         switch (tarea.IdTipoOperacion)
         {
             case 7: // Entrega: asignar no equivalía a entregar.
@@ -153,6 +155,9 @@ public class TareasController(BanosQuimicosDbContext db, TimeProvider reloj) : C
                 break;
             case 8: // Retiro: recién al cierre se libera la asignación vigente.
                 if (servicio.EstadoServicio != "Entregado" || ahora < servicio.FechaEntregaReal) return "El servicio no admite el retiro.";
+                if (await db.TareasOperativas.AnyAsync(x => x.IdServicio == servicio.IdServicio && x.IdTarea != tarea.IdTarea
+                    && (x.IdEstadoOperacion == 7 || x.IdEstadoOperacion == 6 && !(x.IdTipoOperacion == 11 && x.BloqueaAsignacion)), ct))
+                    return "Hay trabajos del servicio por completar o revisar explícitamente por el administrador antes del retiro. No se cancelan automáticamente.";
                 servicio.EstadoServicio = "Finalizado"; servicio.FechaRetiroReal = ahora; servicio.FechaFinalizacion = ahora;
                 break;
             case 10:
