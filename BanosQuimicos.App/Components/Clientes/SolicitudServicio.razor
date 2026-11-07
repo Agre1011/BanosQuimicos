@@ -1,0 +1,60 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+<section class="cliente-vista" aria-busy="@enviando">
+    <h1>@(Reclamo ? "Reclamo del servicio" : "Confirmar limpieza extra")</h1>
+    <p>Baño: @Servicio.CodigoBano · @Servicio.Direccion</p>
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    @if (guardada is not null)
+    {
+        <p class="aviso" role="status">Solicitud @guardada.IdSolicitud guardada. Estado: @guardada.Estado. El administrador revisará el pedido y decidirá su asignación.</p>
+    }
+    else if (Reclamo)
+    {
+        <EditForm Model="datos" OnValidSubmit="Enviar">
+            <DataAnnotationsValidator /><ValidationSummary />
+            <fieldset disabled="@(enviando || datos.Intentado)">
+                <label for="descripcion-reclamo">Reclamo que quiere realizar</label>
+                <InputTextArea id="descripcion-reclamo" @bind-Value="datos.Descripcion" maxlength="2000" rows="8" />
+            </fieldset>
+            <button type="submit" class="principal" disabled="@enviando">@(enviando ? "Enviando…" : datos.Intentado ? "Reintentar Notificar" : "Notificar")</button>
+        </EditForm>
+    }
+    else
+    {
+        <p>¿Confirmás solicitar una limpieza extra para este servicio? El administrador elegirá empleado y fecha; enviar no significa que el trabajo esté realizado.</p>
+        <button class="principal" disabled="@enviando" @onclick="Enviar">@(enviando ? "Enviando…" : datos.Intentado ? "Reintentar el mismo envío" : "Confirmar solicitud de limpieza extra")</button>
+    }
+    @if (datos.Intentado && guardada is null)
+    {
+        <p class="aviso">Se conserva el mismo envío para evitar duplicados. Consultá Mis Solicitudes antes de iniciar otro pedido si el resultado sigue siendo incierto.</p>
+    }
+    <button class="volver" disabled="@enviando" @onclick="Volver">@(Reclamo || guardada is not null || datos.Intentado ? "Volver" : "Cancelar y volver al detalle")</button>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ServicioCliente Servicio { get; set; } = null!;
+    [Parameter] public bool Reclamo { get; set; }
+    [Parameter] public EventCallback Volver { get; set; }
+    private DatosSolicitudServicio datos = new();
+    private SolicitudPropia? guardada;
+    private bool enviando;
+    private string? error;
+    protected override void OnInitialized() => datos = Sesion.BorradorOperacion(Servicio.IdServicio, Reclamo);
+    private async Task Enviar()
+    {
+        if (enviando || guardada is not null) return;
+        enviando = true; datos.Intentado = true; error = null;
+        try
+        {
+            guardada = await Sesion.SolicitarSobreServicioAsync(Servicio.IdServicio, Reclamo, datos);
+            Sesion.LimpiarBorradorOperacion(Servicio.IdServicio, Reclamo);
+        }
+        catch (ErrorApi ex)
+        {
+            error = ex.Message;
+            if (ex.Tipo == TipoErrorApi.Validacion) datos.Intentado = false;
+        }
+        finally { enviando = false; }
+    }
+}

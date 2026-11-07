@@ -83,3 +83,5 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .indicador-solicitud.resuelta { background: #2ac86b; color: #12331c; }
 .indicador-solicitud.cerrada { background: #eab5b5; color: #571c1c; }
 .solicitud-propia { margin-top: 1.5rem; }
+.cliente-vista textarea { display: block; width: 100%; min-height: 12rem; padding: .8rem; font: inherit; background: #d9d9d9; color: #191919; resize: vertical; }
+.cliente-vista textarea:focus { outline: 3px solid #165d9b; outline-offset: 3px; }

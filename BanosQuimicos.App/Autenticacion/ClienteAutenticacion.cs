@@ -84,6 +84,16 @@ public class ClienteAutenticacion
     public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerAutenticadoAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
     public Task<ResumenServiciosCliente> ResumenServiciosClienteAsync(string token) => LeerAutenticadoAsync<ResumenServiciosCliente>(token, "api/servicios-cliente/mios/resumen", "servicios");
     public Task<List<SolicitudPropia>> MisSolicitudesAsync(string token) => LeerAutenticadoAsync<List<SolicitudPropia>>(token, "api/solicitudes-cliente/mias", "solicitudes");
+    public async Task<SolicitudPropia> SolicitarSobreServicioAsync(string token, int id, bool reclamo, DatosSolicitudServicio datos)
+    {
+        using var request = PeticionCuenta(HttpMethod.Post, $"api/solicitudes-cliente/servicios/{id}/{(reclamo ? "reclamo" : "limpieza-extra")}", token);
+        request.Content = JsonContent.Create(new { datos.ClaveEnvio, descripcion = reclamo ? datos.Descripcion : null });
+        using var response = await EnviarAsync(request);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+            throw new ErrorApi(TipoErrorApi.Conflicto, "El servicio no admite la solicitud o la clave no coincide. Consultá Mis Solicitudes y el estado actual del servicio.");
+        await ComprobarAsync(response, "solicitudes");
+        return await LeerAsync<SolicitudPropia>(response);
+    }
     public Task<List<TipoBanoPedido>> TiposBanoPedidoAsync(string token) => LeerAutenticadoAsync<List<TipoBanoPedido>>(token, "api/solicitudes-cliente/tipos-bano", "solicitudes");
     public async Task<SolicitudPropia> SolicitarServicioAsync(string token, DatosNuevoServicio datos)
     {
