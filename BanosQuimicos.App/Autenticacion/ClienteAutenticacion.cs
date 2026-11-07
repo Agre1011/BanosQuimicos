@@ -82,6 +82,9 @@ public class ClienteAutenticacion
         await ComprobarAsync(response, "rol");
     }
     public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerAutenticadoAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
+    public Task<ResumenServiciosCliente> ResumenServiciosClienteAsync(string token) => LeerAutenticadoAsync<ResumenServiciosCliente>(token, "api/servicios-cliente/mios/resumen", "servicios");
+    public Task<List<ServicioCliente>> MisServiciosAsync(string token) => LeerAutenticadoAsync<List<ServicioCliente>>(token, "api/servicios-cliente/mios", "servicios");
+    public Task<ServicioCliente> MiServicioAsync(string token, int id) => LeerAutenticadoAsync<ServicioCliente>(token, $"api/servicios-cliente/{id}", "servicios");
     public Task<List<EstadoBano>> EstadoBanosAsync(string token) => LeerAutenticadoAsync<List<EstadoBano>>(token, "api/banos/estado", "banos");
     public Task<List<ServicioGestion>> ServiciosAsync(string token) => LeerAutenticadoAsync<List<ServicioGestion>>(token, "api/servicios", "servicios");
     public async Task<ServicioGestion> ProgramarRetiroAsync(string token, int id, ProgramarRetiro datos)

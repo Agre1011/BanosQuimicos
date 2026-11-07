@@ -1,0 +1,38 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+<section class="cliente-vista" aria-labelledby="saludo-cliente">
+    <div class="cliente-tarjeta">
+        <h1 id="saludo-cliente">Bienvenido, @Nombre</h1>
+        <p>Rol: Cliente</p>
+        @if (cargando) { <p role="status">Consultando tus servicios…</p> }
+        else if (resumen is not null) { <p>@resumen.Cantidad servicios vigentes</p> }
+    </div>
+    @if (error is not null)
+    {
+        <p class="aviso error" role="alert">@error</p>
+        <button class="principal" disabled="@cargando" @onclick="Cargar">Volver a consultar</button>
+    }
+    <button class="cliente-opcion" disabled="@cargando" @onclick="VerServicios">Mis Servicios</button>
+    <button class="cliente-opcion" disabled>Mis Solicitudes</button>
+    <button class="cliente-opcion" disabled>Solicitar un nuevo servicio</button>
+    <p class="cliente-pendiente">Mis Solicitudes y Solicitar un nuevo servicio todavía no están disponibles.</p>
+    <button class="salir" @onclick="Salir">Cerrar Sesión</button>
+</section>
+
+@code {
+    [Parameter] public string? Nombre { get; set; }
+    [Parameter] public EventCallback VerServicios { get; set; }
+    [Parameter] public EventCallback Salir { get; set; }
+    private ResumenServiciosCliente? resumen;
+    private bool cargando;
+    private string? error;
+    protected override Task OnInitializedAsync() => Cargar();
+    private async Task Cargar()
+    {
+        cargando = true; resumen = null; error = null;
+        try { resumen = await Sesion.ResumenServiciosClienteAsync(); }
+        catch (ErrorApi ex) { error = ex.Message; }
+        finally { cargando = false; }
+    }
+}

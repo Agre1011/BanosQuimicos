@@ -61,7 +61,9 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/banos-servicios`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/servicios-cliente`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+
+Consulta del cliente: [guía de Mis Servicios](docs/servicios-cliente.md), con recorrido de Windows y cuentas locales con/sin servicios. Las acciones de solicitudes del cliente todavía están deshabilitadas.
 
 ## Gestión de cuentas
 
