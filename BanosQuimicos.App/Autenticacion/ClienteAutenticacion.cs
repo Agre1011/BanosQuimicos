@@ -83,6 +83,18 @@ public class ClienteAutenticacion
     }
     public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerAutenticadoAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
     public Task<ResumenServiciosCliente> ResumenServiciosClienteAsync(string token) => LeerAutenticadoAsync<ResumenServiciosCliente>(token, "api/servicios-cliente/mios/resumen", "servicios");
+    public Task<List<SolicitudPropia>> MisSolicitudesAsync(string token) => LeerAutenticadoAsync<List<SolicitudPropia>>(token, "api/solicitudes-cliente/mias", "solicitudes");
+    public Task<List<TipoBanoPedido>> TiposBanoPedidoAsync(string token) => LeerAutenticadoAsync<List<TipoBanoPedido>>(token, "api/solicitudes-cliente/tipos-bano", "solicitudes");
+    public async Task<SolicitudPropia> SolicitarServicioAsync(string token, DatosNuevoServicio datos)
+    {
+        using var request = PeticionCuenta(HttpMethod.Post, "api/solicitudes-cliente/nuevo-servicio", token);
+        request.Content = JsonContent.Create(datos);
+        using var response = await EnviarAsync(request);
+        if (response.StatusCode == HttpStatusCode.Conflict)
+            throw new ErrorApi(TipoErrorApi.Conflicto, "La clave del envío no coincide con el pedido. Consultá Mis Solicitudes antes de enviar otra solicitud.");
+        await ComprobarAsync(response, "solicitudes");
+        return await LeerAsync<SolicitudPropia>(response);
+    }
     public Task<List<ServicioCliente>> MisServiciosAsync(string token) => LeerAutenticadoAsync<List<ServicioCliente>>(token, "api/servicios-cliente/mios", "servicios");
     public Task<ServicioCliente> MiServicioAsync(string token, int id) => LeerAutenticadoAsync<ServicioCliente>(token, $"api/servicios-cliente/{id}", "servicios");
     public Task<List<EstadoBano>> EstadoBanosAsync(string token) => LeerAutenticadoAsync<List<EstadoBano>>(token, "api/banos/estado", "banos");

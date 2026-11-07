@@ -7,6 +7,16 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     private readonly SemaphoreSlim exclusión = new(1, 1);
     private string? token;
     private bool iniciada;
+    private DatosNuevoServicio? borradorServicio;
+    private int? duenoBorrador;
+    public DatosNuevoServicio BorradorServicio()
+    {
+        if (Estado != EstadoSesion.Activa || Cuenta?.Rol != "Cliente")
+            throw new ErrorApi(TipoErrorApi.SinPermiso, "Se requiere un cliente activo.");
+        if (duenoBorrador != Cuenta.IdUsuario) { borradorServicio = null; duenoBorrador = Cuenta.IdUsuario; }
+        return borradorServicio ??= new DatosNuevoServicio();
+    }
+    public void NuevoBorradorServicio() { borradorServicio = null; }
     public EstadoSesion Estado { get; private set; } = EstadoSesion.Verificando;
     public CuentaActual? Cuenta { get; private set; }
     public string? Mensaje { get; private set; }
@@ -92,6 +102,7 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
         try
         {
             token = null; Cuenta = null; Estado = EstadoSesion.SinSesion; Mensaje = "Se cerró la sesión.";
+            borradorServicio = null; duenoBorrador = null;
             try { await almacen.BorrarAsync(); }
             catch { Mensaje = "Se cerró la sesión. No fue posible limpiar el almacén seguro; su restauración quedó deshabilitada."; }
         }
@@ -106,6 +117,9 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
 
     public Task<ResumenTareas> ResumenTareasAsync() => ComoRolAsync("Empleado", api.ResumenTareasAsync);
     public Task<ResumenServiciosCliente> ResumenServiciosClienteAsync() => ComoRolAsync("Cliente", api.ResumenServiciosClienteAsync);
+    public Task<List<SolicitudPropia>> MisSolicitudesAsync() => ComoRolAsync("Cliente", api.MisSolicitudesAsync);
+    public Task<List<TipoBanoPedido>> TiposBanoPedidoAsync() => ComoRolAsync("Cliente", api.TiposBanoPedidoAsync);
+    public Task<SolicitudPropia> SolicitarServicioAsync(DatosNuevoServicio datos) => ComoRolAsync("Cliente", t => api.SolicitarServicioAsync(t, datos));
     public Task<List<ServicioCliente>> MisServiciosAsync() => ComoRolAsync("Cliente", api.MisServiciosAsync);
     public Task<ServicioCliente> MiServicioAsync(int id) => ComoRolAsync("Cliente", t => api.MiServicioAsync(t, id));
     public Task<List<EstadoBano>> EstadoBanosAsync() => ComoAdministradorAsync(api.EstadoBanosAsync);

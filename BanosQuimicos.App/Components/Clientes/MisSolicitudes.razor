@@ -1,0 +1,48 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+<section class="cliente-vista" aria-busy="@cargando">
+    <h1>Mis Solicitudes</h1>
+    @if (cargando) { <p role="status">Consultando tus solicitudes…</p> }
+    else if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    else if (solicitudes.Count == 0) { <p role="status">Todavía no tenés solicitudes.</p> }
+    else
+    {
+        @foreach (var s in solicitudes)
+        {
+            <article class="cliente-tarjeta solicitud-propia" @key="s.IdSolicitud">
+                <h2>@s.Tipo — solicitud @s.IdSolicitud</h2>
+                <p>Fecha: @s.FechaSolicitud.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy HH:mm")</p>
+                @if (s.Banos.Count > 0) { <p>Baño(s): @string.Join(", ", s.Banos)</p> }
+                @if (!string.IsNullOrWhiteSpace(s.Descripcion)) { <p class="texto-trabajo">@s.Descripcion</p> }
+                @if (s.CantidadBanos is not null)
+                {
+                    <p>Cantidad: @s.CantidadBanos · Tipo: @s.TipoBano · Uso: @s.TipoUso</p>
+                    <p>Dirección: @s.Direccion</p>
+                    <p>Inicio deseado: @s.FechaDeseada?.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy")</p>
+                    @if (s.Banos.Count == 0) { <p>Sin baños asignados.</p> }
+                }
+                <span class="indicador-solicitud @Clase(s.Estado)">@s.Estado</span>
+                @if (s.Estado == "Aprobada") { <p>Aprobada no significa Resuelta: los trabajos requeridos todavía no están completos.</p> }
+            </article>
+        }
+    }
+    <button class="principal" disabled="@cargando" @onclick="Cargar">Actualizar consulta</button>
+    <button class="volver" disabled="@cargando" @onclick="Volver">Volver</button>
+</section>
+
+@code {
+    [Parameter] public EventCallback Volver { get; set; }
+    private List<SolicitudPropia> solicitudes = [];
+    private bool cargando;
+    private string? error;
+    protected override Task OnInitializedAsync() => Cargar();
+    private static string Clase(string estado) => estado switch { "Resuelta" => "resuelta", "Rechazada" or "Cancelada" => "cerrada", _ => "pendiente" };
+    private async Task Cargar()
+    {
+        cargando = true; error = null; solicitudes = [];
+        try { solicitudes = await Sesion.MisSolicitudesAsync(); }
+        catch (ErrorApi ex) { error = ex.Message; }
+        finally { cargando = false; }
+    }
+}

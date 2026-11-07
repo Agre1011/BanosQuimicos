@@ -354,6 +354,9 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                     b.Property<int?>("CantidadBanos")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("ClaveEnvio")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Descripcion")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
@@ -409,6 +412,10 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                         .HasColumnType("nvarchar(10)");
 
                     b.HasKey("IdSolicitud");
+
+                    b.HasIndex("ClaveEnvio")
+                        .IsUnique()
+                        .HasFilter("[ClaveEnvio] IS NOT NULL");
 
                     b.HasIndex("IdCliente");
 
