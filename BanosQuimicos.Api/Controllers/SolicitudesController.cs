@@ -178,6 +178,8 @@ public class SolicitudesController(BanosQuimicosDbContext db, TimeProvider reloj
             return Conflict(new { mensaje = "La ubicación actual cambió o no está disponible." });
         var ahora = reloj.GetUtcNow();
         if (ahora < solicitud.FechaSolicitud) return Conflict(new { mensaje = "La solicitud tiene una fecha posterior a la fecha actual." });
+        if (tipo == 8 && await db.TareasOperativas.AnyAsync(x => x.IdServicio == servicio.IdServicio && x.IdTipoOperacion == 8 && x.IdEstadoOperacion != 9, ct))
+            return Conflict(new { mensaje = "Este servicio ya tiene un retiro; no se duplica desde otra solicitud." });
         var tarea = new TareaOperativa { IdSolicitud = id, IdServicio = servicio.IdServicio, IdBano = servicio.IdBano,
             IdUbicacion = datos.IdUbicacionEsperada, IdEmpleado = datos.IdEmpleado, IdTipoOperacion = tipo,
             IdEstadoOperacion = 6, FechaRegistro = ahora, FechaProgramada = fecha,

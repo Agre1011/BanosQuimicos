@@ -1,0 +1,155 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+@implements IDisposable
+
+<section aria-labelledby="titulo-servicios" aria-busy="@ocupada">
+    <h1 id="titulo-servicios">Baños y Servicios</h1>
+    @if (ocupada) { <p role="status">Procesando…</p> }
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    <button class="secundario" disabled="@ocupada" @onclick="CargarAsync">Consultar nuevamente</button>
+    @if (servicios is { Count: 0 }) { <p class="aviso">No hay servicios registrados.</p> }
+    @if (servicios is not null)
+    {
+        @foreach (var s in servicios)
+        {
+            <article class="tarjeta servicio-admin" @key="s.IdServicio">
+                <h2>@s.CodigoBano · Servicio @s.IdServicio</h2>
+                <dl class="cuenta-detalle">
+                    <dt>Tipo de baño / uso</dt><dd>@s.TipoBano / @s.TipoUso</dd>
+                    <dt>Cliente</dt><dd>@s.Cliente</dd>
+                    <dt>Dirección del servicio</dt><dd>@(s.Direccion ?? "Sin dirección registrada")</dd>
+                    <dt>Limpieza</dt><dd>@s.LimpiezasSemana por semana (referencia)</dd>
+                    <dt>Estado</dt><dd>@s.Estado</dd>
+                    <dt>Responsable habitual de limpieza</dt><dd>@(s.ResponsableHabitual ?? "Sin asignar")</dd>
+                    <dt>Condición del baño</dt><dd>@s.CondicionBano</dd>
+                    <dt>Disponibilidad actual del baño</dt><dd>@(s.DisponibleAhora ? "Disponible" : "No disponible") @(s.MantenimientoBloqueante ? "— Mantenimiento bloqueante" : "")</dd>
+                </dl>
+                @if (s.FechaRetiroReal is { } retirada) { <p>Retiro confirmado: @Momento(retirada)</p> }
+                @if (s.FechaFinalizacion is { } finalizada) { <p>Servicio finalizado: @Momento(finalizada)</p> }
+                @foreach (var trabajo in s.Trabajos)
+                {
+                    <p>Tarea @trabajo.IdTarea: @trabajo.Tipo · @trabajo.Estado · Empleado de la tarea: @(trabajo.Empleado ?? "Sin asignar") · @(trabajo.FechaProgramada is { } programada ? Momento(programada) : "Sin programar") @(trabajo.IdSolicitud is { } idSol ? "· Solicitud " + idSol : "")</p>
+                }
+                @foreach (var baja in s.SolicitudesBaja) { <p class="texto-trabajo">Solicitud de baja @baja.IdSolicitud · @baja.Estado · @baja.Descripcion</p> }
+                @if (idAviso == s.IdServicio && aviso is not null) { <p class="aviso" role="status">@aviso</p> }
+                @if (PuedeProgramar(s))
+                {
+                    <button class="salir" disabled="@ocupada" @onclick="() => AbrirRetiro(s)">Baja</button>
+                    @if (abierto == s.IdServicio)
+                    {
+                        <p><strong>Programar retiro no elimina el servicio ni libera el baño.</strong> El empleado deberá registrarlo y finalizarlo.</p>
+                        @if (Elegibles(s).Count == 0) { <p>Retiro administrativo sin solicitud del cliente: no existe una baja Pendiente/Aprobada.</p> }
+                        else
+                        {
+                            <label for="solicitud-baja">Solicitud de baja que se atenderá</label>
+                            <select id="solicitud-baja" @bind="solicitud" disabled="@(ocupada || intento is not null)">
+                                <option value="0">Elegir solicitud</option>
+                                @foreach (var baja in Elegibles(s)) { <option value="@baja.IdSolicitud">Solicitud @baja.IdSolicitud · @baja.Estado</option> }
+                            </select>
+                            <p>La elegida quedará Aprobada; las demás conservarán su estado para revisión.</p>
+                        }
+                        <label for="empleado-retiro">Empleado activo para el retiro (independiente del responsable habitual)</label>
+                        <select id="empleado-retiro" @bind="empleado" disabled="@(ocupada || intento is not null)">
+                            <option value="0">Elegir empleado</option>
+                            @foreach (var e in empleados) { <option value="@e.IdUsuario">@e.Nombre (ID @e.IdUsuario)</option> }
+                        </select>
+                        @if (empleados.Count == 0) { <p>No hay empleados activos disponibles.</p> }
+                        <label for="fecha-retiro">Fecha programada</label>
+                        <InputDate id="fecha-retiro" @bind-Value="fecha" disabled="@(ocupada || intento is not null)" />
+                        <button class="salir" disabled="@(ocupada || empleado == 0 || fecha is null || Elegibles(s).Count > 0 && solicitud == 0)" @onclick="() => GuardarRetiroAsync(s)">@(intento is null ? "Confirmar programación del retiro" : "Reintentar el mismo retiro")</button>
+                        <button class="secundario" disabled="@ocupada" @onclick="CerrarSeleccion">Cancelar selección</button>
+                    }
+                }
+                @if (s.Estado == "Pendiente de entrega") { <p>Una cancelación antes de entregar requiere su tratamiento separado. No se registra un retiro ficticio.</p> }
+                @if (RetiroActivo(s))
+                {
+                    <button class="secundario" disabled="@ocupada" @onclick="() => AbrirPendientes(s)">Revisar otras tareas antes del cierre</button>
+                    @if (revisando == s.IdServicio)
+                    {
+                        <p>Elegí explícitamente qué tareas pendientes ya no corresponden. Las demás deben completarse; los mantenimientos bloqueantes pendientes se conservan y pueden continuar después del retiro. Las En curso deben resolverse antes de cerrar.</p>
+                        @if (Pendientes(s).Count == 0) { <p>No hay otras tareas pendientes del servicio.</p> }
+                        @foreach (var tarea in Pendientes(s))
+                        {
+                            <div class="decision-pendiente">
+                                <p>Tarea @tarea.IdTarea · @tarea.Tipo · @tarea.Estado · @(tarea.Empleado ?? "Sin empleado") @(tarea.IdSolicitud is { } sol ? "· Solicitud " + sol : "")</p>
+                                @if (Cancelable(tarea))
+                                {
+                                    <label><input type="checkbox" checked="@cancelar.Contains(tarea.IdTarea)" disabled="@ocupada" @onchange="e => CambiarCancelacion(tarea.IdTarea, e.Value is true)" /> Cancelar porque ya no corresponde</label>
+                                    <p>@(cancelar.Contains(tarea.IdTarea) ? "Se cancelará al confirmar." : "Se conserva para completar antes del retiro.")</p>
+                                }
+                                else { <p>@(tarea.IdEstadoOperacion == 7 ? "En curso: completar antes del cierre." : tarea.BloqueaAsignacion ? "Mantenimiento bloqueante: se conserva y sigue impidiendo nuevas asignaciones." : "Trabajo ya registrado: completar su estado; no se cancela el cumplimiento.")</p> }
+                            </div>
+                        }
+                        <p>Cancelar no elimina historial ni resuelve/cancela la solicitud vinculada. Los trabajos conservados y su estado se muestran después de confirmar.</p>
+                        <button class="principal" disabled="@(ocupada || Pendientes(s).Count == 0)" @onclick="() => ConfirmarPendientesAsync(s)">Confirmar decisión sobre pendientes (@cancelar.Count a cancelar)</button>
+                        <button class="secundario" disabled="@ocupada" @onclick="() => revisando = null">Volver a la tarjeta</button>
+                    }
+                }
+            </article>
+        }
+    }
+    <button class="salir" disabled="@ocupada" @onclick="Volver">Volver</button>
+</section>
+
+@code {
+    [Parameter] public EventCallback Volver { get; set; }
+    private List<ServicioGestion>? servicios;
+    private List<EmpleadoAsignable> empleados = [];
+    private int? abierto, revisando, idAviso;
+    private int empleado, solicitud;
+    private DateOnly? fecha;
+    private ProgramarRetiro? intento;
+    private readonly HashSet<int> cancelar = [];
+    private string? error, aviso;
+    private bool ocupada, dispuesto;
+    private static string Momento(DateTimeOffset fecha) => fecha.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy HH:mm");
+    private static List<BajaServicio> Elegibles(ServicioGestion s) => s.SolicitudesBaja.Where(x => x.IdEstadoOperacion is 1 or 2).ToList();
+    private static List<TrabajoServicio> Pendientes(ServicioGestion s) => s.Trabajos.Where(x => x.IdTipoOperacion != 8 && x.IdEstadoOperacion is 6 or 7).ToList();
+    private static bool Cancelable(TrabajoServicio t) => t.IdEstadoOperacion == 6 && !t.BloqueaAsignacion && t.FechaTrabajoRegistrado is null;
+    private static bool RetiroActivo(ServicioGestion s) => s.Estado == "Entregado" && s.Trabajos.Any(x => x.IdTipoOperacion == 8 && x.IdEstadoOperacion is 6 or 7);
+    private static bool PuedeProgramar(ServicioGestion s) => s.Estado == "Entregado" && s.IdUbicacionActual is not null && !s.Trabajos.Any(x => x.IdTipoOperacion == 8 && x.IdEstadoOperacion != 9);
+    protected override Task OnInitializedAsync() => CargarAsync();
+    private async Task EjecutarAsync(Func<Task> accion)
+    {
+        if (ocupada) return;
+        ocupada = true; error = null; aviso = null;
+        try { await accion(); } catch (ErrorApi ex) { if (!dispuesto) error = ex.Message; }
+        finally { ocupada = false; }
+    }
+    private Task CargarAsync() => EjecutarAsync(async () =>
+    {
+        servicios = null; CerrarSeleccion(); revisando = null;
+        var lista = await Sesion.ServiciosAsync(); var activos = await Sesion.EmpleadosAsignablesAsync();
+        if (!dispuesto) { servicios = lista; empleados = activos; }
+    });
+    private void AbrirRetiro(ServicioGestion s)
+    {
+        abierto = s.IdServicio; revisando = null; intento = null; empleado = 0;
+        var elegibles = Elegibles(s); solicitud = elegibles.Count == 1 ? elegibles[0].IdSolicitud : 0;
+        fecha = DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).Date);
+    }
+    private void CerrarSeleccion() { abierto = null; intento = null; }
+    private void AbrirPendientes(ServicioGestion s) { revisando = s.IdServicio; CerrarSeleccion(); cancelar.Clear(); }
+    private void CambiarCancelacion(int id, bool marcado) { if (ocupada) return; if (marcado) cancelar.Add(id); else cancelar.Remove(id); }
+    private void Actualizar(ServicioGestion s, string mensaje)
+    {
+        if (dispuesto || servicios is null) return;
+        servicios[servicios.FindIndex(x => x.IdServicio == s.IdServicio)] = s;
+        idAviso = s.IdServicio; aviso = mensaje; CerrarSeleccion(); revisando = null; cancelar.Clear();
+    }
+    private Task GuardarRetiroAsync(ServicioGestion s) => EjecutarAsync(async () =>
+    {
+        if (fecha is not { } dia || empleado == 0 || !PuedeProgramar(s)) return;
+        var baja = Elegibles(s).SingleOrDefault(x => x.IdSolicitud == solicitud);
+        if (Elegibles(s).Count > 0 && baja is null) return;
+        intento ??= new ProgramarRetiro(Guid.NewGuid(), empleado, s.IdUbicacionActual!.Value, baja?.IdSolicitud, baja?.IdEstadoOperacion, dia);
+        Actualizar(await Sesion.ProgramarRetiroAsync(s.IdServicio, intento), "Retiro programado. El servicio y la asignación del baño siguen vigentes hasta completarlo.");
+    });
+    private Task ConfirmarPendientesAsync(ServicioGestion s) => EjecutarAsync(async () =>
+    {
+        var conservar = Pendientes(s).Where(x => !cancelar.Contains(x.IdTarea)).Select(x => x.IdTarea).ToList();
+        Actualizar(await Sesion.ResolverPendientesAsync(s.IdServicio, new ResolverPendientes(cancelar.Order().ToList(), conservar)),
+            "Decisión guardada. Se conservan historial y solicitudes; revisá los estados de las tareas mostradas.");
+    });
+    public void Dispose() { dispuesto = true; servicios = null; empleados = []; }
+}

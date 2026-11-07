@@ -61,7 +61,7 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/asignar-banos-servicio`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/banos-servicios`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 ## Gestión de cuentas
 
@@ -88,3 +88,7 @@ El administrador asigna responsable habitual y programa cada limpieza por fecha,
 ## Solicitudes y Reclamos
 
 Listado/detalle administrativos, aprobación y asignación puntual con tareas vinculadas, sin cambiar responsables habituales. [Guía Windows y datos locales](docs/solicitudes-reclamos.md). Servicio nuevo tiene [selección de baños y entregas](docs/asignar-banos-servicio.md); baño adicional, traslado informado y respuesta sin trabajos conservan su tratamiento separado. La prueba integral Android se hará al terminar los bloques y contra API local; después se planificará la republicación.
+
+## Baños y Servicios
+
+Tarjetas e historial, retiro programado sin liberar anticipadamente la unidad y revisión explícita de tareas pendientes. El cierre del empleado finaliza el servicio y calcula disponibilidad respetando condición y mantenimiento. [Guía Windows con dos servicios de prueba](docs/banos-servicios.md). Sin migración nueva ni publicación en hosting.

@@ -23,6 +23,9 @@ public class SolicitudesPruebas(AplicacionTareasPruebas app) : IClassFixture<Apl
     {
         var baseTarea = await datos.Tarea(null, null);
         using var db = app.NuevoContexto(); var servicio = await db.Servicios.SingleAsync(x => x.IdServicio == baseTarea.IdServicio, Ct);
+        // La tarea auxiliar solo crea el contexto del fixture; en baja no representa otro trabajo pendiente.
+        if (tipo == 6)
+            await db.TareasOperativas.Where(x => x.IdTarea == baseTarea.IdTarea).ExecuteUpdateAsync(x => x.SetProperty(t => t.IdEstadoOperacion, 9).SetProperty(t => t.FechaCancelacion, AplicacionTareasPruebas.Ahora), Ct);
         var solicitud = new SolicitudCliente { IdCliente = servicio.IdCliente, IdServicioReferencia = tipo == 1 ? null : servicio.IdServicio,
             IdTipoOperacion = tipo, IdEstadoOperacion = estado, FechaSolicitud = AplicacionTareasPruebas.Ahora,
             Descripcion = "PRUEBA SOLICITUD " + Guid.NewGuid().ToString("N"), ModalidadCambioDireccion = modalidad,
