@@ -64,3 +64,17 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .servicio-admin h2 { font-size: 1.2rem; }
 .decision-pendiente { border: 1px solid #94712b; border-radius: .4rem; padding: .7rem; margin-top: .7rem; }
 .decision-pendiente input[type="checkbox"] { display: inline-block; width: 1.2rem; min-height: 1.2rem; vertical-align: middle; }
+
+/* Consulta del cliente: tarjetas grises y acciones ovaladas de la referencia aprobada. */
+.cliente-vista { max-width: 32rem; margin: auto; }
+.cliente-tarjeta { background: #d9d9d9; color: #191919; padding: 1rem; margin-bottom: 1.5rem; overflow-wrap: anywhere; }
+.cliente-tarjeta h1, .cliente-tarjeta h2 { font-size: 1.2rem; margin: 0 0 .7rem; }
+.cliente-tarjeta dl { display: grid; grid-template-columns: minmax(5rem, 1fr) minmax(0, 2fr); gap: .5rem; margin: 0; }
+.cliente-tarjeta dt { font-weight: normal; }
+.cliente-tarjeta dd { text-align: right; margin: 0; }
+.cliente-opcion { display: block; width: 85%; margin: 1.5rem auto; background: #10b45f; color: #092b18; border-radius: 50%; min-height: 3.6rem; }
+.cliente-detalle { display: block; width: 65%; margin: .7rem auto 0; background: #19c7c2; color: #123331; border-radius: 50%; }
+.cliente-vista .volver { display: block; width: auto; margin: 2rem auto 0; background: #ff4343; color: #291616; }
+.cliente-baja { background: #ff4343; color: #291616; }
+.cliente-pendiente { font-size: .9rem; text-align: center; }
+.cliente-vista button:disabled { cursor: not-allowed; }

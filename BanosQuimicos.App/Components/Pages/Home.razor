@@ -4,6 +4,7 @@
 @using BanosQuimicos.App.Components.Cuentas
 @using BanosQuimicos.App.Components.Empleados
 @using BanosQuimicos.App.Components.Administracion
+@using BanosQuimicos.App.Components.Clientes
 @inject SesionUsuario Sesion
 @implements IDisposable
 
@@ -62,6 +63,11 @@ else if (Sesion.Estado == EstadoSesion.Activa && Sesion.Cuenta is { } cuenta)
         @if (verTareas) { <TareasAsignadas Volver="() => verTareas = false" /> }
         else { <InicioEmpleado Nombre="@cuenta.Nombre" Salir="SalirAsync" VerTareas="() => verTareas = true" /> }
     }
+    else if (cuenta.Rol == "Cliente")
+    {
+        @if (verMisServicios) { <MisServicios Volver="() => verMisServicios = false" /> }
+        else { <InicioCliente Nombre="@cuenta.Nombre" Salir="SalirAsync" VerServicios="() => verMisServicios = true" /> }
+    }
     else
     {
     <section class="tarjeta" aria-labelledby="titulo-inicio">
@@ -90,7 +96,7 @@ else
 }
 
 @code {
-    private bool registro, gestion, verTareas, verBanos, verSolicitudes, verServicios;
+    private bool registro, gestion, verTareas, verBanos, verSolicitudes, verServicios, verMisServicios;
     private string correoInicial = "";
     private string? avisoRegistro;
     protected override async Task OnInitializedAsync()
@@ -103,6 +109,7 @@ else
         if (Sesion.Estado == EstadoSesion.SinSesion) gestion = false;
         if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Administrador") { gestion = false; verBanos = false; verSolicitudes = false; verServicios = false; }
         if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Empleado") verTareas = false;
+        if (Sesion.Estado != EstadoSesion.Activa || Sesion.Cuenta?.Rol != "Cliente") verMisServicios = false;
         StateHasChanged();
     });
     private void MostrarRegistro() { registro = true; avisoRegistro = null; }
@@ -114,6 +121,7 @@ else
     }
     private async Task SalirAsync()
     {
+        verMisServicios = false;
         registro = false; gestion = false; verTareas = false; verBanos = false; verSolicitudes = false; verServicios = false; avisoRegistro = null; correoInicial = "";
         await Sesion.CerrarAsync();
     }

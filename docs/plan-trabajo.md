@@ -1151,3 +1151,54 @@ Estas evidencias son **manuales** y se registran separadas de las **147 pruebas 
 Se conservan los resultados guardados como historial; no se restablecen servicios, solicitudes o tareas ni se libera un mantenimiento por fuera del recorrido. Los estados iniciales de los ejemplos descritos arriba corresponden a la preparación anterior a la prueba.
 
 **Bloque cerrado y listo para commit.** La integral Android local y la posterior actualización/republicación del hosting siguen para el final de los bloques. Permanecen pendientes vencimiento real del token y alternancia de servidores. Sin migración nueva, cambios en hosting, commit, push, merge ni inicio de otro bloque. Mensaje sugerido: **feat: gestionar servicios y programar retiros con revisión de pendientes**.
+
+## 23. Consulta de servicios del cliente
+
+### Alcance, referencias y reglas
+
+Master estaba limpio en `7f7df27` (merge de Baños y Servicios), actualizado por el estudiante. Se creó `feature/servicios-cliente` desde esa versión, conservando todos los datos y sin descartar cambios. Revisión de AGENTS.md, documentación funcional del PDF, página 7 visual, DER/modelo, decisiones del plan y las cuatro capturas aportadas. No se modifica login ni el identificador por correo electrónico.
+
+Recorrido implementado: **Inicio del cliente → Mis Servicios → Detalle → Volver al listado → Volver al inicio**, con cierre de sesión existente. Inicio con nombre real de `/yo`, rol Cliente y contador consultado a la API; tarjetas con código, tipo de baño/uso, dirección y frecuencia. Detalle con los mismos datos y estado. Incluye carga, lista vacía, errores y consulta nuevamente; una consulta fallida nunca se presenta como cero servicios.
+
+**Vigentes = Pendiente de entrega + Entregado**, conforme C8 y la exclusividad de asignación existente. El contador y listado usan la misma regla. Finalizado/Cancelado permanecen en el historial pero no aparecen en esta consulta. Solicitar o programar retiro no elimina la vigencia. Condición física y mantenimiento no ocultan un servicio aún asignado. Dirección del propio servicio, actual o preparada si todavía no se entregó, sin tomar ubicación de otro servicio del mismo baño. La frecuencia continúa siendo referencia manual.
+
+Se mantienen visibles y deshabilitados Mis Solicitudes, Solicitar un nuevo servicio y acciones de limpieza extra, cambio de dirección, reclamo y baja. Las modalidades «Ya realicé el cambio de dirección» y «Necesito que lo trasladen» siguen diferenciadas, sin implementar sus formularios. Sin mensajes de éxito ni operaciones simuladas. Se respetan tarjetas, colores y navegación de las capturas y se reutiliza la marca existente: no hay un recurso independiente del logo Celeris en el repositorio y no se inventó otro.
+
+### API, modelo y archivos
+
+- `Controllers/ServiciosClienteController.cs`: GET `/api/servicios-cliente/mios/resumen`, `/mios` y `/{id}`. Filtrado por usuario autenticado mediante CLIENTES; no se recibe idCliente. Orden estable código/ID. Detalle ajeno, inexistente o que dejó de estar vigente devuelve 404. DTO mínimo sin datos administrativos privados ni credenciales, respuesta sin caché.
+- `Seguridad/Politicas.cs` y `ConfiguracionSeguridad.cs`: política Cliente/Activa. La autenticación existente consulta rol/estado actuales en cada petición; empleado, administrador y cuenta pendiente no acceden a las consultas del cliente.
+- App: `Autenticacion/ContratosServiciosCliente.cs`, `ClienteAutenticacion.cs` y `SesionUsuario.cs` reutilizan rutas internas, token por petición y guardas de sesión/rol existentes. `Components/Clientes/InicioCliente.razor`, `MisServicios.razor`, `Pages/Home.razor` y `wwwroot/app.css` agregan las vistas autorizadas, navegación y presentación. Al volver se recargan listado/contador; no se conservan datos de otro usuario al cerrar sesión.
+- Proyecto de pruebas enlaza los componentes nuevos para compilar Home; no se añadieron pruebas visuales simples. `ServiciosClientePruebas.cs` cubre reglas y aislamiento. README y `docs/servicios-cliente.md` contienen orientación y guía manual.
+
+**Sin cambios de entidades, configuraciones EF ni migraciones**; se conservan las 12 tablas e historial. No se escribieron registros en `BanosQuimicosDb`. Solo consultas de lectura para elegir datos de prueba; las escrituras automatizadas utilizan bases nuevas aisladas `BanosQuimicosAuthPruebas_<GUID>`, conservadas sin borrar datos anteriores. Conexión local existente sin cambios: Windows HTTPS localhost:7292; Android Debug loopback:5148 por USB. Hosting no consultado ni modificado.
+
+### Verificaciones y preparación manual
+
+Se agregaron **8 casos automatizados**: aislamiento entre dos clientes tanto en lista como en detalle, intento de elegir otra identidad por query, resumen coherente con vigencia, dirección preparada, exclusión de finalizados/cancelados, actualización al cerrar servicio conservando historia, cliente sin servicios y las tres rutas ante anónimo/administrador/empleado/pendiente/suspendido/baja lógica. Se conservaron las 147 pruebas anteriores.
+
+Primera ejecución afectada: 7 correctos y 1 fallido por traducción EF del filtro de detalle después de proyectar el DTO. Se corrigió moviendo el filtro de ID antes de la proyección; segunda ejecución: **8 correctos**. El fallo ocurrió en una base aislada y no modificó datos operativos. **Una única suite completa de cierre: 155 correctos, 0 fallidos y 0 omitidos** (147 existentes + 8 nuevos). Total **171 ejecuciones de casos**, contando ambas pasadas focalizadas y el fallo corregido; 155 casos distintos. No se repiten pruebas ni compilaciones por los cambios documentales del cierre.
+
+App Debug Windows y Android compiló con **0 errores y 0 advertencias**. Parámetros temporales JavaMaximumHeapSize=512M y JavaOptions=-XX:+UseSerialGC, sin cambios de paquetes ni configuración global. API y componentes enlazados compilaron con las pruebas en `tmp/pruebas-cliente`. No se ejecutó ni se atribuye comprobación visual a la app nativa.
+
+Consulta de preparación solo lectura verificó `DB_NAME() = BanosQuimicosDb` e `IsLocalDB = 1`. Cliente Prueba (IdUsuario 2) tiene **3 servicios vigentes**: PRUEBA-TAREAS-01, PRUEBA-NUEVO-01 y PRUEBA-NUEVO-02. Los servicios 4/5 de retiro están Finalizados. Cuentas **Empleado Prueba** (IdUsuario 3, rol Cliente pese al nombre) y **Agus Tin** (IdUsuario 5) están Activas y sin servicios. Usar sus credenciales conocidas sin cambiarlas; si no se conocen, registrar personalmente otra cuenta y activarla con el administrador existente. No se documentan contraseñas ni tokens.
+
+### Pendientes y cierre para revisión
+
+Guía reproducible Windows en `docs/servicios-cliente.md`: API local HTTPS actualizada → cuenta con servicios → tarjetas/detalle/Volver → acciones deshabilitadas → cuenta sin servicios → pérdida/recuperación de conexión → cierre de sesión. **Recorrido manual Windows aprobado en el cierre siguiente**, únicamente para los casos confirmados. Integral Android local al terminar los bloques; después actualización de migraciones previas y republicación de API. Permanecen pendientes vencimiento real del token y alternancia de servidores en dispositivo. Solicitudes y acciones del detalle del cliente continúan en bloques posteriores.
+
+**Bloque de consulta cerrado y listo para commit**, con los recorridos Windows confirmados; no comenzar el siguiente sin confirmación. Mensaje sugerido: **feat: consultar servicios propios del cliente**. Sin commit, push, merge ni publicación.
+
+Revisión final: diff sin errores de espacios; entidades/configuraciones/migraciones y conexión local sin cambios. Índice Git vacío. Se revisaron los 168 archivos candidatos no ignorados: sin generados, perfiles privados ni indicadores de credenciales, JWT o claves privadas en las rutas/textos examinados. PDF y dos PNG originales conservan sus SHA-256. Los cambios finales son documentales y no requieren repetir pruebas o compilaciones.
+
+### Cierre: pruebas manuales Windows aprobadas
+
+El estudiante confirmó el recorrido con API local y LocalDB:
+
+- **Cliente Prueba:** contador de 3 servicios, listado, detalle y navegación de regreso correctos.
+- **Cliente sin servicios:** mensaje de listado vacío, sin datos del cliente anterior.
+- **Acciones futuras:** visibles y deshabilitadas.
+
+Evidencia **manual**, separada de las **155 pruebas automatizadas anteriores** y de las compilaciones ya registradas. No se consideran confirmados por este mensaje los pasos adicionales de desconexión/recuperación, reinicio, cierre persistente ni ventana reducida. Solo se actualizaron el plan y la guía; no se repitieron pruebas ni compilaciones y no se modificaron datos.
+
+**Bloque cerrado y listo para commit.** Integral manual Android contra API local y posterior republicación/migraciones pendientes del hosting reservadas para el final. Se conservan los pendientes de vencimiento real del token y alternancia de servidores. Sin commit, push, merge, cambios en hosting ni inicio de otro bloque. Mensaje sugerido: **feat: consultar servicios propios del cliente**.
