@@ -1251,3 +1251,49 @@ El estudiante confirmó con API local y LocalDB: cliente envía pedido y lo ve *
 Verificación **manual**, separada de las **166 pruebas automatizadas anteriores** y de las compilaciones registradas. No se atribuyen a esta confirmación validaciones de campos, reintentos, aislamiento entre cuentas, pérdida/recuperación de conexión ni consulta entre entregas parciales. Los datos iniciales de la guía corresponden a la preparación previa; no se modifican ni restablecen cuentas, unidades, solicitudes, servicios o tareas en este cierre.
 
 Se actualizaron únicamente el plan y la guía. No se repitieron pruebas ni compilaciones por cambios documentales. **Bloque cerrado y listo para commit.** `20261107191916_ClaveEnvioSolicitud` sigue aplicada solo en LocalDB y pendiente para el hosting. Integral manual Android local y posterior actualización/republicación reservadas para el final. Continúan pendientes vencimiento real del token y alternancia de servidores. Sin commit, push, merge, cambios en hosting ni inicio de otro bloque. Mensaje sugerido: **feat: solicitar nuevos servicios y consultar solicitudes del cliente**.
+
+## 25. Limpieza extra y reclamos del cliente
+
+Master estaba limpio en `d09f687` (merge PR #14), actualizado por el estudiante. Se creó `feature/limpieza-reclamos-cliente` sin descartar cambios. Revisados AGENTS.md, documentación funcional, Figma del cliente (PDF página 7 y capturas), plan, modelo y recorridos de consultas/envío/asignación/cumplimiento existentes. No se modifican los originales.
+
+### Reglas e implementación
+
+- Ambas acciones requieren **Cliente/Activa y servicio propio Entregado**, de acuerdo con la condición existente en la asignación administrativa. Pendiente de entrega, Finalizado y Cancelado no admiten pedidos nuevos de estos tipos. No se impone que el baño esté disponible para un alquiler distinto ni que cambie su condición física: un servicio asignado se conserva ante mantenimiento o No apto.
+- Limpieza extra: confirmación clara **en el detalle**, sin formulario adicional ni datos inventados. La documentación no exige otro dato para enviarla; administración elige empleado y fecha. Descripcion nula, sin simular observaciones. Cancelar antes de confirmar solo vuelve al detalle, sin enviar; después de un resultado incierto se ofrece Volver, sin afirmar que cancela un pedido.
+- Reclamo: pantalla de referencia con descripción, Notificar y Volver. Texto obligatorio de hasta 2000 caracteres, trim y rechazo de vacío/espacios. El cliente no decide tarea ni bloqueo: administración conserva su elección Limpieza extra/Mantenimiento y bloqueo cuando corresponde.
+- Ambas guardan Nuevo pedido del tipo correcto (3 Limpieza extra / 5 Reclamo), Pendiente, cliente autenticado, servicio y fecha real del servidor. No crean tareas ni modifican responsable habitual. Se consultan en Mis Solicitudes y en el listado administrativo ya existente. Aprobar y asignar y luego cumplir trabajos utiliza la lógica anterior de resolución; no se resuelven por enviar ni aprobar. Cambio de dirección y baja del cliente continúan deshabilitados y diferenciados para el próximo bloque.
+
+Archivos: `Contratos/Solicitudes/SolicitudServicioSolicitud.cs` y ampliación de `Controllers/SolicitudesClienteController.cs` con POST `/api/solicitudes-cliente/servicios/{id}/limpieza-extra` y `/reclamo`; DTO con claveEnvio y descripción solo para reclamo. Permisos actuales y propietario revalidados desde API, sin confiar en idCliente. Servicio ajeno/inexistente en pedido nuevo: 404. `ClienteAutenticacion`, `SesionUsuario`, `ContratosSolicitudServicio`, `SolicitudServicio.razor`, `MisServicios.razor` y CSS conectan la app sin rehacer autenticación. `docs/limpieza-reclamos-cliente.md` y README contienen la guía.
+
+Se reutilizan **ClaveEnvio**, índice filtrado y transacciones Serializable con bloqueo de envíos. Primera creación 201; misma clave/cliente/servicio/tipo/descripción normalizada devuelve el registro y estado actuales (200), incluso si el servicio terminó después. No reabre historial. Clave ajena o alterada 409 sin revelar datos; otra clave representa un pedido nuevo intencional y vuelve a exigir servicio Entregado. El índice global evita reutilizar claves entre tipos, incluido nuevo servicio. No se deduplica por contenido.
+
+La app bloquea doble envío y muestra éxito únicamente tras guardar. Borrador por usuario/servicio/tipo en memoria de sesión conserva texto y clave entre vistas y tras errores recuperables; con resultado incierto bloquea cambiar el contenido y reintenta el mismo envío. Un 400 permite corregir; después del éxito limpia el borrador, para que abrir otra acción obtenga clave nueva. Cerrar sesión limpia borradores. No se guardan en disco: después de reinicio con resultado incierto consultar Mis Solicitudes antes de iniciar otro pedido. Sin contraseñas o tokens en documentación.
+
+### Modelo y datos locales
+
+**Sin cambios de entidades/configuraciones EF/snapshot ni migración nueva**. Continúan las 12 tablas y el historial. `20261107191916_ClaveEnvioSolicitud` ya aplicada en LocalDB sigue pendiente de hosting junto con las demás actualizaciones finales. No se contactó ni modificó MonsterASP, firewall, red o configuración local/HTTPS/USB.
+
+Solo lectura en LocalDB confirmó nombre BanosQuimicosDb e IsLocalDB=1: servicios Entregados 1/2/3 (PRUEBA-TAREAS-01, PRUEBA-NUEVO-01/02) del usuario 2 Cliente Prueba; servicio 6 PRUEBA-RETIRO-01 del usuario 5 Agus Tin. Hay 6 usuarios, 6 solicitudes y 12 tareas antes de la prueba manual de este bloque. No se prepararon datos nuevos ni se alteraron cuentas, contraseñas, roles, responsables o trabajos anteriores. Nuevos envíos los hará el estudiante desde la app. Las pruebas automatizadas escriben exclusivamente en bases aisladas nuevas BanosQuimicosAuthPruebas_<GUID>, conservadas.
+
+### Verificaciones y pendientes
+
+Se conservaron las **166 pruebas anteriores**, incluidas las del recorrido administrativo de elección, asignación, bloqueo y resolución. Se agregaron **11 casos** en LimpiezaReclamosClientePruebas: conexión real de las dos nuevas entradas al flujo existente, concurrencia/clave propia y ajena/datos alterados/tipo distinto, nueva solicitud intencional, descripción y estados, seis casos de permisos y borrador/clave/texto de app. **Ejecución afectada: 11/11 correctos**. **Una única suite completa de cierre: 177 correctos, 0 fallidos y 0 omitidos**. Total **188 ejecuciones de casos**, 177 casos distintos. Sin pruebas nuevas para detalles visuales simples ni repetición por cambios documentales.
+
+Guía Windows: Cliente Prueba → servicio 1 → confirmar limpieza extra → administrador aprueba y asigna → empleado registra y finaliza → cliente actualiza Mis Solicitudes y ve Resuelta; luego reclamo identificable, administrador elige mantenimiento/bloqueo y se repite el recorrido. Incluye pasos para comprobar volver, validación de texto y opciones pendientes deshabilitadas. **Ambos recorridos manuales Windows aprobados en el cierre siguiente**, únicamente para los casos confirmados. Integral manual Android al terminar bloques contra API local; después migraciones y republicación del hosting. Permanecen pendientes vencimiento real del token y alternancia de servidores. No comenzar otro bloque sin confirmación. Mensaje sugerido: **feat: solicitar limpieza extra y registrar reclamos del cliente**. Sin commit, push, merge ni publicación.
+
+API y Razor enlazados compilaron con las pruebas en tmp/pruebas-limpieza-reclamos-cliente. App Debug **Windows y Android compiló con 0 errores y 0 advertencias**, usando parámetros temporales JavaMaximumHeapSize=512M/JavaOptions=-XX:+UseSerialGC. Se verificó una última compilación incremental tras ajustar el rótulo Volver de un envío incierto, para no sugerir que cancela una solicitud guardada. No se instalaron ni actualizaron herramientas/paquetes. Las ejecuciones nativas manuales Windows confirmadas por el estudiante se registran por separado a continuación.
+
+**Bloque cerrado y listo para commit.** Diff sin errores de espacios; entidades/configuraciones/migraciones y conexión local sin cambios. Índice vacío. Revisados 182 archivos candidatos no ignorados, sin generados, perfiles privados ni indicadores de credenciales, JWT o claves privadas en las rutas/textos examinados. PDF y PNG originales conservan sus hashes. Solo se actualiza documentación al cerrar: no se repiten pruebas ni compilaciones. No se inició el siguiente bloque.
+
+### Cierre: pruebas manuales Windows aprobadas
+
+El estudiante confirmó ambos recorridos con API local y LocalDB:
+
+- Cliente crea limpieza extra y reclamo, cada uno con tarjeta propia en Mis Solicitudes.
+- Administrador consulta ambas solicitudes y asigna sus tareas.
+- Empleado recibe ambas tareas, registra el trabajo y las finaliza.
+- Cliente vuelve a consultar y ve ambas solicitudes **Resueltas**.
+
+Evidencias **manuales**, separadas de las **177 pruebas automatizadas anteriores** y de las compilaciones. No se consideran confirmados por este mensaje validaciones de texto, cancelación de la confirmación, reintentos, aislamiento entre clientes, desconexión/recuperación ni el tipo concreto de trabajo/bloqueo elegido para el reclamo. Solo se modifican el plan y la guía; no se repiten pruebas ni compilaciones ni se restablecen datos.
+
+**Bloque cerrado y listo para commit.** Integral manual Android local y posterior actualización/republicación del hosting reservadas para el final. Sin migración nueva; `20261107191916_ClaveEnvioSolicitud` y demás actualizaciones pendientes del hosting conservan ese estado. Continúan pendientes vencimiento real del token y alternancia de servidores en dispositivo. Sin commit, push, merge, cambios en hosting ni inicio de otro bloque. Mensaje sugerido: **feat: solicitar limpieza extra y registrar reclamos del cliente**.

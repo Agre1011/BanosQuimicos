@@ -1,6 +1,12 @@
 @using BanosQuimicos.App.Autenticacion
 @inject SesionUsuario Sesion
 
+@if (reclamoAbierto && detalle is not null)
+{
+    <SolicitudServicio Servicio="detalle" Reclamo="true" Volver="CerrarAccion" />
+}
+else
+{
 <section class="cliente-vista" aria-labelledby="titulo-servicios-cliente" aria-busy="@cargando">
     <h1 id="titulo-servicios-cliente">@(enDetalle ? "Detalle del servicio" : "Mis Servicios")</h1>
     @if (cargando) { <p role="status">Consultando el servicio…</p> }
@@ -20,12 +26,19 @@
                 <dt>Estado</dt><dd>@s.EstadoServicio</dd>
             </dl>
         </article>
-        <button class="cliente-opcion" disabled>Solicitar Limpieza Extra</button>
+        @if (confirmarLimpieza)
+        {
+            <SolicitudServicio Servicio="s" Volver="CerrarAccion" />
+        }
+        else
+        {
+        <button class="cliente-opcion" disabled="@(s.EstadoServicio != "Entregado")" @onclick="() => confirmarLimpieza = true">Solicitar Limpieza Extra</button>
         <button class="cliente-opcion" disabled>Solicitar o informar cambio de dirección</button>
         <p class="cliente-pendiente">Pendiente: «Ya realicé el cambio de dirección» o «Necesito que lo trasladen».</p>
-        <button class="cliente-opcion" disabled>Realizar Reclamo</button>
+        <button class="cliente-opcion" disabled="@(s.EstadoServicio != "Entregado")" @onclick="() => reclamoAbierto = true">Realizar Reclamo</button>
         <button class="cliente-opcion cliente-baja" disabled>Dar de Baja</button>
-        <p class="cliente-pendiente">Estas acciones todavía no están disponibles.</p>
+        <p class="cliente-pendiente">Cambio de dirección y baja todavía no disponibles. Limpieza extra y reclamos requieren un servicio Entregado.</p>
+        }
     }
     else if (!enDetalle)
     {
@@ -44,14 +57,16 @@
         }
         <button class="principal" @onclick="Cargar">Consultar nuevamente</button>
     }
-    <button class="volver" disabled="@cargando" @onclick="Regresar">Volver</button>
+    @if (!confirmarLimpieza) { <button class="volver" disabled="@cargando" @onclick="Regresar">Volver</button> }
 </section>
+}
 
 @code {
     [Parameter] public EventCallback Volver { get; set; }
     private List<ServicioCliente> servicios = [];
     private ServicioCliente? detalle;
     private bool cargando, enDetalle;
+    private bool confirmarLimpieza, reclamoAbierto;
     private int idDetalle;
     private string? error;
     protected override Task OnInitializedAsync() => Cargar();
@@ -66,6 +81,7 @@
     }
     private async Task Abrir(int id)
     {
+        confirmarLimpieza = false; reclamoAbierto = false;
         enDetalle = true; idDetalle = id; detalle = null; error = null; cargando = true;
         // Consultar nuevamente protege también cambios ocurridos desde la carga del listado.
         try { detalle = await Sesion.MiServicioAsync(id); }
@@ -73,6 +89,7 @@
         finally { cargando = false; }
     }
     private Task Reintentar() => enDetalle ? Abrir(idDetalle) : Cargar();
+    private Task CerrarAccion() => Abrir(idDetalle);
     private async Task Regresar()
     {
         if (enDetalle) { enDetalle = false; await Cargar(); }

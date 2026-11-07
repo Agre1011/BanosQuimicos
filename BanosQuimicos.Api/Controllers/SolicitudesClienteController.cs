@@ -82,4 +82,49 @@ public class SolicitudesClienteController(BanosQuimicosDbContext db, TimeProvide
         db.SolicitudesCliente.Add(nueva); await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         return CreatedAtAction(nameof(Detalle), new { id = nueva.IdSolicitud }, await Propias(nueva.IdSolicitud).SingleAsync(ct));
     }
+
+    [HttpPost("servicios/{id:int}/limpieza-extra")]
+    public Task<ActionResult<SolicitudPropiaRespuesta>> Limpieza(int id, SolicitudServicioSolicitud datos, CancellationToken ct) =>
+        CrearSobreServicio(id, 3, datos, ct);
+
+    [HttpPost("servicios/{id:int}/reclamo")]
+    public Task<ActionResult<SolicitudPropiaRespuesta>> Reclamo(int id, SolicitudServicioSolicitud datos, CancellationToken ct) =>
+        CrearSobreServicio(id, 5, datos, ct);
+
+    private async Task<ActionResult<SolicitudPropiaRespuesta>> CrearSobreServicio(int id, int tipo, SolicitudServicioSolicitud datos, CancellationToken ct)
+    {
+        var descripcion = datos.Descripcion?.Trim();
+        if (datos.ClaveEnvio == Guid.Empty || tipo == 5 && string.IsNullOrWhiteSpace(descripcion)
+            || tipo == 3 && !string.IsNullOrEmpty(descripcion))
+            return BadRequest(new { mensaje = "Indicar una clave válida y descripción obligatoria solo para reclamos." });
+        if (tipo == 3) descripcion = null; // No inventar observaciones para una limpieza confirmada.
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        await db.Database.ExecuteSqlRawAsync("""
+            DECLARE @r int;
+            EXEC @r=sys.sp_getapplock @Resource=N'BanosQuimicos.EnvioSolicitudes',
+                @LockMode=N'Exclusive', @LockOwner=N'Transaction', @LockTimeout=10000;
+            IF @r<0 THROW 51000, 'No se pudo bloquear el envío.', 1;
+            """, ct);
+        var cliente = await db.Clientes.Where(c => c.IdUsuario == Usuario && c.Usuario.EstadoCuenta == "Activa"
+            && c.Usuario.Rol.NombreRol == "Cliente").SingleOrDefaultAsync(ct);
+        if (cliente is null) return Forbid();
+        var anterior = await db.SolicitudesCliente.SingleOrDefaultAsync(s => s.ClaveEnvio == datos.ClaveEnvio, ct);
+        if (anterior is not null)
+        {
+            if (anterior.IdCliente != cliente.IdCliente || anterior.IdServicioReferencia != id
+                || anterior.IdTipoOperacion != tipo || anterior.Descripcion != descripcion)
+                return Conflict(new { mensaje = "La clave no corresponde a este envío." });
+            // Reintentar un guardado no es pedir otra operación: conservarlo aunque el servicio haya finalizado.
+            await tx.CommitAsync(ct); return Ok(await Propias(anterior.IdSolicitud).SingleAsync(ct));
+        }
+        var servicio = await db.Servicios.SingleOrDefaultAsync(s => s.IdServicio == id && s.IdCliente == cliente.IdCliente, ct);
+        if (servicio is null) return NotFound();
+        if (servicio.EstadoServicio != "Entregado")
+            return Conflict(new { mensaje = "La solicitud requiere un servicio entregado." });
+        var nueva = new SolicitudCliente { ClaveEnvio = datos.ClaveEnvio, IdCliente = cliente.IdCliente,
+            IdServicioReferencia = id, IdTipoOperacion = tipo, IdEstadoOperacion = 1,
+            FechaSolicitud = reloj.GetUtcNow(), Descripcion = descripcion };
+        db.SolicitudesCliente.Add(nueva); await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+        return CreatedAtAction(nameof(Detalle), new { id = nueva.IdSolicitud }, await Propias(nueva.IdSolicitud).SingleAsync(ct));
+    }
 }
