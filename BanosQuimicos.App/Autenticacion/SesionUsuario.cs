@@ -106,6 +106,9 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
 
     public Task<ResumenTareas> ResumenTareasAsync() => ComoRolAsync("Empleado", api.ResumenTareasAsync);
     public Task<List<EstadoBano>> EstadoBanosAsync() => ComoAdministradorAsync(api.EstadoBanosAsync);
+    public Task<List<SolicitudResumen>> SolicitudesAsync() => ComoAdministradorAsync(api.SolicitudesAsync);
+    public Task<SolicitudDetalle> DetalleSolicitudAsync(int id) => ComoAdministradorAsync(t => api.DetalleSolicitudAsync(t, id));
+    public Task<SolicitudDetalle> AsignarSolicitudAsync(int id, AsignacionSolicitud datos) => ComoAdministradorAsync(t => api.AsignarSolicitudAsync(t, id, datos));
     public Task<List<EmpleadoAsignable>> EmpleadosAsignablesAsync() => ComoAdministradorAsync(api.EmpleadosAsignablesAsync);
     public Task<EstadoBano> AsignarResponsableAsync(int id, int empleado, int? anterior) => ComoAdministradorAsync(t => api.AsignarResponsableAsync(t, id, empleado, anterior));
     public Task<LimpiezaProgramada> ProgramarLimpiezaAsync(int id, ProgramarLimpieza datos) => ComoAdministradorAsync(t => api.ProgramarLimpiezaAsync(t, id, datos));

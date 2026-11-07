@@ -56,3 +56,6 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .asignacion-bano { margin-top: .8rem; }
 .solicitudes-admin { background: #ffe06b; color: #17331e; }
 .estado-banos-admin { background: #ff4343; color: #291616; }
+.solicitud-admin { background: #efefea; margin-bottom: 1.2rem; }
+.solicitud-admin h2 { font-size: 1.2rem; }
+.solicitud-admin input[type="checkbox"] { display: inline-block; width: 1.2rem; min-height: 1.2rem; vertical-align: middle; }
