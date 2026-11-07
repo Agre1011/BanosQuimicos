@@ -1,0 +1,148 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+@implements IDisposable
+
+<section aria-labelledby="titulo-solicitudes" aria-busy="@ocupada">
+    <h1 id="titulo-solicitudes">@(idDetalle is null ? "Solicitudes y Reclamos" : "Resolver solicitudes y reclamos")</h1>
+    @if (ocupada) { <p role="status">Procesando…</p> }
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    <button class="secundario" disabled="@ocupada" @onclick="ReintentarAsync">Consultar nuevamente</button>
+    @if (idDetalle is null)
+    {
+        @if (solicitudes is { Count: 0 }) { <p class="aviso">No hay solicitudes ni reclamos registrados.</p> }
+        @if (solicitudes is not null)
+        {
+            @foreach (var solicitud in solicitudes)
+            {
+                <article class="tarjeta solicitud-admin" @key="solicitud.IdSolicitud">
+                    <h2>@solicitud.Cliente</h2>
+                    <p>@solicitud.Tipo · @solicitud.Estado</p>
+                    <p>@Fecha(solicitud.FechaSolicitud)</p>
+                    <button class="principal" disabled="@ocupada" @onclick="() => AbrirAsync(solicitud.IdSolicitud)">Detalles</button>
+                </article>
+            }
+        }
+        <button class="salir" disabled="@ocupada" @onclick="Volver">Volver</button>
+    }
+    else
+    {
+        @if (detalle is { } s)
+        {
+            <article class="tarjeta solicitud-admin">
+                <h2>@s.Cliente</h2>
+                <dl class="cuenta-detalle">
+                    <dt>Baño</dt><dd>@(s.CodigoBano ?? "Sin baño seleccionado")</dd>
+                    <dt>Tipo</dt><dd>@s.Tipo</dd>
+                    <dt>Estado</dt><dd>@s.Estado</dd>
+                    <dt>Dirección de referencia</dt><dd>@(s.Direccion ?? "Sin dirección de servicio")</dd>
+                    <dt>Fecha de solicitud</dt><dd>@Fecha(s.FechaSolicitud)</dd>
+                </dl>
+                @if (!string.IsNullOrWhiteSpace(s.Descripcion)) { <p class="texto-trabajo">@s.Descripcion</p> }
+                @if (s.CantidadBanos is { } cantidad) { <p>Baños solicitados: @cantidad · @s.TipoBanoSolicitado · @s.TipoUsoSolicitado</p> }
+                @if (!string.IsNullOrWhiteSpace(s.DireccionSolicitada)) { <p>Dirección solicitada: @s.DireccionSolicitada</p> }
+                @if (s.FechaDeseada is { } deseada) { <p>Fecha deseada: @Fecha(deseada)</p> }
+                @if (!string.IsNullOrWhiteSpace(s.NuevaDireccion)) { <p>Nueva dirección: @s.NuevaDireccion · Modalidad: @s.ModalidadCambioDireccion</p> }
+                @if (s.FechaCambioEfectiva is { } efectiva) { <p>Fecha efectiva de cambio: @Fecha(efectiva)</p> }
+                @if (!string.IsNullOrWhiteSpace(s.ObservacionesAdministrador)) { <p class="texto-trabajo">Respuesta administrativa: @s.ObservacionesAdministrador</p> }
+                @if (s.FechaResolucion is { } resuelta) { <p>Resolución: @Fecha(resuelta)</p> }
+                <p class="aviso">@Explicacion(s)</p>
+                @foreach (var trabajo in s.Trabajos)
+                {
+                    <p>Tarea @trabajo.IdTarea: @trabajo.Tipo · @trabajo.Estado · @(trabajo.Empleado ?? "Sin empleado asignado") · @(trabajo.FechaProgramada is { } programada ? Fecha(programada) : "Sin programar")</p>
+                }
+                @if (aviso is not null) { <p class="aviso" role="status">@aviso</p> }
+                @if (PuedeAsignar(s))
+                {
+                    <button class="tareas-empleado" disabled="@ocupada" aria-expanded="@seleccion" @onclick="() => seleccion = !seleccion">Asignar ▾</button>
+                    @if (seleccion)
+                    {
+                        <p><strong>Selección sin guardar.</strong> Se conservará el responsable habitual del baño.</p>
+                        <label for="empleado-solicitud">Empleado activo</label>
+                        <select id="empleado-solicitud" @bind="empleado" disabled="@(ocupada || intento is not null)">
+                            <option value="0">Elegir empleado</option>
+                            @foreach (var e in empleados) { <option value="@e.IdUsuario">@e.Nombre (ID @e.IdUsuario)</option> }
+                        </select>
+                        @if (empleados.Count == 0) { <p>No hay empleados activos disponibles.</p> }
+                        @if (s.IdTipoOperacion == 5)
+                        {
+                            <label for="tipo-trabajo-reclamo">Trabajo necesario para el reclamo</label>
+                            <select id="tipo-trabajo-reclamo" @bind="tipoReclamo" disabled="@(ocupada || intento is not null)">
+                                <option value="0">Elegir trabajo</option><option value="3">Limpieza extra</option><option value="11">Mantenimiento</option>
+                            </select>
+                            @if (tipoReclamo == 11)
+                            {
+                                <label><InputCheckbox @bind-Value="bloquea" disabled="@(ocupada || intento is not null)" /> Bloquea nuevas asignaciones del baño</label>
+                            }
+                        }
+                        <label for="fecha-trabajo-solicitud">Fecha programada del trabajo</label>
+                        <InputDate id="fecha-trabajo-solicitud" @bind-Value="fecha" disabled="@(ocupada || intento is not null)" />
+                        @if (fecha is null) { <p class="validation-message">Elegí la fecha.</p> }
+                        <p>Al confirmar, la solicitud quedará Aprobada y la tarea Pendiente. No se resolverá hasta completar los trabajos necesarios.</p>
+                        <button class="tareas-empleado" disabled="@(ocupada || empleado == 0 || fecha is null || s.IdTipoOperacion == 5 && tipoReclamo == 0)" @onclick="GuardarAsync">@(intento is not null ? "Reintentar la misma asignación" : s.IdEstadoOperacion == 1 ? "Aprobar y asignar" : "Confirmar asignación")</button>
+                        <button class="secundario" disabled="@ocupada" @onclick="Cancelar">Cancelar selección</button>
+                    }
+                }
+                else if (s.Trabajos.Count > 0) { <p>Se conserva la asignación y el historial de estos trabajos. Consultá nuevamente para ver su avance.</p> }
+            </article>
+        }
+        <button class="salir" disabled="@ocupada" @onclick="CargarAsync">Volver</button>
+    }
+</section>
+
+@code {
+    [Parameter] public EventCallback Volver { get; set; }
+    private List<SolicitudResumen>? solicitudes;
+    private SolicitudDetalle? detalle;
+    private List<EmpleadoAsignable> empleados = [];
+    private int? idDetalle;
+    private int empleado, tipoReclamo;
+    private DateOnly? fecha;
+    private AsignacionSolicitud? intento;
+    private bool ocupada, dispuesto, seleccion, bloquea;
+    private string? error, aviso;
+    private static string Fecha(DateTimeOffset valor) => valor.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy");
+    private static bool PuedeAsignar(SolicitudDetalle s) => s.IdEstadoOperacion is 1 or 2 && s.Trabajos.Count == 0
+        && s.EstadoServicio == "Entregado" && s.IdServicioReferencia is not null && s.IdUbicacionActual is not null
+        && (s.IdTipoOperacion is 3 or 5 or 6 || s.IdTipoOperacion == 4 && s.ModalidadCambioDireccion == "Solicitado");
+    private static string Explicacion(SolicitudDetalle s) => s.IdTipoOperacion switch
+    {
+        1 or 2 => "Requiere seleccionar baños disponibles y crear servicios. Se atenderá en su bloque; no se procesa como limpieza ni se resuelve asignando un empleado.",
+        4 when s.ModalidadCambioDireccion == "Informado" => "Es un aviso de traslado ya realizado. Requiere validación administrativa de ubicación y fecha efectiva; no corresponde enviar otro traslado.",
+        4 => "El traslado solicitado cambia la ubicación al completar su tarea, conservando la anterior.",
+        5 => "Un reclamo puede requerir un trabajo o una respuesta administrativa. Aquí se asignan los que necesitan limpieza o mantenimiento. La respuesta sin tareas requiere su tratamiento administrativo, no una tarea ficticia.",
+        6 => "La baja requiere retiro. El baño no se libera hasta confirmar el retiro y cerrar el servicio.",
+        _ => "La solicitud se resuelve al completar todos los trabajos necesarios, no al asignar un empleado."
+    };
+    protected override Task OnInitializedAsync() => CargarAsync();
+    private async Task EjecutarAsync(Func<Task> accion)
+    {
+        if (ocupada) return;
+        ocupada = true; error = null; aviso = null;
+        try { await accion(); }
+        catch (ErrorApi ex) { if (!dispuesto) error = ex.Message; }
+        finally { ocupada = false; }
+    }
+    private void Cancelar() { seleccion = false; intento = null; empleado = 0; tipoReclamo = 0; bloquea = false; }
+    private Task CargarAsync() => EjecutarAsync(async () =>
+    {
+        idDetalle = null; detalle = null; solicitudes = null; Cancelar();
+        var resultado = await Sesion.SolicitudesAsync(); if (!dispuesto) solicitudes = resultado;
+    });
+    private Task AbrirAsync(int id) => EjecutarAsync(async () =>
+    {
+        idDetalle = id; detalle = null; solicitudes = null; Cancelar();
+        var resultado = await Sesion.DetalleSolicitudAsync(id);
+        var activos = PuedeAsignar(resultado) ? await Sesion.EmpleadosAsignablesAsync() : [];
+        if (!dispuesto) { detalle = resultado; empleados = activos; fecha = DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).Date); }
+    });
+    private Task GuardarAsync() => EjecutarAsync(async () =>
+    {
+        if (detalle is not { } s || !PuedeAsignar(s) || fecha is not { } dia || empleado == 0 || s.IdTipoOperacion == 5 && tipoReclamo == 0) return;
+        intento ??= new AsignacionSolicitud(Guid.NewGuid(), empleado, s.IdEstadoOperacion, s.IdServicioReferencia!.Value,
+            s.IdUbicacionActual!.Value, s.IdTipoOperacion == 5 ? tipoReclamo : null, s.IdTipoOperacion == 5 && tipoReclamo == 11 && bloquea, dia);
+        var resultado = await Sesion.AsignarSolicitudAsync(s.IdSolicitud, intento);
+        if (!dispuesto) { detalle = resultado; Cancelar(); aviso = "Asignación guardada. La tarea y el estado actual se muestran arriba."; }
+    });
+    private Task ReintentarAsync() => idDetalle is { } id ? AbrirAsync(id) : CargarAsync();
+    public void Dispose() { dispuesto = true; detalle = null; solicitudes = null; empleados = []; }
+}

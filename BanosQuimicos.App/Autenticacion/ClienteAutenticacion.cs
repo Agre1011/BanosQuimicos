@@ -83,6 +83,15 @@ public class ClienteAutenticacion
     }
     public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerAutenticadoAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
     public Task<List<EstadoBano>> EstadoBanosAsync(string token) => LeerAutenticadoAsync<List<EstadoBano>>(token, "api/banos/estado", "banos");
+    public Task<List<SolicitudResumen>> SolicitudesAsync(string token) => LeerAutenticadoAsync<List<SolicitudResumen>>(token, "api/solicitudes", "solicitudes");
+    public Task<SolicitudDetalle> DetalleSolicitudAsync(string token, int id) => LeerAutenticadoAsync<SolicitudDetalle>(token, $"api/solicitudes/{id}", "solicitudes");
+    public async Task<SolicitudDetalle> AsignarSolicitudAsync(string token, int id, AsignacionSolicitud datos)
+    {
+        using var request = PeticionCuenta(HttpMethod.Post, $"api/solicitudes/{id}/asignar", token);
+        request.Content = JsonContent.Create(datos);
+        using var response = await EnviarAsync(request); await ComprobarAsync(response, "solicitudes");
+        return await LeerAsync<SolicitudDetalle>(response);
+    }
     public Task<List<EmpleadoAsignable>> EmpleadosAsignablesAsync(string token) => LeerAutenticadoAsync<List<EmpleadoAsignable>>(token, "api/banos/empleados-asignables", "banos");
     public async Task<EstadoBano> AsignarResponsableAsync(string token, int id, int empleado, int? anterior)
     {
@@ -146,12 +155,16 @@ public class ClienteAutenticacion
                 operacion == "login" ? "La cuenta no está habilitada. Consultá al administrador." : "No tenés permiso para realizar esta operación.");
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
+            if (operacion == "solicitudes") throw new ErrorApi(TipoErrorApi.Conflicto, "La solicitud ya tiene trabajos, cambió su estado o sus datos no permiten esta asignación. Consultá el detalle actual antes de continuar.");
             if (operacion == "banos") throw new ErrorApi(TipoErrorApi.Conflicto, "El baño, servicio o empleado cambió, o la programación no es válida. Consultá nuevamente antes de intentar otra operación.");
             throw new ErrorApi(operacion == "registro" ? TipoErrorApi.Duplicado : TipoErrorApi.Conflicto,
                 operacion == "registro" ? "El correo electrónico ya está registrado." : operacion == "tareas" ? "La tarea cambió o no reúne las condiciones para esta acción. Volvé a consultar el detalle; si fue reasignada o cancelada, consultá al administrador." : "La cuenta cambió o no cumple las condiciones para esta operación.");
         }
         if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            if (operacion == "solicitudes") throw new ErrorApi(TipoErrorApi.NoEncontrado, "La solicitud no está disponible.");
             throw new ErrorApi(TipoErrorApi.NoEncontrado, operacion == "banos" ? "El baño no está disponible." : operacion == "tareas" ? "La tarea no está disponible." : "La cuenta ya no está disponible.");
+        }
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
             var mensaje = "Revisá los datos ingresados y los campos obligatorios.";

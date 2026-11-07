@@ -959,3 +959,69 @@ Migración local a incluir en la futura actualización del hosting: **2026110622
 **Hosting pendiente:** antes de publicar, consultar el historial real de db77593 y aplicar las migraciones faltantes en orden, incluyendo RegistroTrabajoTarea y ResponsableLimpiezaYProgramacion según corresponda. No repetir el script inicial sobre la base existente ni copiar usuarios o datos locales. Esta actualización no aplicó migraciones en MonsterASP ni autoriza su publicación.
 
 **Bloque cerrado y listo para commit**, por indicación del estudiante. Continúan pendientes Android, migraciones/publicación en hosting, vencimiento real del token y alternancia de servidores en el dispositivo. Sin commit, push ni inicio de otro bloque. Mensaje sugerido: **feat: asignar responsables y programar limpiezas desde Estado Baños**.
+
+## 20. Administrador: Solicitudes y Reclamos
+
+### Punto de partida y decisiones confirmadas
+
+Master estaba limpio en 7ab2718 (merge PR #9), actualizado por el estudiante. Se creó feature/solicitudes-reclamos sin descartar cambios. Se revisaron AGENTS.md, el plan, modelo/código, texto funcional del PDF y referencia visual de página 6. Se conservaron y completaron los contratos y consultas existentes antes de incorporar la interfaz, la asignación y sus verificaciones.
+
+El estudiante confirmó expresamente dos decisiones que faltaban:
+
+- En un reclamo con trabajo, el administrador elige Limpieza extra o Mantenimiento en el mismo detalle; para mantenimiento indica si bloquea nuevas asignaciones. Se autorizan esos controles, sin otra pantalla.
+- **Aprobar y asignar** es una sola confirmación y transacción: solicitud Aprobada y tarea Pendiente. Solo completar los trabajos requeridos resuelve la solicitud.
+
+Se mantiene cualquier empleado activo como elección puntual, independiente del habitual. La programación es manual con fecha elegida por administración, reutilizando el selector autorizado; la fecha deseada del cliente es solo referencia. No se agregan pagos/facturación ni una pantalla fuera de las referencias/autorizaciones expresas.
+
+### Modelo, implementación y límites
+
+No se necesitó modificar entidades, configuraciones EF o migraciones. Se reutilizan las 12 tablas, TAREAS_OPERATIVAS.IdSolicitud/IdEmpleado/FechaProgramada/ClaveProgramacion y las ubicaciones de origen/destino existentes.
+
+- API/Controllers/SolicitudesController.cs y Contratos/Solicitudes: GET /api/solicitudes, GET /api/solicitudes/{id}, POST /api/solicitudes/{id}/asignar. Solo Administrador/Activa; DTOs de identidad/contexto/trabajos sin credenciales ni hashes. Listado estable por FechaSolicitud/IdSolicitud descendentes, detalle con datos presentes y trabajos vinculados. Sin baño ficticio para servicio nuevo.
+- Asignación valida dentro de transacción Serializable al administrador, empleado Empleado/Activa, estado anterior, servicio Entregado del mismo cliente y ubicación actual esperada. Se comparte el bloqueo SQL de programación/cumplimiento. Una clave repetida con mismos datos devuelve el trabajo persistido; clave con otros datos/cancelación produce 409. Otra clave no genera un nuevo trabajo si la solicitud ya tiene historial. No se reasignan ni sustituyen trabajos anteriores, incluidos los cancelados, desde este botón. Estados terminales no se reabren.
+- Limpieza extra → Limpieza extra; Baja → Retiro; cambio Solicitado → Traslado; reclamo → Limpieza extra/Mantenimiento por elección explícita. Solo mantenimiento acepta bloqueo. Se fija el contexto de tarea sin cambiar al responsable habitual ni rellenar papel/observaciones. Traslado prepara destino no vigente: el cierre existente hace efectivo el cambio. No apto/bloqueos no liberan un servicio existente ni se convierten en Apto al atenderlo.
+- Servicio nuevo/baño adicional quedan en consulta: requieren selección de unidades y servicios en su bloque, no se aprueban ni procesan como limpieza. Cambio Informado requiere validación administrativa, no otro traslado. Reclamos sin trabajos requieren respuesta administrativa, sin tarea ficticia; la captura de esa respuesta no se implementa aquí. No se crea endpoint de rechazo/cancelación/borrado. La papelera no tiene regla aprobada y se omite; no se interpreta su dibujo como permiso para borrar.
+- El cierre de tareas existente resuelve solo solicitudes aprobadas con todos los trabajos requeridos realizados; canceladas no se ignoran. Retiro cierra servicio, traslado conserva historia, mantenimiento no cambia automáticamente condición física. No se sustituye aprobación por resolución ni se resuelve por tener cero tareas.
+- App/Autenticacion/ContratosSolicitudes.cs, ClienteAutenticacion/SesionUsuario, Components/Administracion/SolicitudesReclamos.razor, Home y CSS: acceso habilitado; listado/detalle según referencia, carga/vacío/error/reintento/Volver; Asignar ▾ abre controles dentro del detalle, selección sin guardar, Cancelar y confirmación explícita. Tras guardar muestra solicitud/tarea actuales y, al consultar otra vez después del cierre, la resolución. Conservadas reglas de sesión, servidor local, USB y validación HTTPS.
+
+### Datos locales preparados y conservados
+
+Se revisó y ejecutó scripts/preparar-solicitudes-local.sql, con guardas de nombre BanosQuimicosDb e IsLocalDB=1. Reutiliza el servicio Entregado de PRUEBA-TAREAS-01 y cliente de prueba existentes; no crea cuentas ni modifica contraseñas, responsable o tareas anteriores. Insertó solo tres solicitudes identificadas por PRUEBA LOCAL SOLICITUDES:
+
+- IdSolicitud 1: Limpieza extra.
+- IdSolicitud 2: Reclamo con descripción de revisión.
+- IdSolicitud 3: Nuevo servicio, ejemplo de consulta sin baño/servicio seleccionado.
+
+Las tres quedaron Pendientes con cero trabajos para la prueba personal. Una segunda ejecución insertó cero solicitudes, conservando estados. Verificación: 12 tablas de negocio, 6 usuarios, 2 tareas anteriores conservadas; responsable de PRUEBA-TAREAS-01 sigue IdUsuario 1004. Baja/traslado se prueban solo en bases aisladas para no retirar o trasladar el servicio local utilizado en otras pruebas. No se contactó ni modificó MonsterASP/db77593.
+
+### Verificaciones automatizadas y compilación
+
+- Primera suite: **121 correctas**. Se agregaron cuatro escenarios y se verificó el renderer vacío: suite final **125 correctas, 0 fallidas, 0 omitidas** (100 anteriores y 25 casos nuevos). TestServer, cliente C# y LocalDB en bases nuevas BanosQuimicosAuthPruebas_<GUID> conservadas. Datos de prueba claramente identificados y credenciales aleatorias internas, no impresas ni documentadas.
+- Limpieza extra, ambos tipos de reclamo, baja y traslado solicitado: asignación aprueba sin resolver, crea trabajo Pendiente y conserva habitual; empleado distinto del habitual puede consultar/registrar/finalizar, otro empleado recibe 404. El cierre y su repetición dejan solicitud Resuelta y efectos de servicio/ubicación correctos, sin papel/observaciones inventados.
+- Cuatro reintentos concurrentes con una clave generan una tarea y un único destino de traslado; clave alterada o nueva sobre historial no duplica. Dos asignaciones distintas concurrentes: una correcta y otra 409, sin pisar empleado/estado. Trabajos cancelados mantienen solicitud Aprobada, sin resolución ni reasignación silenciosa.
+- Nuevo/adicional e Informado no se aprueban ni generan tareas desde asignación. Rechazada/Resuelta/Cancelada no se reabren. Sin destino, contexto de otro cliente o ubicación incorrecta, empleado suspendido, bloqueo ajeno a mantenimiento, campos extra y solicitud inexistente: rechazo sin efectos parciales. DELETE por ID responde 405 y conserva solicitud.
+- Anónimo 401; Cliente/Empleado/Pendiente 403; Suspendida/BajaLogica con token anterior 401 para consultas y asignación. Listado/detalle seguros, orden estable y lista vacía. Componentes Razor reales: lista/detalle, selección sin escritura, cancelar, confirmación visible, solicitud Aprobada, cierre del empleado y consulta actualizada Resuelta; también vacío. No son eventos nativos ni prueba manual en dispositivos.
+- API/pruebas compilaron en tmp/pruebas-solicitudes y app Debug Windows/Android compiló con **0 errores y 0 advertencias**, usando parámetros temporales JavaMaximumHeapSize=512M / JavaOptions=-XX:+UseSerialGC ya documentados. Sin instalar herramientas/paquetes, sin cambios globales ni migración nueva. El estudiante debe reiniciar la API local con esta versión antes de probar las rutas nuevas.
+
+### Guía y decisión de validación/publicación
+
+Guía Windows en docs/solicitudes-reclamos.md: administrador → ejemplo 1/2 → elegir empleado/fecha/tipo si corresponde → Aprobar y asignar → empleado registra/finaliza → administrador consulta resolución. Servicio nuevo de ejemplo 3 solo consulta. Los dos recorridos manuales Windows de este bloque fueron aprobados según el cierre siguiente; las aprobaciones no se extienden a controles no confirmados.
+
+**Decisión de trabajo confirmada:** completar los bloques funcionales antes de la prueba integral manual Android, que será contra API local. Solo después se abordarán republicación y migraciones del hosting. Se conserva como pendiente esa validación integral, el vencimiento real del token y alternar servidores en el dispositivo. La compilación Android no los da por aprobados.
+
+Bloque implementado y listo para revisión. Sin commit, push, merge ni publicación. Mensaje sugerido: **feat: asignar solicitudes y reclamos a tareas del empleado**. Esperar confirmación antes de comenzar el siguiente bloque.
+
+Revisión final: EF confirmó que no hay cambios del modelo pendientes; git diff --check correcto. Se revisaron diff/archivos nuevos y 149 candidatos versionados/no ignorados, sin rutas de generados o perfiles privados ni indicadores de credenciales/tokens/claves privadas en los textos examinados; índice vacío. PDF y PNG originales conservan SHA-256. No se repitieron pruebas después de los últimos cambios exclusivamente documentales.
+
+### Cierre: verificaciones manuales Windows aprobadas
+
+Se confirmaron personalmente en Windows, con API local y LocalDB, los dos recorridos:
+
+- **Limpieza extra aprobada:** Aprobar y asignar → empleado registra el trabajo y finaliza → solicitud Resuelta.
+- **Reclamo con mantenimiento aprobado:** elegir Mantenimiento e indicador de bloqueo → asignar empleado → comprobar bloqueo del baño → completar trabajo → reclamo Resuelto y bloqueo levantado.
+
+Estas verificaciones manuales se registran separadas de las **125 pruebas automatizadas anteriores** y de las compilaciones Windows/Android ya documentadas. No se repitieron pruebas automatizadas ni compilaciones para este cierre, que solo actualiza documentación. Los resultados y trabajos guardados se conservan como historial; no se restablecen solicitudes o tareas ni se registran credenciales/tokens.
+
+**Bloque cerrado y listo para commit.** La prueba integral manual Android continúa pendiente hasta terminar los bloques funcionales, contra API local y antes de republicar. La actualización/migraciones del hosting se mantienen para después de esa validación. Siguen pendientes vencimiento real del token y alternancia de servidores en el dispositivo. No se modificó el hosting ni se hizo commit, push, merge o se comenzó otro bloque.
+
+Mensaje de commit/título de PR sugerido: **feat: asignar solicitudes y reclamos a tareas del empleado**. La descripción del PR debe resumir listado/detalle, aprobación y asignación atómicas, resolución mediante trabajos, conservación del habitual/historial y protección de permisos/reintentos; distinguir 125 pruebas automatizadas, compilación y los dos recorridos Windows aprobados del pendiente integral Android. Este bloque no agrega migraciones.
