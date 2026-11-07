@@ -1,0 +1,83 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+@implements IDisposable
+
+<section aria-label="Asignar baños al servicio nuevo" aria-busy="@ocupada">
+    <h3>Seleccionar baños disponibles</h3>
+    <p>Pedido de @Solicitud.CantidadBanos baño(s), tipo @Solicitud.TipoBanoSolicitado. Se asignará uno por servicio.</p>
+    @if (ocupada) { <p role="status">Procesando…</p> }
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    <button class="secundario" disabled="@ocupada" @onclick="CargarAsync">Consultar disponibilidad</button>
+    @if (banos is { Count: 0 }) { <p class="aviso">No hay baños disponibles del tipo solicitado.</p> }
+    @if (banos is not null)
+    {
+        @foreach (var bano in banos)
+        {
+            <label class="opcion-bano" @key="bano.IdBano">
+                <input type="checkbox" checked="@seleccionados.Contains(bano.IdBano)" disabled="@(ocupada || intento is not null)"
+                       @onchange="e => Cambiar(bano.IdBano, e.Value is true)" />
+                @bano.Codigo · @bano.Tipo · Apto y disponible
+            </label>
+        }
+        <p>Seleccionados: @seleccionados.Count de @Solicitud.CantidadBanos.</p>
+        @if (banos.Count < Solicitud.CantidadBanos) { <p class="aviso">No alcanza la disponibilidad. El pedido se confirma completo; no se guardará una asignación parcial.</p> }
+    }
+    <label for="empleado-entregas">Empleado activo para todas las entregas</label>
+    <select id="empleado-entregas" @bind="empleado" disabled="@(ocupada || intento is not null)">
+        <option value="0">Elegir empleado</option>
+        @foreach (var e in empleados) { <option value="@e.IdUsuario">@e.Nombre (ID @e.IdUsuario)</option> }
+    </select>
+    @if (empleados.Count == 0 && !ocupada) { <p>No hay empleados activos disponibles.</p> }
+    <label for="fecha-entregas">Fecha programada de todas las entregas</label>
+    <InputDate id="fecha-entregas" @bind-Value="fecha" disabled="@(ocupada || intento is not null)" />
+    <label for="frecuencia-servicios">Limpiezas por semana (referencia común, 0 si no corresponde)</label>
+    <InputNumber id="frecuencia-servicios" @bind-Value="frecuencia" min="0" disabled="@(ocupada || intento is not null)" />
+    <p>Al confirmar se aprobará el pedido, con servicios Pendientes de entrega y tareas Pendientes. La dirección y el uso serán los que solicitó el cliente. No se marcará entregado ni resuelto.</p>
+    <button class="tareas-empleado" disabled="@(ocupada || seleccionados.Count != Solicitud.CantidadBanos || empleado == 0 || fecha is null || frecuencia is null or < 0)" @onclick="GuardarAsync">@(intento is null ? "Aprobar y asignar baños y entregas" : "Reintentar el mismo pedido")</button>
+    <button class="secundario" disabled="@ocupada" @onclick="Cancelar">Cancelar selección</button>
+</section>
+
+@code {
+    [Parameter] public SolicitudDetalle Solicitud { get; set; } = null!;
+    [Parameter] public EventCallback<SolicitudDetalle> Guardada { get; set; }
+    private List<BanoDisponible>? banos;
+    private List<EmpleadoAsignable> empleados = [];
+    private readonly HashSet<int> seleccionados = [];
+    private int empleado;
+    private int? frecuencia;
+    private DateOnly? fecha = DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).Date);
+    private bool ocupada, dispuesto;
+    private string? error;
+    private AsignacionBanos? intento;
+    protected override Task OnInitializedAsync() => CargarAsync();
+    private async Task EjecutarAsync(Func<Task> accion)
+    {
+        if (ocupada) return;
+        ocupada = true; error = null;
+        try { await accion(); }
+        catch (ErrorApi ex) { if (!dispuesto) error = ex.Message; }
+        finally { ocupada = false; }
+    }
+    private void Cambiar(int id, bool marcado)
+    {
+        if (ocupada || intento is not null) return;
+        if (marcado) seleccionados.Add(id); else seleccionados.Remove(id);
+    }
+    private void Cancelar() { seleccionados.Clear(); intento = null; empleado = 0; frecuencia = null; }
+    private Task CargarAsync() => EjecutarAsync(async () =>
+    {
+        banos = null; Cancelar();
+        var disponibles = await Sesion.BanosDisponiblesAsync(Solicitud.IdSolicitud);
+        var activos = await Sesion.EmpleadosAsignablesAsync();
+        if (!dispuesto) { banos = disponibles; empleados = activos; }
+    });
+    private Task GuardarAsync() => EjecutarAsync(async () =>
+    {
+        if (seleccionados.Count != Solicitud.CantidadBanos || empleado == 0 || fecha is not { } dia || frecuencia is null or < 0) return;
+        intento ??= new AsignacionBanos(Guid.NewGuid(), seleccionados.Order().ToList(), empleado,
+            Solicitud.IdEstadoOperacion, frecuencia, dia);
+        var resultado = await Sesion.AsignarBanosAsync(Solicitud.IdSolicitud, intento);
+        if (!dispuesto) await Guardada.InvokeAsync(resultado);
+    });
+    public void Dispose() { dispuesto = true; banos = null; empleados = []; }
+}

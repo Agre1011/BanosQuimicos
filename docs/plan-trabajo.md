@@ -1025,3 +1025,59 @@ Estas verificaciones manuales se registran separadas de las **125 pruebas automa
 **Bloque cerrado y listo para commit.** La prueba integral manual Android continúa pendiente hasta terminar los bloques funcionales, contra API local y antes de republicar. La actualización/migraciones del hosting se mantienen para después de esa validación. Siguen pendientes vencimiento real del token y alternancia de servidores en el dispositivo. No se modificó el hosting ni se hizo commit, push, merge o se comenzó otro bloque.
 
 Mensaje de commit/título de PR sugerido: **feat: asignar solicitudes y reclamos a tareas del empleado**. La descripción del PR debe resumir listado/detalle, aprobación y asignación atómicas, resolución mediante trabajos, conservación del habitual/historial y protección de permisos/reintentos; distinguir 125 pruebas automatizadas, compilación y los dos recorridos Windows aprobados del pendiente integral Android. Este bloque no agrega migraciones.
+
+## 21. Servicio nuevo: asignación de baños disponibles y entregas
+
+### Revisión y decisiones confirmadas (07/11/2026)
+
+Se comprobó master limpio en 5ac50d4 (merge PR #10), actualizado por el estudiante, y se creó feature/asignar-banos-servicio sin descartar cambios ni hacer pull/fetch adicional. Se revisaron AGENTS.md, texto funcional del PDF, referencia visual Resolver solicitudes y reclamos de página 6, DER, reglas del plan, modelo, índices y recorrido de tareas existente. Se conserva la autorización expresa para adaptar el detalle con selección de baños; no se modifican los originales ni se crean pantallas ajenas.
+
+Se consultaron y confirmaron las dos decisiones faltantes:
+
+- Frecuencia común para los servicios del pedido, indicada por administración; 0 cuando no corresponda. Solo referencia para programación manual.
+- Un empleado activo y una fecha programada comunes a todas las entregas del pedido.
+
+Se respeta exactamente la cantidad y el tipo físico solicitado. Tipo de baño y uso Obra/Evento son independientes: seleccionar tipo Obra para un uso Evento sigue permitido si el cliente pidió ese tipo. No se inventa frecuencia desde una solicitud que no contiene ese campo ni se convierte su fecha deseada en fecha programada sin elección administrativa.
+
+### Persistencia e implementación
+
+El modelo existente alcanza: **sin entidades/configuraciones EF/migraciones nuevas**, conservando las 12 tablas e historial. Se reutilizan Servicio.IdSolicitudOrigen/IdCliente/IdBano, ubicación preparada y tarea con IdSolicitud/IdServicio/IdBano/IdUbicacion/IdEmpleado/FechaProgramada/ClaveProgramacion. Se explicó antes de modificar código la confirmación atómica y la distinción entre asignar, entregar y resolver.
+
+- SolicitudesController y nuevo contrato AsignarBanosSolicitud: GET /api/solicitudes/{id}/banos-disponibles y POST /api/solicitudes/{id}/asignar-banos. Exclusivos de Administrador/Activa; revalidación transaccional de administrador/empleado y datos de la solicitud. La selección excluye No apto, tipo físico distinto, asignación vigente y mantenimiento bloqueante Pendiente/En curso. Limpiezas/mantenimientos no bloqueantes no quitan disponibilidad por sí solos.
+- Confirmación crea un servicio Pendiente de entrega y una tarea Entrega/Pendiente por unidad, ambos vinculados a solicitud y cliente, con ubicación a la dirección solicitada todavía sin vigencia efectiva. Frecuencia/empleado/fecha comunes se guardan explícitamente. La solicitud queda Aprobada, sin FechaResolucion; el responsable habitual no cambia y la unidad queda asignada desde este momento.
+- Cantidad exacta y IDs distintos se validan también en API. Transacción Serializable y mismo bloqueo SQL de los recorridos anteriores; disponibilidad revalidada al guardar e índice único filtrado existente de baño asignado. Si una unidad cambió, se rechaza todo el pedido, sin servicios/ubicaciones/entregas parciales.
+- La primera entrega conserva la clave de la operación; las demás reciben claves propias. Un reintento reconoce y vincula el lote guardado; no crea otro. Datos distintos con esa clave o una operación nueva sobre servicios/trabajos previos devuelven 409. No se sobrescriben conjuntos históricos parciales para aparentar una confirmación completa. Baño adicional sigue separado, con su servicio de referencia; este endpoint atiende solo servicio nuevo.
+- TareasController: al completar una entrega con ubicación preparada y sin ubicación vigente, la activa con FechaDesde real y registra FechaEntregaReal del servicio. Las ubicaciones históricas y los servicios existentes se conservan. El cierre ya implementado mantiene la solicitud Aprobada hasta completar todas las entregas/cantidades/trabajos necesarios; entonces la resuelve. Registrar Trabajo por sí solo no entrega el baño.
+- Detalle de solicitud/contratos agregan servicios vinculados y baño/servicio de cada tarea. App reutiliza SolicitudesReclamos con el componente AsignarBanosServicio, selector de unidades, empleado/fecha/frecuencia comunes, carga/vacío/error/confirmación/cancelación y estados recuperados. Mantiene estilos y navegación. Seleccionar no guarda; solo se informa éxito con respuesta persistida. No se implementa edición, borrado, cancelación, reemplazo o liberación de asignaciones.
+
+### Pruebas y uso de recursos
+
+Se conservaron las **125 pruebas existentes** y se agregaron **9 casos nuevos** en AsignarBanosServicioPruebas.cs, solo para reglas/riesgos del bloque. Sin nuevas pruebas automatizadas para cambios visuales simples; la comprobación de pantalla y navegación se deja a Windows manual.
+
+- Desarrollo: una ejecución focalizada, **9 correctas**, 0 fallidas/omitidas.
+- Cierre: **una única suite completa**, **134 correctas**, 0 fallidas/omitidas (125 anteriores + 9 nuevas).
+- Total de ejecuciones de casos en esta etapa: **143** (9 focalizadas + 134 completas); casos distintos comprobados: 134. No se repitieron suites ni compilaciones por cambios documentales.
+- Nuevos casos: servicios/entregas coherentes por unidad; ubicación preparada que se activa al entregar; primer cumplimiento no resuelve hasta completar el segundo; tipo Obra usado en Evento; conservación de habitual; otro empleado sin acceso a entrega ajena; cantidad/duplicados/tipo/condición/ocupación/bloqueo; dos pedidos simultáneos por un baño con reversión completa del perdedor; reintentos simultáneos sin duplicados; permisos de las rutas nuevas; datos obligatorios/empleado suspendido; historial parcial no sobrescrito. Se usan bases LocalDB aisladas BanosQuimicosAuthPruebas_<GUID>, conservadas.
+- API/pruebas compilaron en tmp/pruebas-asignar-banos. App Debug Windows y Android compilaron una vez al cierre con **0 errores y 0 advertencias**, con los parámetros temporales JavaMaximumHeapSize=512M/JavaOptions=-XX:+UseSerialGC ya documentados, sin paquetes/herramientas nuevos ni cambios globales. Hubo una compilación previa del proyecto de pruebas durante el desarrollo, sin ejecutar pruebas entonces.
+
+### Preparación local y guía manual
+
+Se revisó y ejecutó scripts/preparar-servicio-nuevo-local.sql solo en LocalDB/BanosQuimicosDb, con guardas explícitas. Agregó solicitud **4**, **PRUEBA LOCAL SERVICIO NUEVO - DOS BANOS**, cantidad 2/tipo Obra/uso Evento/dirección PRUEBA LOCAL - Entrega de servicio nuevo 789, y unidades **PRUEBA-NUEVO-01** (ID 2) y **PRUEBA-NUEVO-02** (ID 3), Aptas/sin asignación. No se crearon aún sus servicios ni tareas: quedan para la confirmación manual en la app.
+
+Antes: 6 usuarios, 1 baño, 3 solicitudes, 1 servicio y 4 tareas. Después: mismos 6 usuarios/1 servicio/4 tareas, con 3 baños y 4 solicitudes. No se cambiaron cuentas, contraseñas, trabajos ni responsables anteriores. Un intento inicial del script se detuvo por conflicto de collation de su variable de códigos; se corrigió esa variable para coincidir con CodigoInterno, sin alterar la base, y se ejecutó correctamente. Repetir reutiliza datos sin restablecer estados o liberar unidades.
+
+docs/asignar-banos-servicio.md contiene contratos, reglas, datos y guía corta administrador → dos entregas del empleado → solicitud Resuelta. Verificar descripción del pedido 4 para no confundirlo con el ejemplo de servicio nuevo anterior. El estudiante deberá reiniciar la API con esta versión local antes de probar los endpoints nuevos.
+
+El recorrido manual Windows fue aprobado según el cierre siguiente. Pendientes: integral Android al terminar bloques contra API local; después migraciones/republicación del hosting. Se conservan pendientes vencimiento real del token y alternancia de servidores. Compilar Android no equivale a aprobar esa prueba. No se consultó ni modificó MonsterASP/db77593.
+
+Bloque implementado y listo para revisión, sin commit, push, merge ni publicación. Mensaje sugerido: **feat: asignar baños y programar entregas de servicios nuevos**. Esperar confirmación antes del siguiente bloque.
+
+Revisión final: EF confirmó que no hay cambios del modelo pendientes; entidades/configuraciones/migraciones sin diff. git diff --check correcto. 154 candidatos versionados/no ignorados examinados, sin generados, perfiles privados ni indicadores de credenciales/tokens/claves privadas en las rutas/textos revisados; índice vacío. PDF/PNG originales conservan SHA-256. Los cambios finales fueron documentales: no se repitieron pruebas ni compilaciones.
+
+### Cierre: prueba manual Windows aprobada
+
+El estudiante confirmó personalmente la **solicitud 4** en Windows, con API local y LocalDB: asignó los dos baños y completó la primera entrega, manteniéndose la solicitud **Aprobada**; al completar la segunda entrega, pasó a **Resuelta**. **Recorrido manual aprobado.** No se extiende esta confirmación a escenarios de permisos, concurrencia u otros controles no mencionados.
+
+Esta evidencia manual se registra separada de los 9 casos nuevos y la suite automatizada de 134 casos anteriores (143 ejecuciones contando las focalizadas), y de las compilaciones ya documentadas. No se repitieron pruebas ni compilaciones: este cierre solo modifica documentación. La preparación Pendiente/sin servicios descrita arriba corresponde al estado previo a la prueba; se conserva el resultado final, sin liberar unidades ni restablecer tareas.
+
+**Bloque cerrado y listo para commit.** Continúan pendientes la integral manual Android local al finalizar los bloques y, después, migraciones/republicación del hosting, además de vencimiento real del token y alternancia de servidores. Este bloque no agregó migraciones. Sin cambios en hosting, commit, push, merge ni inicio de otro bloque. Mensaje sugerido: **feat: asignar baños y programar entregas de servicios nuevos**.

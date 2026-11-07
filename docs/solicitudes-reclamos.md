@@ -67,3 +67,5 @@ La prueba integral manual Android se pospone hasta terminar los bloques funciona
 Son evidencias manuales independientes de las **125 pruebas automatizadas anteriores**, que verifican también permisos, concurrencia y casos de rechazo. Las compilaciones Windows y Android ya registradas resultaron sin errores ni advertencias; no se ejecutaron nuevamente por esta actualización documental. No se marcan como probados manualmente otros escenarios sin confirmación.
 
 **Bloque cerrado y listo para commit.** Se conservan las solicitudes y trabajos resultantes de la prueba como historial. Pendientes: integral manual Android local al terminar los bloques, posterior actualización del hosting, vencimiento real del token y alternancia entre servidores. Sin cambios en hosting, commit, push ni merge. No hay una migración nueva en este bloque.
+
+Ampliación posterior: [Servicio nuevo](asignar-banos-servicio.md) incorpora su selección autorizada de baños y entregas. Las referencias anteriores a ese tipo solo en consulta describen el alcance del bloque previo. Baño adicional y los otros tratamientos separados no cambian con esa ampliación.
