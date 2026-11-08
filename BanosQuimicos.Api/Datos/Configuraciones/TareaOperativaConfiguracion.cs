@@ -20,6 +20,7 @@ public class TareaOperativaConfiguracion : IEntityTypeConfiguration<TareaOperati
         b.HasKey(x => x.IdTarea);
         b.HasIndex(x => x.ClaveProgramacion).IsUnique().HasFilter("[ClaveProgramacion] IS NOT NULL");
         b.Property(x => x.ObservacionesEmpleado).HasMaxLength(2000);
+        b.Property(x => x.DescripcionTrabajo).HasMaxLength(2000);
         b.HasOne(x => x.Bano).WithMany().HasForeignKey(x => x.IdBano);
         b.HasOne(x => x.TipoOperacion).WithMany().HasForeignKey(x => x.IdTipoOperacion);
         b.HasOne(x => x.EstadoOperacion).WithMany().HasForeignKey(x => x.IdEstadoOperacion);

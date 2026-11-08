@@ -7,6 +7,8 @@ public class BanoQuimico
     public int IdTipoBano { get; set; }
     public int IdEstadoBano { get; set; }
     public DateTimeOffset FechaAlta { get; set; }
+    public DateTimeOffset? FechaBaja { get; set; }
+    public Guid? ClaveAlta { get; set; }
     public string? Observaciones { get; set; }
     public int? IdResponsableLimpieza { get; set; }
     public Usuario? ResponsableLimpieza { get; set; }

@@ -7,8 +7,18 @@
     @if (ocupada) { <p role="status">Procesando…</p> }
     @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
     @if (aviso is not null) { <p class="aviso" role="status">@aviso</p> }
+    <AltaInventario Guardado="RefrescarAsync" />
+    <label for="filtro-inventario">Inventario</label>
+    <select id="filtro-inventario" @bind="filtro" @bind:after="CargarAsync" disabled="@ocupada">
+        <option value="Activos">Activos</option><option value="Bajas">Bajas del inventario</option><option value="Todos">Todos</option>
+    </select>
+    <label for="filtro-condicion">Condición física</label>
+    <select id="filtro-condicion" @bind="condicion" @bind:after="CargarAsync" disabled="@ocupada">
+        <option value="Todos">Todos</option><option value="Apto">Aptos</option><option value="No apto">No aptos</option>
+    </select>
+    <p>La condición física no indica disponibilidad: un baño Apto puede estar asignado a un servicio.</p>
     <button class="secundario" disabled="@ocupada" @onclick="CargarAsync">Consultar nuevamente</button>
-    @if (banos is { Count: 0 }) { <p class="aviso">No hay baños registrados.</p> }
+    @if (banos is { Count: 0 }) { <p class="aviso">No hay baños que coincidan con los filtros de inventario y condición seleccionados.</p> }
     @if (banos is not null)
     {
         @foreach (var bano in banos)
@@ -25,8 +35,9 @@
                     <dt>Disponibilidad</dt><dd>@Disponibilidad(bano)</dd>
                     <dt>Responsable habitual</dt><dd>@(bano.Responsable ?? "Sin asignar") @(bano.IdResponsable is not null && !bano.ResponsableActivo ? "(ya no es un empleado activo)" : "")</dd>
                 </dl>
-                <button class="tareas-empleado" disabled="@ocupada" aria-expanded="@(abierto == bano.IdBano)" @onclick="() => Abrir(bano)">Asignar ▾</button>
-                @if (abierto == bano.IdBano)
+                <InventarioBano Bano="bano" Empleados="empleados" Guardado="InventarioGuardadoAsync" />
+                <button class="tareas-empleado" disabled="@(ocupada || bano.FechaBaja is not null)" aria-expanded="@(abierto == bano.IdBano)" @onclick="() => Abrir(bano)">Asignar ▾</button>
+                @if (abierto == bano.IdBano && bano.FechaBaja is null)
                 {
                     <div class="asignacion-bano">
                         <label for="empleado-bano">Empleado para esta operación</label>
@@ -58,6 +69,7 @@
 
 @code {
     [Parameter] public EventCallback Volver { get; set; }
+    private string filtro = "Activos", condicion = "Todos";
     private List<EstadoBano>? banos;
     private List<EmpleadoAsignable> empleados = [];
     private int? abierto, programada;
@@ -66,7 +78,7 @@
     private ProgramarLimpieza? intento;
     private bool ocupada, dispuesto;
     private string? error, aviso;
-    private static string Disponibilidad(EstadoBano b) => b.Disponible ? "Disponible" :
+    private static string Disponibilidad(EstadoBano b) => b.FechaBaja is not null ? "Baja del inventario (no asignable)" : b.Disponible ? "Disponible" :
         (b.IdServicio is not null ? "Asignado a servicio. " : "No disponible. ") + (b.MantenimientoBloqueante ? "Mantenimiento bloqueante. " : "") + (b.Condicion != "Apto" ? "No apto." : "");
     protected override Task OnInitializedAsync() => CargarAsync();
     private async Task EjecutarAsync(Func<Task> accion)
@@ -80,9 +92,19 @@
     private Task CargarAsync() => EjecutarAsync(async () =>
     {
         banos = null; abierto = null; intento = null; programada = null;
-        var lista = await Sesion.EstadoBanosAsync(); var activos = await Sesion.EmpleadosAsignablesAsync();
+        var lista = await Sesion.EstadoBanosAsync(filtro, condicion); var activos = await Sesion.EmpleadosAsignablesAsync();
         if (!dispuesto) { banos = lista; empleados = activos; }
     });
+    private async Task InventarioGuardadoAsync(string mensaje)
+    {
+        aviso = mensaje;
+        await RefrescarAsync();
+    }
+    private async Task RefrescarAsync()
+    {
+        try { var lista = await Sesion.EstadoBanosAsync(filtro, condicion); if (!dispuesto) banos = lista; }
+        catch (ErrorApi ex) { if (!dispuesto) { banos = null; error = ex.Message; } }
+    }
     private void Abrir(EstadoBano bano)
     {
         if (ocupada) return;

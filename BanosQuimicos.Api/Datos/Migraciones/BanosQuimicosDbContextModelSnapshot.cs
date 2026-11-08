@@ -30,6 +30,9 @@ namespace BanosQuimicos.Api.Datos.Migraciones
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdBano"));
 
+                    b.Property<Guid?>("ClaveAlta")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("CodigoInterno")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -37,6 +40,9 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                         .UseCollation("Latin1_General_100_CI_AS");
 
                     b.Property<DateTimeOffset>("FechaAlta")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("FechaBaja")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<int>("IdEstadoBano")
@@ -54,6 +60,10 @@ namespace BanosQuimicos.Api.Datos.Migraciones
 
                     b.HasKey("IdBano");
 
+                    b.HasIndex("ClaveAlta")
+                        .IsUnique()
+                        .HasFilter("[ClaveAlta] IS NOT NULL");
+
                     b.HasIndex("CodigoInterno")
                         .IsUnique();
 
@@ -66,6 +76,8 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                     b.ToTable("BANOS_QUIMICOS", null, t =>
                         {
                             t.HasCheckConstraint("CK_BANOS_QUIMICOS_Codigo", "DATALENGTH([CodigoInterno]) = DATALENGTH(LTRIM(RTRIM([CodigoInterno]))) AND LEN([CodigoInterno]) > 0");
+
+                            t.HasCheckConstraint("CK_BANOS_QUIMICOS_FechaBaja", "[FechaBaja] IS NULL OR [FechaBaja] >= [FechaAlta]");
                         });
                 });
 
@@ -453,6 +465,10 @@ namespace BanosQuimicos.Api.Datos.Migraciones
 
                     b.Property<Guid?>("ClaveProgramacion")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DescripcionTrabajo")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<DateTimeOffset?>("FechaCancelacion")
                         .HasColumnType("datetimeoffset");

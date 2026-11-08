@@ -130,6 +130,7 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     }
     public async Task CerrarAsync()
     {
+        inventario.Clear();
         await exclusión.WaitAsync();
         try
         {
@@ -162,7 +163,19 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     public Task<SolicitudPropia> SolicitarServicioAsync(DatosNuevoServicio datos) => ComoRolAsync("Cliente", t => api.SolicitarServicioAsync(t, datos));
     public Task<List<ServicioCliente>> MisServiciosAsync() => ComoRolAsync("Cliente", api.MisServiciosAsync);
     public Task<ServicioCliente> MiServicioAsync(int id) => ComoRolAsync("Cliente", t => api.MiServicioAsync(t, id));
-    public Task<List<EstadoBano>> EstadoBanosAsync() => ComoAdministradorAsync(api.EstadoBanosAsync);
+    public Task<List<EstadoBano>> EstadoBanosAsync(string filtro = "Activos", string condicion = "Todos") => ComoAdministradorAsync(t => api.EstadoBanosAsync(t, filtro, condicion));
+    private readonly Dictionary<int, BorradorInventario> inventario = [];
+    public BorradorInventario InventarioActual()
+    {
+        if (Estado != EstadoSesion.Activa || Cuenta?.Rol != "Administrador" || Cuenta.IdUsuario is not int usuario)
+            throw new ErrorApi(TipoErrorApi.SinPermiso, "Se requiere un administrador activo.");
+        if (!inventario.TryGetValue(usuario, out var b)) inventario[usuario] = b = new(); return b;
+    }
+    public Task<List<TipoBanoPedido>> TiposInventarioAsync() => ComoAdministradorAsync(api.TiposInventarioAsync);
+    public Task<EstadoBano> AltaInventarioAsync(AltaInventario d) => ComoAdministradorAsync(t => api.InventarioAsync<EstadoBano>(t, "api/banos", HttpMethod.Post, d));
+    public Task<EstadoBano> CondicionInventarioAsync(int id, CondicionInventario d) => ComoAdministradorAsync(t => api.InventarioAsync<EstadoBano>(t, $"api/banos/{id}/condicion", HttpMethod.Put, d));
+    public Task<EstadoBano> BajaInventarioAsync(int id) => ComoAdministradorAsync(t => api.InventarioAsync<EstadoBano>(t, $"api/banos/{id}/baja-inventario", HttpMethod.Post));
+    public Task<LimpiezaProgramada> MantenimientoInventarioAsync(int id, MantenimientoInventario d) => ComoAdministradorAsync(t => api.InventarioAsync<LimpiezaProgramada>(t, $"api/banos/{id}/mantenimientos", HttpMethod.Post, d));
     public Task<List<ServicioGestion>> ServiciosAsync() => ComoAdministradorAsync(api.ServiciosAsync);
     public Task<ServicioGestion> ProgramarRetiroAsync(int id, ProgramarRetiro datos) => ComoAdministradorAsync(t => api.ProgramarRetiroAsync(t, id, datos));
     public Task<ServicioGestion> ResolverPendientesAsync(int id, ResolverPendientes datos) => ComoAdministradorAsync(t => api.ResolverPendientesAsync(t, id, datos));

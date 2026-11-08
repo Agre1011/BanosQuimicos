@@ -14,7 +14,7 @@ namespace BanosQuimicos.Api.Controllers;
 [Route("api/banos")]
 [Authorize(Policy = Politicas.Administrador)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public class BanosController(BanosQuimicosDbContext db, TimeProvider reloj) : ControllerBase
+public partial class BanosController(BanosQuimicosDbContext db, TimeProvider reloj) : ControllerBase
 {
     [HttpGet("empleados-asignables")]
     public async Task<ActionResult<List<EmpleadoAsignableRespuesta>>> Empleados(CancellationToken ct) =>
@@ -22,24 +22,31 @@ public class BanosController(BanosQuimicosDbContext db, TimeProvider reloj) : Co
             .OrderBy(x => x.Apellido).ThenBy(x => x.Nombre).ThenBy(x => x.IdUsuario)
             .Select(x => new EmpleadoAsignableRespuesta(x.IdUsuario, x.Nombre + " " + x.Apellido)).ToListAsync(ct));
 
-    private IQueryable<EstadoBanoRespuesta> Estados(int? id = null) =>
+    private IQueryable<EstadoBanoRespuesta> Estados(int? id = null, string inventario = "Todos", string condicion = "Todos") =>
         from b in db.BanosQuimicos.AsNoTracking()
         where id == null || b.IdBano == id
+        where inventario == "Todos" || (inventario == "Bajas" ? b.FechaBaja != null : b.FechaBaja == null)
+        where condicion == "Todos" || b.EstadoBano.NombreEstado == condicion
         let servicio = db.Servicios.Where(s => s.IdBano == b.IdBano && (s.EstadoServicio == "Entregado" || s.EstadoServicio == "Pendiente de entrega")).FirstOrDefault()
         let ubicacion = db.UbicacionesServicio.Where(u => servicio != null && u.IdServicio == servicio.IdServicio && u.EsActual).FirstOrDefault()
         let mantenimiento = db.TareasOperativas.Any(t => t.IdBano == b.IdBano && t.BloqueaAsignacion && (t.IdEstadoOperacion == 6 || t.IdEstadoOperacion == 7))
         orderby b.CodigoInterno, b.IdBano
         select new EstadoBanoRespuesta(b.IdBano, b.CodigoInterno, b.TipoBano.NombreTipo, b.EstadoBano.NombreEstado,
-            mantenimiento, b.EstadoBano.NombreEstado == "Apto" && servicio == null && !mantenimiento,
+            mantenimiento, b.FechaBaja == null && b.EstadoBano.NombreEstado == "Apto" && servicio == null && !mantenimiento,
             b.IdResponsableLimpieza, b.ResponsableLimpieza == null ? null : b.ResponsableLimpieza.Nombre + " " + b.ResponsableLimpieza.Apellido,
             b.ResponsableLimpieza != null && b.ResponsableLimpieza.EstadoCuenta == "Activa" && b.ResponsableLimpieza.Rol.NombreRol == "Empleado",
             servicio == null ? null : servicio.IdServicio, servicio == null ? null : servicio.EstadoServicio,
             servicio == null ? null : servicio.TipoUso, servicio == null ? null : servicio.Cliente.Usuario.Nombre + " " + servicio.Cliente.Usuario.Apellido,
             ubicacion == null ? null : ubicacion.IdUbicacion, ubicacion == null ? null : ubicacion.Direccion,
-            servicio == null ? null : servicio.CantidadLimpiezasSemana);
+            servicio == null ? null : servicio.CantidadLimpiezasSemana, b.FechaBaja);
 
     [HttpGet("estado")]
-    public async Task<ActionResult<List<EstadoBanoRespuesta>>> Listar(CancellationToken ct) => Ok(await Estados().ToListAsync(ct));
+    public async Task<ActionResult<List<EstadoBanoRespuesta>>> Listar(CancellationToken ct, [FromQuery] string inventario = "Activos", [FromQuery] string condicion = "Todos")
+    {
+        if (inventario is not ("Activos" or "Bajas" or "Todos")) return BadRequest(new { mensaje = "Filtro de inventario inválido." });
+        if (condicion is not ("Todos" or "Apto" or "No apto")) return BadRequest(new { mensaje = "Filtro de condición inválido." });
+        return Ok(await Estados(inventario: inventario, condicion: condicion).ToListAsync(ct));
+    }
 
     [HttpPut("{id:int}/responsable-limpieza")]
     public async Task<ActionResult<EstadoBanoRespuesta>> Responsable(int id, AsignarResponsableSolicitud datos, CancellationToken ct)
@@ -48,6 +55,7 @@ public class BanosController(BanosQuimicosDbContext db, TimeProvider reloj) : Co
         if (!await AdminActivo(ct)) return Forbid();
         var bano = await db.BanosQuimicos.SingleOrDefaultAsync(x => x.IdBano == id, ct);
         if (bano is null) return NotFound();
+        if (bano.FechaBaja is not null) return Conflict(new { mensaje = "El baño está dado de baja del inventario; no admite nuevas asignaciones." });
         if (!await EmpleadoActivo(datos.IdEmpleado, ct)) return Conflict(new { mensaje = "Elegir un empleado activo." });
         // Repetición del mismo destino es inocua; otro cambio concurrente no se pisa.
         if (bano.IdResponsableLimpieza != datos.IdEmpleado && bano.IdResponsableLimpieza != datos.IdResponsableAnterior)
@@ -75,6 +83,8 @@ public class BanosController(BanosQuimicosDbContext db, TimeProvider reloj) : Co
             return Ok(new { previa.IdTarea });
         }
         if (!await db.BanosQuimicos.AnyAsync(x => x.IdBano == id, ct)) return NotFound();
+        if (await db.BanosQuimicos.AnyAsync(x => x.IdBano == id && x.FechaBaja != null, ct))
+            return Conflict(new { mensaje = "El baño está dado de baja del inventario; no admite trabajos nuevos." });
         if (!await EmpleadoActivo(datos.IdEmpleado, ct)) return Conflict(new { mensaje = "Elegir un empleado activo." });
         var servicio = await db.Servicios.SingleOrDefaultAsync(x => x.IdServicio == datos.IdServicio && x.IdBano == id && x.EstadoServicio == "Entregado", ct);
         if (servicio is null) return Conflict(new { mensaje = "La limpieza requiere el servicio entregado que muestra la tarjeta. Volvé a consultar." });

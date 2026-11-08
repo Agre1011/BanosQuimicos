@@ -120,7 +120,7 @@ public class ClienteAutenticacion
     }
     public Task<List<ServicioCliente>> MisServiciosAsync(string token) => LeerAutenticadoAsync<List<ServicioCliente>>(token, "api/servicios-cliente/mios", "servicios");
     public Task<ServicioCliente> MiServicioAsync(string token, int id) => LeerAutenticadoAsync<ServicioCliente>(token, $"api/servicios-cliente/{id}", "servicios");
-    public Task<List<EstadoBano>> EstadoBanosAsync(string token) => LeerAutenticadoAsync<List<EstadoBano>>(token, "api/banos/estado", "banos");
+    public Task<List<EstadoBano>> EstadoBanosAsync(string token, string inventario = "Activos", string condicion = "Todos") => LeerAutenticadoAsync<List<EstadoBano>>(token, "api/banos/estado?inventario=" + Uri.EscapeDataString(inventario) + "&condicion=" + Uri.EscapeDataString(condicion), "banos");
     public Task<List<ServicioGestion>> ServiciosAsync(string token) => LeerAutenticadoAsync<List<ServicioGestion>>(token, "api/servicios", "servicios");
     public async Task<ServicioGestion> ProgramarRetiroAsync(string token, int id, ProgramarRetiro datos)
     {
@@ -199,6 +199,15 @@ public class ClienteAutenticacion
         catch (HttpRequestException) { throw new ErrorApi(TipoErrorApi.Conexion, "No pudimos conectar con el servidor. Revisá la conexión y que la API esté ejecutándose."); }
         catch (TaskCanceledException) { throw new ErrorApi(TipoErrorApi.Conexion, "El servidor tardó demasiado. Podés volver a intentar."); }
     }
+    public Task<List<TipoBanoPedido>> TiposInventarioAsync(string token) => LeerAutenticadoAsync<List<TipoBanoPedido>>(token, "api/banos/tipos", "banos");
+    public async Task<T> InventarioAsync<T>(string token, string ruta, HttpMethod metodo, object? datos = null)
+    {
+        using var request = new HttpRequestMessage(metodo, ruta);
+        request.Headers.Authorization = new("Bearer", token);
+        if (datos is not null) request.Content = JsonContent.Create(datos);
+        using var response = await EnviarAsync(request);
+        await ComprobarAsync(response, "banos"); return await LeerAsync<T>(response);
+    }
     private static async Task<T> LeerAsync<T>(HttpResponseMessage response)
     {
         try { return await response.Content.ReadFromJsonAsync<T>() ?? throw new JsonException(); }
@@ -216,7 +225,7 @@ public class ClienteAutenticacion
                 operacion == "login" ? "La cuenta no está habilitada. Consultá al administrador." : "No tenés permiso para realizar esta operación.");
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
-            if (operacion is "direccion" or "solicitudes" or "servicios" or "tareas")
+            if (operacion is "direccion" or "solicitudes" or "servicios" or "tareas" or "banos")
             {
                 var mensaje = await MensajeNegocioAsync(response);
                 if (mensaje is not null) throw new ErrorApi(TipoErrorApi.Conflicto, mensaje);
@@ -236,7 +245,7 @@ public class ClienteAutenticacion
         }
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
-            if (operacion == "direccion" && await MensajeNegocioAsync(response) is { } detalle)
+            if ((operacion is "direccion" or "banos") && await MensajeNegocioAsync(response) is { } detalle)
                 throw new ErrorApi(TipoErrorApi.Validacion, detalle);
             var mensaje = "Revisá los datos ingresados y los campos obligatorios.";
             try

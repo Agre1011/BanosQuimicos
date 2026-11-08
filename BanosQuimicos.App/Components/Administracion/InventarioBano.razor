@@ -1,0 +1,97 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+@if (Bano.FechaBaja is { } baja)
+{
+    <p class="aviso">Baja del inventario: @baja.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy HH:mm"). El historial se conserva; no admite nuevas asignaciones ni trabajos.</p>
+}
+else
+{
+    <button class="secundario" disabled="@ocupada" @onclick='() => accion = "condicion"'>@(Bano.Condicion == "Apto" ? "Cambiar a No apto" : "Confirmar Apto")</button>
+    <button class="salir" disabled="@ocupada" @onclick='() => accion = "baja"'>Dar de baja del inventario</button>
+    @if (accion == "condicion")
+    {
+        <p>¿Confirmás cambiar @Bano.Codigo de @Bano.Condicion a @(Bano.Condicion == "Apto" ? "No apto" : "Apto")? No cierra servicios, no cancela tareas y no elimina bloqueos de mantenimiento.</p>
+        <button disabled="@ocupada" @onclick="CondicionAsync">Confirmar condición</button>
+        <button disabled="@ocupada" @onclick='() => accion = null'>Cancelar</button>
+    }
+    @if (accion == "baja")
+    {
+        <p>¿Confirmás dar de baja @Bano.Codigo del inventario? No se borra el historial. No se permite si tiene un servicio vigente o tareas activas.</p>
+        <button class="salir" disabled="@ocupada" @onclick="BajaAsync">Confirmar baja del inventario</button>
+        <button disabled="@ocupada" @onclick='() => accion = null'>Cancelar</button>
+    }
+    @if (Bano.IdServicio is null)
+    {
+        <button class="tareas-empleado" disabled="@ocupada" @onclick="() => mantenimiento = !mantenimiento">Programar mantenimiento sin servicio</button>
+        @if (mantenimiento)
+        {
+            <div class="asignacion-bano solicitud-admin">
+                <label for="@($"mant-empleado-{Bano.IdBano}")">Empleado activo</label>
+                <select id="@($"mant-empleado-{Bano.IdBano}")" @bind="empleado" disabled="@(ocupada || pendiente is not null)">
+                    <option value="0">Elegir empleado</option>
+                    @foreach (var e in Empleados) { <option value="@e.IdUsuario">@e.Nombre (ID @e.IdUsuario)</option> }
+                </select>
+                <label for="@($"mant-fecha-{Bano.IdBano}")">Fecha del mantenimiento</label>
+                <InputDate id="@($"mant-fecha-{Bano.IdBano}")" @bind-Value="fecha" disabled="@(ocupada || pendiente is not null)" />
+                <label for="@($"mant-descripcion-{Bano.IdBano}")">Descripción del trabajo</label>
+                <textarea id="@($"mant-descripcion-{Bano.IdBano}")" style="width:100%;min-height:5rem;font:inherit" maxlength="2000" @bind="descripcion" disabled="@(ocupada || pendiente is not null)"></textarea>
+                <label><input type="checkbox" @bind="bloquea" disabled="@(ocupada || pendiente is not null)" /> Bloquea nuevas asignaciones mientras esté Pendiente o En curso</label>
+                <p>Se creará una tarea Pendiente. No cambia la condición física ni asigna un responsable habitual.</p>
+                <button class="principal" disabled="@(ocupada || empleado == 0 || fecha is null || string.IsNullOrWhiteSpace(descripcion))" @onclick="ProgramarAsync">@(pendiente is null ? "Confirmar mantenimiento" : "Reintentar el mismo mantenimiento")</button>
+                @if (pendiente is not null) { <p>El envío conserva su clave y datos hasta confirmar el guardado.</p> }
+            </div>
+        }
+    }
+}
+@if (ocupada) { <p role="status">Guardando…</p> }
+@if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+@if (aviso is not null) { <p class="aviso" role="status">@aviso</p> }
+
+@code {
+    [Parameter, EditorRequired] public EstadoBano Bano { get; set; } = null!;
+    [Parameter] public List<EmpleadoAsignable> Empleados { get; set; } = [];
+    [Parameter] public EventCallback<string> Guardado { get; set; }
+    private bool ocupada, mantenimiento, bloquea;
+    private string? accion, error, aviso;
+    private string descripcion = "";
+    private int empleado;
+    private DateOnly? fecha = DateOnly.FromDateTime(DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)).Date);
+    private MantenimientoInventario? pendiente;
+    protected override void OnInitialized()
+    {
+        if (Sesion.InventarioActual().Mantenimientos.TryGetValue(Bano.IdBano, out var p))
+        { pendiente = p; empleado = p.IdEmpleado; fecha = p.Fecha; descripcion = p.Descripcion; bloquea = p.BloqueaAsignacion; mantenimiento = true; }
+    }
+    private async Task EjecutarAsync(Func<Task> guardar)
+    {
+        if (ocupada) return; ocupada = true; error = null; aviso = null;
+        try { await guardar(); accion = null; await Guardado.InvokeAsync(aviso ?? "Operación guardada."); }
+        catch (ErrorApi ex)
+        {
+            error = ex.Message;
+            if (pendiente is not null && ex.Tipo is TipoErrorApi.Validacion or TipoErrorApi.Conflicto)
+            { Sesion.InventarioActual().Mantenimientos.Remove(Bano.IdBano); pendiente = null; }
+        }
+        finally { ocupada = false; }
+    }
+    private Task CondicionAsync() => EjecutarAsync(async () =>
+    {
+        var b = await Sesion.CondicionInventarioAsync(Bano.IdBano, new(Bano.Condicion, Bano.Condicion == "Apto" ? "No apto" : "Apto"));
+        aviso = $"Condición guardada: {b.Condicion}. Los servicios y mantenimientos se conservan.";
+    });
+    private Task BajaAsync() => EjecutarAsync(async () =>
+    {
+        await Sesion.BajaInventarioAsync(Bano.IdBano); aviso = "Baja del inventario guardada. Consultable mediante el filtro Bajas.";
+    });
+    private Task ProgramarAsync() => EjecutarAsync(async () =>
+    {
+        if (fecha is not { } dia || empleado == 0 || string.IsNullOrWhiteSpace(descripcion)) return;
+        pendiente ??= new(Guid.NewGuid(), empleado, dia, descripcion.Trim(), bloquea);
+        Sesion.InventarioActual().Mantenimientos[Bano.IdBano] = pendiente;
+        var t = await Sesion.MantenimientoInventarioAsync(Bano.IdBano, pendiente);
+        Sesion.InventarioActual().Mantenimientos.Remove(Bano.IdBano); pendiente = null;
+        mantenimiento = false; descripcion = "";
+        aviso = $"Mantenimiento guardado. Tarea {t.IdTarea}. La condición física no cambió.";
+    });
+}

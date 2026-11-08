@@ -9,6 +9,8 @@ public class TareaOperativa
     public int IdTipoOperacion { get; set; }
     public int IdEstadoOperacion { get; set; }
     public DateTimeOffset FechaRegistro { get; set; }
+    // Instrucciones administrativas; no son observaciones del empleado ni cumplimiento ficticio.
+    public string? DescripcionTrabajo { get; set; }
     public bool BloqueaAsignacion { get; set; }
     public int? IdServicio { get; set; }
     public int? IdEmpleado { get; set; }

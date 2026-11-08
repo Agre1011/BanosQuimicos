@@ -48,6 +48,13 @@
                     else { <dt>Dirección</dt><dd>@(tarea.Direccion ?? "Sin dirección registrada")</dd> }
                     <dt>Fecha</dt><dd>@Fecha(tarea.FechaProgramada)</dd>
                 </dl>
+                @if (!string.IsNullOrWhiteSpace(tarea.DescripcionTrabajo)) { <p class="texto-trabajo"><strong>Trabajo indicado:</strong> @tarea.DescripcionTrabajo</p> }
+                @if (tarea.Tipo == "Mantenimiento")
+                {
+                    <p>Condición física actual: @tarea.CondicionBano. Finalizar el mantenimiento no cambia la condición; el administrador debe confirmarla manualmente.</p>
+                    <p>Otros mantenimientos bloqueantes pendientes o en curso: @tarea.OtrosMantenimientosBloqueantes.</p>
+                    @if (tarea.FechaBajaBano is not null) { <p>Baño dado de baja del inventario.</p> }
+                }
                 @if (!string.IsNullOrWhiteSpace(tarea.TipoSolicitud)) { <p><strong>Origen:</strong> @tarea.TipoSolicitud</p> }
                 @if (!string.IsNullOrWhiteSpace(tarea.DescripcionSolicitud)) { <p class="texto-trabajo"><strong>Descripción de la solicitud:</strong> @tarea.DescripcionSolicitud</p> }
                 @if (!string.IsNullOrWhiteSpace(tarea.ObservacionesSolicitud)) { <p class="texto-trabajo"><strong>Observaciones de la solicitud:</strong> @tarea.ObservacionesSolicitud</p> }

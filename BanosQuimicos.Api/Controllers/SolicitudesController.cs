@@ -48,7 +48,7 @@ public class SolicitudesController(BanosQuimicosDbContext db, TimeProvider reloj
         return detalle is null ? NotFound() : Ok(detalle);
     }
 
-    private IQueryable<BanoQuimico> Disponibles(int tipo) => db.BanosQuimicos.Where(b => b.IdTipoBano == tipo && b.EstadoBano.NombreEstado == "Apto"
+    private IQueryable<BanoQuimico> Disponibles(int tipo) => db.BanosQuimicos.Where(b => b.FechaBaja == null && b.IdTipoBano == tipo && b.EstadoBano.NombreEstado == "Apto"
         && !db.Servicios.Any(s => s.IdBano == b.IdBano && (s.EstadoServicio == "Pendiente de entrega" || s.EstadoServicio == "Entregado"))
         && !db.TareasOperativas.Any(t => t.IdBano == b.IdBano && t.BloqueaAsignacion && (t.IdEstadoOperacion == 6 || t.IdEstadoOperacion == 7)));
 
@@ -174,6 +174,8 @@ public class SolicitudesController(BanosQuimicosDbContext db, TimeProvider reloj
         if (solicitud.IdServicioReferencia != datos.IdServicioEsperado) return Conflict(new { mensaje = "El servicio de referencia cambió." });
         var servicio = await db.Servicios.SingleOrDefaultAsync(x => x.IdServicio == datos.IdServicioEsperado && x.IdCliente == solicitud.IdCliente && x.EstadoServicio == "Entregado", ct);
         if (servicio is null) return Conflict(new { mensaje = "La operación necesita un servicio entregado del mismo cliente." });
+        if (await db.BanosQuimicos.AnyAsync(b => b.IdBano == servicio.IdBano && b.FechaBaja != null, ct))
+            return Conflict(new { mensaje = "El baño está dado de baja del inventario y no admite trabajos nuevos." });
         if (tipo is 8 or 10)
         {
             var conflicto = await BanosQuimicos.Api.Reglas.ReglasDireccion.Conflicto(db, servicio.IdServicio, id, ct, tipo == 8);
