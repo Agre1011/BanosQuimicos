@@ -1,5 +1,8 @@
 # Autenticación de la API
 
+**Regla vigente desde estado-cuentas (08/11/2026):** los registros nuevos son **Cliente/Activa** y no requieren aprobación. La espera y activación documentadas en evidencias históricas corresponden solo a cuentas antiguas Pendientes. Suspensión, reactivación, baja definitiva desde la app y bloqueos se describen en [la guía actual](estado-cuentas.md). No activar masivamente cuentas existentes.
+
+
 Este bloque agrega registro, login, consulta de identidad y activación administrativa. Conserva las 12 tablas y la migración inicial. No incorpora pantallas, CRUD del negocio, recuperación de contraseña, proveedores externos ni refresh tokens.
 
 ## Elección y recorrido del código
@@ -62,10 +65,10 @@ En este bloque se probó la lógica del primer administrador en bases aisladas d
 | Método y ruta | Permiso | Resultado principal |
 | --- | --- | --- |
 | GET `/api/estado` | Público | 200, mensaje de funcionamiento. |
-| POST `/api/autenticacion/registro` | Público | 201, estado Pendiente y aviso; 409 si correo duplicado; 400 si faltan datos o se envían campos no admitidos. |
+| POST `/api/autenticacion/registro` | Público | 201, estado Activa y mensaje para iniciar sesión; 409 si correo duplicado; 400 si faltan datos o se envían campos no admitidos. |
 | POST `/api/autenticacion/login` | Público | 200, accessToken, expiraEn, estadoCuenta y aviso si está Pendiente. Credenciales inválidas: 401; Suspendida/BajaLogica con contraseña válida: 403, sin token. |
 | GET `/api/autenticacion/yo` | Cuenta identificada Activa/Pendiente | Pendiente: solo estado y aviso. Activa: id, nombre, apellido, correo, teléfono, rol y estado. Sin hashes ni contraseña. |
-| POST `/api/cuentas/{id}/activar` | Administrador activo | 204 al activar Cliente/Pendiente con perfil; 404 si no existe; 409 si no cumple condiciones. |
+| POST `/api/cuentas/{id}/activar` | Administrador activo | 204 al activar Cliente o Empleado/Pendiente con perfil; 404 si no existe; 409 si no cumple condiciones. |
 
 Sin token o con token inválido: 401. Cuenta pendiente o rol incorrecto sobre una operación protegida: 403. Un token de una cuenta posteriormente suspendida/dada de baja se rechaza con 401 al consultar su estado actual.
 
@@ -107,9 +110,9 @@ $cabeceras = @{ Authorization = "Bearer $($sesion.accessToken)" }
 Invoke-RestMethod "$baseUrl/api/autenticacion/yo" -Headers $cabeceras
 ```
 
-Se debe recibir únicamente Pendiente y el aviso de espera. Repetir el registro produce 409. Usar una contraseña distinta en login produce 401. No imprimir `$sesion`, pues contiene el token.
+Se debe recibir Cliente/Activa con sus datos y rol, sin espera de aprobación. Repetir el registro produce 409. Usar una contraseña distinta en login produce 401. No imprimir `$sesion`, pues contiene el token.
 
-Para activar: iniciar sesión con el primer administrador, guardar su respuesta en una variable y construir sus cabeceras como arriba. Consultar el IdUsuario del correo de prueba desde Visual Studio/SSMS (solo columnas IdUsuario, Email y EstadoCuenta), sin exponer hashes. Con ese ID:
+Solo para una cuenta antigua Pendiente (el registro nuevo anterior no lo necesita): iniciar sesión con el primer administrador, guardar su respuesta en una variable y construir sus cabeceras como arriba. Consultar el IdUsuario del correo de prueba desde Visual Studio/SSMS (solo columnas IdUsuario, Email y EstadoCuenta), sin exponer hashes. Con ese ID:
 
 ```powershell
 # $cabecerasAdmin contiene el token del administrador obtenido mediante login.

@@ -45,7 +45,7 @@ public class CambioRolPruebas(AplicacionPruebas app, ITestOutputHelper salida) :
         http.PutAsJsonAsync($"/api/cuentas/{id}/rol", new { rolAnterior = anterior, nuevoRol = nuevo }, Ct);
 
     [Fact]
-    public async Task Registro_activacion_cambio_login_misma_clave_vuelta_e_historial_conservado()
+    public async Task Registro_activo_cambio_login_misma_clave_vuelta_e_historial_conservado()
     {
         salida.WriteLine("Base aislada conservada: " + app.NombreBase);
         var (datos, id) = await Registrar();
@@ -57,9 +57,8 @@ public class CambioRolPruebas(AplicacionPruebas app, ITestOutputHelper salida) :
         var sesion = new AutenticacionApp.SesionUsuario(api, new AutenticacionAppPruebas.AlmacenPrueba());
         await sesion.InicializarAsync();
         await sesion.IngresarAsync(new AutenticacionApp.DatosLogin { Email = datos.Email, Contrasena = datos.Contrasena });
-        Assert.Equal(AutenticacionApp.EstadoSesion.Pendiente, sesion.Estado);
+        Assert.Equal(AutenticacionApp.EstadoSesion.Activa, sesion.Estado);
         using var admin = await Admin();
-        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"/api/cuentas/{id}/activar", null, Ct)).StatusCode);
         using var appAdminHttp = Http();
         var appAdmin = new AutenticacionApp.SesionUsuario(new AutenticacionApp.ClienteAutenticacion(appAdminHttp), new AutenticacionAppPruebas.AlmacenPrueba());
         await appAdmin.InicializarAsync();
@@ -117,7 +116,6 @@ public class CambioRolPruebas(AplicacionPruebas app, ITestOutputHelper salida) :
     {
         var (datos, id) = await Registrar();
         using var admin = await Admin();
-        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"/api/cuentas/{id}/activar", null, Ct)).StatusCode);
         using var http = Http();
         var api = new AutenticacionApp.ClienteAutenticacion(http);
         var sesion = new AutenticacionApp.SesionUsuario(api, new AutenticacionAppPruebas.AlmacenPrueba());
@@ -209,7 +207,7 @@ public class CambioRolPruebas(AplicacionPruebas app, ITestOutputHelper salida) :
         var (_, objetivo) = await Registrar();
         var (datos, actor) = await Registrar();
         using var admin = await Admin();
-        if (caso != "Pendiente") await admin.PostAsync($"/api/cuentas/{actor}/activar", null, Ct);
+        if (caso == "Pendiente") { using var pendiente = app.NuevoContexto(); await pendiente.Usuarios.Where(x => x.IdUsuario == actor).ExecuteUpdateAsync(x => x.SetProperty(u => u.EstadoCuenta, "Pendiente"), Ct); }
         if (caso == "Empleado") await Cambiar(admin, actor, "Cliente", "Empleado");
         string? token = caso == "Anonimo" ? null : await Token(datos.Email, datos.Contrasena);
         if (caso is "Suspendida" or "BajaLogica")
@@ -255,6 +253,6 @@ public class CambioRolPruebas(AplicacionPruebas app, ITestOutputHelper salida) :
         Assert.Single(resultados, x => x.StatusCode == HttpStatusCode.Conflict);
         Assert.Equal(HttpStatusCode.Conflict, (await Cambiar(admin, id, "Cliente", "Empleado")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await Cambiar(admin, int.MaxValue, "Cliente", "Empleado")).StatusCode);
-        Assert.Equal("Pendiente", await db.Usuarios.Where(x => x.IdUsuario == id).Select(x => x.EstadoCuenta).SingleAsync(Ct));
+        Assert.Equal("Activa", await db.Usuarios.Where(x => x.IdUsuario == id).Select(x => x.EstadoCuenta).SingleAsync(Ct));
     }
 }

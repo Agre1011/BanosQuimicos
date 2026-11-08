@@ -148,6 +148,7 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     public Task<bool> CambiarRolAsync(int id, string rolAnterior, string nuevoRol) =>
         ComoAdministradorAsync(async t => { await api.CambiarRolAsync(t, id, rolAnterior, nuevoRol); return true; });
     public Task<CuentaGestion> DetalleCuentaAsync(int id) => ComoAdministradorAsync(t => api.DetalleCuentaAsync(t, id));
+    public Task<bool> CambiarEstadoCuentaAsync(int id, string anterior, string nuevo, string? motivo) => ComoAdministradorAsync(async t => { await api.CambiarEstadoCuentaAsync(t, id, anterior, nuevo, motivo); return true; });
     public Task<bool> ActivarCuentaAsync(int id) => ComoAdministradorAsync(async t => { await api.ActivarCuentaAsync(t, id); return true; });
 
     public Task<ResumenTareas> ResumenTareasAsync() => ComoRolAsync("Empleado", api.ResumenTareasAsync);

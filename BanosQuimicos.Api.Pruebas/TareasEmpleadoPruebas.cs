@@ -56,7 +56,8 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
         using var db = app.NuevoContexto();
         var id = await db.Usuarios.Where(x => x.Email == email).Select(x => x.IdUsuario).SingleAsync(Ct);
         using var admin = Http(await Token(app.CorreoAdmin, app.ClaveAdmin));
-        if (activar) Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"/api/cuentas/{id}/activar", null, Ct)).StatusCode);
+        // Una cuenta antigua Pendiente se prepara solo en esta base aislada. El registro real ya es Activa.
+        if (!activar) await db.Usuarios.Where(x => x.IdUsuario == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.EstadoCuenta, "Pendiente"), Ct);
         if (rol == "Empleado") Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync($"/api/cuentas/{id}/rol", new { rolAnterior = "Cliente", nuevoRol = "Empleado" }, Ct)).StatusCode);
         return (id, await Token(email, contrasena), email, contrasena);
     }

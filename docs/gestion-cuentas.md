@@ -1,10 +1,13 @@
 # Consulta y activación de cuentas
 
-Esta guía describe el bloque original de consulta y activación. La ampliación posterior permite cambiar Cliente ↔ Empleado sobre la cuenta existente: ver [acceso de empleados](acceso-empleados.md). No se crean empleados mediante un alta separada ni se permite editar datos, suspender o dar de baja. No agrega tablas o migraciones. Las 12 tablas del negocio y el historial de EF permanecen sin cambios.
+**Regla vigente desde estado-cuentas (08/11/2026):** los registros nuevos son **Cliente/Activa** y no requieren aprobación. La espera y activación documentadas en evidencias históricas corresponden solo a cuentas antiguas Pendientes. Suspensión, reactivación, baja definitiva desde la app y bloqueos se describen en [la guía actual](estado-cuentas.md). No activar masivamente cuentas existentes.
+
+
+Esta guía describe el bloque original de consulta y activación. La ampliación posterior permite cambiar Cliente ↔ Empleado sobre la cuenta existente: ver [acceso de empleados](acceso-empleados.md). No se crean empleados mediante un alta separada ni se permite editar datos. Suspensión, reactivación y baja se incorporan en estado-cuentas.md. No agrega tablas o migraciones. Las 12 tablas del negocio y el historial de EF permanecen sin cambios.
 
 ## Referencia aprobada y adaptación
 
-Se revisaron el texto de las páginas 1-2 del PDF aprobado y la captura Figma del administrador (página 6). Se conservan la paleta y la presentación por tarjetas de Clientes y Empleados. Algunos textos pequeños no son legibles; no se tomaron como reglas. «Gestionar cuentas», búsqueda, filtro, paginación, detalle y confirmación responden al alcance autorizado de este bloque. La baja sigue fuera de alcance; el cambio de rol se incorporó después según la captura ampliada y la corrección del estudiante, como explica la guía de empleados. Los originales se conservan.
+Se revisaron el texto de las páginas 1-2 del PDF aprobado y la captura Figma del administrador (página 6). Se conservan la paleta y la presentación por tarjetas de Clientes y Empleados. Algunos textos pequeños no son legibles; no se tomaron como reglas. «Gestionar cuentas», búsqueda, filtro, paginación, detalle y confirmación responden al alcance autorizado de este bloque. En el bloque original la baja quedaba fuera de alcance; ahora se incorpora en estado-cuentas.md; el cambio de rol se incorporó después según la captura ampliada y la corrección del estudiante, como explica la guía de empleados. Los originales se conservan.
 
 ## API: contratos reales
 
@@ -21,13 +24,13 @@ Todas las rutas requieren **Administrador con cuenta Activa**. La API consulta e
 - Orden: apellido, nombre e IdUsuario como desempate. La consulta está paginada en SQL; no descarga todos los usuarios para filtrar en la app. Es un listado actual, no una fotografía inmutable ante altas concurrentes.
 - Respuesta 200: `elementos`, `pagina`, `tamanoPagina` y `total` filtrado. Página posterior al final: elementos vacíos con el total real. Sin coincidencias: total 0 y lista vacía. Parámetros fuera de rango: 400.
 
-Cada elemento contiene exclusivamente `idUsuario`, `nombre`, `apellido`, `email`, `telefono`, `rol`, `estadoCuenta`, `fechaRegistro` y `puedeActivar`. No devuelve entidades EF, contraseñas, hashes, tokens ni datos de configuración.
+Cada elemento contiene exclusivamente `idUsuario`, `nombre`, `apellido`, `email`, `telefono`, `rol`, `estadoCuenta`, `fechaRegistro` `puedeActivar`, `motivoSuspension` y `fechaBaja`. No devuelve entidades EF, contraseñas, hashes, tokens ni datos de configuración.
 
 ### Detalle
 
 `GET /api/cuentas/ID_USUARIO`: 200 con los mismos campos de gestión; 404 si no existe. La fecha se guarda como DateTimeOffset y la app la muestra en hora local, con etiqueta explícita.
 
-`puedeActivar` solo es verdadero para Cliente/Pendiente con perfil cliente existente. Este indicador orienta la interfaz; el POST vuelve a validar todas las condiciones en SQL.
+`puedeActivar` solo es verdadero para Cliente o Empleado/Pendiente con perfil cliente existente. Este indicador orienta la interfaz; el POST vuelve a validar todas las condiciones en SQL.
 
 ### Activación existente
 
@@ -37,7 +40,7 @@ Cada elemento contiene exclusivamente `idUsuario`, `nombre`, `apellido`, `email`
 - 409: la cuenta cambió o no cumple las condiciones; no se modifica ni se reactiva.
 - 404: cuenta inexistente.
 
-Se conserva el UPDATE condicional existente: ante dos activaciones simultáneas, una da 204 y la otra 409. La app no reintenta automáticamente el POST. Si recibe 409 informa que la cuenta cambió y vuelve a leer detalle/listado; muestra el estado actual sin un error inesperado. También actualiza ambos después de un 204. Si la última cuenta deja de pertenecer a la última página del filtro Pendiente, ajusta la página al último número válido.
+La activación ahora usa la transacción compartida y valida el estado actual: ante dos activaciones simultáneas, una da 204 y la otra 409. La app no reintenta automáticamente el POST. Si recibe 409 informa que la cuenta cambió y vuelve a leer detalle/listado; muestra el estado actual sin un error inesperado. También actualiza ambos después de un 204. Si la última cuenta deja de pertenecer a la última página del filtro Pendiente, ajusta la página al último número válido.
 
 ## Prueba manual en Windows y Moto G9 Plus por USB
 
@@ -48,7 +51,7 @@ Usar [la preparación de autenticación](autenticacion-app.md): API perfil https
 3. Pulsar Gestionar cuentas. Esperado: carga, tarjetas con nombre/apellido, correo, rol y estado; total y página. Buscar por un fragmento del nombre, del apellido y luego por correo. Esperado: coincidencias correspondientes. Elegir Pendiente: solo cuentas pendientes. Combinar búsqueda y filtro. Un texto inexistente muestra lista vacía, sin error.
 4. Comprobar Anterior/Siguiente y el tamaño 10. Con menos de 11 resultados, Siguiente debe estar deshabilitado; no es un fallo. No crear grandes lotes de cuentas personales para probar: la suite aislada cubre 23 registros y cuatro páginas, incluidos nombres iguales.
 5. Abrir **Ver detalle** del cliente de prueba. Esperado: identidad, correo, teléfono, rol, estado y fecha de registro; botón Activar cliente. No hay contraseñas, hashes ni tokens ni controles de edición. Volver al listado conserva los filtros aplicados y consulta otra vez.
-6. Pulsar Activar cliente. Debe pedir confirmación mostrando nombre y correo. Pulsar **Cancelar**: debe permanecer Pendiente. Repetir y **Confirmar activación**: controles deshabilitados durante la petición; aviso de éxito y detalle Activa, sin botón para volver a activar. Volver al listado: estado actualizado; bajo filtro Pendiente el cliente ya no aparece.
+6. Solo para una cuenta antigua Pendiente, pulsar Activar cuenta pendiente. Debe pedir confirmación mostrando nombre y correo. Pulsar **Cancelar**: debe permanecer Pendiente. Repetir y **Confirmar activación**: controles deshabilitados durante la petición; aviso de éxito y detalle Activa, sin botón para volver a activar. Volver al listado: estado actualizado; bajo filtro Pendiente el cliente ya no aparece.
 7. Para probar la carrera, registrar otro cliente de prueba. Abrir su detalle pendiente en Windows y Android con el administrador. Activar en una instalación. Confirmar desde la otra, que todavía muestra la información anterior: debe informar cambio en otra sesión y mostrar Activa, sin repetir el alta ni fallar inesperadamente. También se puede realizar la primera activación desde Postman con el endpoint anterior.
 8. Detener temporalmente la API y actualizar listado/detalle. Esperado: error de conexión y ocultamiento de identidad administrativa; reintento o cierre de sesión. Reiniciar API y reintentar: consulta /yo y recupera acceso si sigue autorizado. No conservar tarjetas sensibles visibles ante un 401/403 o una conexión no verificable.
 9. En Windows comprobar ventana reducida, tabulación y desplazamiento. En Android comprobar título completo, teclado de búsqueda, filtro, desplazamiento por tarjetas/detalle y rotación. Cancelar la confirmación no envía POST. No se afirma que estas pantallas nuevas ya hayan sido probadas personalmente.

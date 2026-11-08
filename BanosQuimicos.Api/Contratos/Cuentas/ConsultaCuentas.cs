@@ -15,7 +15,7 @@ public class ConsultaCuentas
 // DTOs explícitos: nunca serializar Usuario ni su hash de contraseña.
 public record CuentaGestionRespuesta(int IdUsuario, string Nombre, string Apellido,
     string Email, string Telefono, string Rol, string EstadoCuenta,
-    DateTimeOffset FechaRegistro, bool PuedeActivar);
+    DateTimeOffset FechaRegistro, bool PuedeActivar, string? MotivoSuspension = null, DateTimeOffset? FechaBaja = null);
 public record PaginaCuentasRespuesta(List<CuentaGestionRespuesta> Elementos,
     int Pagina, int TamanoPagina, int Total);
 
@@ -24,4 +24,12 @@ public class CambioRolSolicitud
 {
     [Required, RegularExpression("^(Cliente|Empleado)$")] public string RolAnterior { get; set; } = "";
     [Required, RegularExpression("^(Cliente|Empleado)$")] public string NuevoRol { get; set; } = "";
+}
+
+[System.Text.Json.Serialization.JsonUnmappedMemberHandling(System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow)]
+public class CambioEstadoSolicitud
+{
+    [Required, RegularExpression("^(Pendiente|Activa|Suspendida)$")] public string EstadoAnterior { get; set; } = "";
+    [Required, RegularExpression("^(Activa|Suspendida|BajaLogica)$")] public string NuevoEstado { get; set; } = "";
+    [StringLength(1000)] public string? Motivo { get; set; }
 }

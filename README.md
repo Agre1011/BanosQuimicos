@@ -61,7 +61,7 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/inventario-banos`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/estado-cuentas`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 Cliente: [Mis Servicios](docs/servicios-cliente.md), [nuevo servicio y Mis Solicitudes](docs/solicitudes-cliente.md), [limpieza extra y reclamos](docs/limpieza-reclamos-cliente.md) y [cambio de dirección y baja](docs/direccion-baja-cliente.md), habilitados para probar localmente. La última guía incluye revisión administrativa de tareas y los tres escenarios Windows preparados.
 
@@ -98,3 +98,7 @@ Tarjetas e historial, retiro programado sin liberar anticipadamente la unidad y 
 ## Inventario de baños
 
 Alta con código automático, condición física manual, baja lógica y mantenimiento sin servicio dentro de Estado Baños. [Guía local y migración](docs/inventario-banos.md). Conserva las 12 tablas y el historial; sin publicación.
+
+## Registro y estado de cuentas
+
+Registro público Cliente/Activa con login habitual; cuentas antiguas Pendientes activables como Cliente o Empleado. Suspensión con motivo, reactivación de Suspendidas y baja lógica definitiva desde la app, con bloqueos operativos y protección de administradores. [Guía local Windows y migración](docs/estado-cuentas.md). Las evidencias previas de registro pendiente conservan su carácter histórico. Sin publicación.
