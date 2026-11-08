@@ -1,0 +1,85 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+<section class="cliente-vista" aria-busy="@enviando">
+    <h1>@(Baja ? "Solicitar baja" : "Cambio de dirección del servicio")</h1>
+    <p>Baño: @Servicio.CodigoBano</p>
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    @if (guardada is not null)
+    {
+        <p class="aviso" role="status">Solicitud @guardada.IdSolicitud guardada. Estado: @guardada.Estado. @(Baja ? "El servicio y el baño siguen asignados hasta completar el retiro." : "La dirección registrada no cambia hasta completar el traslado o validar el aviso, según la modalidad.")</p>
+    }
+    else if (Baja)
+    {
+        <p>¿Confirmás solicitar la baja de este servicio? No se elimina el servicio ni se libera el baño. El administrador debe programar el retiro y revisar los trabajos pendientes.</p>
+        <button class="cliente-opcion cliente-baja" disabled="@enviando" @onclick="Enviar">@(enviando ? "Enviando…" : baja.Intentado ? "Reintentar el mismo envío" : "Confirmar solicitud de baja")</button>
+    }
+    else
+    {
+        <EditForm Model="direccion" OnValidSubmit="Enviar">
+            <DataAnnotationsValidator /><ValidationSummary />
+            <label>Dirección actual</label><p class="cliente-tarjeta">@Servicio.Direccion</p>
+            <fieldset disabled="@(enviando || direccion.Intentado)">
+                <label for="nueva-direccion">Nueva dirección</label>
+                <InputText id="nueva-direccion" @bind-Value="direccion.NuevaDireccion" maxlength="300" />
+                <p>Seleccione la opción por favor</p>
+                <InputRadioGroup @bind-Value="direccion.Modalidad">
+                    <label class="modalidad-direccion"><InputRadio Value='@("Informado")' /> Ya realicé el cambio de dirección</label>
+                    <label class="modalidad-direccion"><InputRadio Value='@("Solicitado")' /> Necesito que lo trasladen</label>
+                </InputRadioGroup>
+                @if (direccion.Modalidad == "Informado")
+                {
+                    <label for="fecha-efectiva">Fecha y hora efectivas del cambio (Argentina UTC-3)</label>
+                    <InputDate id="fecha-efectiva" Type="InputDateType.DateTimeLocal" @bind-Value="direccion.FechaLocal" />
+                    <p>No pueden ser futuras. El administrador validará el aviso, sin enviar un traslado ficticio.</p>
+                }
+            </fieldset>
+            <button class="principal" type="submit" disabled="@enviando">@(enviando ? "Enviando…" : direccion.Intentado ? "Reintentar Notificar" : "Notificar")</button>
+        </EditForm>
+    }
+    @if (guardada is null && (Baja ? baja.Intentado : direccion.Intentado))
+    {
+        <p class="aviso">Se conserva el envío para reintentar sin duplicarlo. Consultá Mis Solicitudes si su resultado es incierto.</p>
+    }
+    @if (conflicto)
+    {
+        <p>Descartar el borrador no cancela solicitudes guardadas. Revisá Mis Solicitudes antes de preparar otra operación.</p>
+        <button class="secundario" disabled="@enviando" @onclick="Descartar">Descartar borrador y consultar el servicio</button>
+    }
+    <button class="volver" disabled="@enviando" @onclick="Volver">Volver</button>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ServicioCliente Servicio { get; set; } = null!;
+    [Parameter] public bool Baja { get; set; }
+    [Parameter] public EventCallback Volver { get; set; }
+    private DatosDireccionCliente direccion = new();
+    private DatosBajaCliente baja = new();
+    private SolicitudPropia? guardada;
+    private bool enviando, conflicto;
+    private string? error;
+    protected override void OnInitialized()
+    {
+        if (Baja) baja = Sesion.BorradorBaja(Servicio.IdServicio);
+        else direccion = Sesion.BorradorDireccion(Servicio.IdServicio, Servicio.IdUbicacionActual ?? 0);
+    }
+    private async Task Enviar()
+    {
+        if (enviando || guardada is not null) return;
+        enviando = true; error = null; conflicto = false;
+        if (Baja) baja.Intentado = true; else direccion.Intentado = true;
+        try
+        {
+            guardada = Baja ? await Sesion.PedirBajaAsync(Servicio.IdServicio, baja) : await Sesion.CambiarDireccionAsync(Servicio.IdServicio, direccion);
+            Sesion.LimpiarDireccionBaja(Servicio.IdServicio, Baja);
+        }
+        catch (ErrorApi ex)
+        {
+            error = ex.Message;
+            conflicto = ex.Tipo == TipoErrorApi.Conflicto;
+            if (ex.Tipo == TipoErrorApi.Validacion) { baja.Intentado = false; direccion.Intentado = false; }
+        }
+        finally { enviando = false; }
+    }
+    private async Task Descartar() { Sesion.LimpiarDireccionBaja(Servicio.IdServicio, Baja); await Volver.InvokeAsync(); }
+}

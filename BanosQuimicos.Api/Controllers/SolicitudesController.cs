@@ -174,6 +174,11 @@ public class SolicitudesController(BanosQuimicosDbContext db, TimeProvider reloj
         if (solicitud.IdServicioReferencia != datos.IdServicioEsperado) return Conflict(new { mensaje = "El servicio de referencia cambió." });
         var servicio = await db.Servicios.SingleOrDefaultAsync(x => x.IdServicio == datos.IdServicioEsperado && x.IdCliente == solicitud.IdCliente && x.EstadoServicio == "Entregado", ct);
         if (servicio is null) return Conflict(new { mensaje = "La operación necesita un servicio entregado del mismo cliente." });
+        if (tipo is 8 or 10)
+        {
+            var conflicto = await BanosQuimicos.Api.Reglas.ReglasDireccion.Conflicto(db, servicio.IdServicio, id, ct, tipo == 8);
+            if (conflicto is not null) return Conflict(new { mensaje = "Operación incompatible: " + conflicto });
+        }
         if (!await db.UbicacionesServicio.AnyAsync(x => x.IdUbicacion == datos.IdUbicacionEsperada && x.IdServicio == servicio.IdServicio && x.EsActual, ct))
             return Conflict(new { mensaje = "La ubicación actual cambió o no está disponible." });
         var ahora = reloj.GetUtcNow();

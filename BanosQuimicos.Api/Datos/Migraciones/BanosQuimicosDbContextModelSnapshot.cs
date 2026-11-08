@@ -407,6 +407,9 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<string>("RevisionUbicacionJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("TipoUsoSolicitado")
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");

@@ -10,6 +10,25 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     private DatosNuevoServicio? borradorServicio;
     private int? duenoBorrador;
     private readonly Dictionary<(int Usuario, int Servicio, bool Reclamo), DatosSolicitudServicio> borradoresOperacion = [];
+    private readonly Dictionary<(int Usuario, int Servicio), DatosDireccionCliente> direcciones = [];
+    private readonly Dictionary<(int Usuario, int Servicio), DatosBajaCliente> bajas = [];
+    private (int, int) ClaveBorrador(int servicio) => Estado == EstadoSesion.Activa && Cuenta?.Rol == "Cliente" && Cuenta.IdUsuario is int usuario
+        ? (usuario, servicio) : throw new ErrorApi(TipoErrorApi.SinPermiso, "Se requiere un cliente activo.");
+    public DatosDireccionCliente BorradorDireccion(int servicio, int ubicacion)
+    {
+        var clave = ClaveBorrador(servicio);
+        if (!direcciones.TryGetValue(clave, out var d)) direcciones[clave] = d = new() { IdUbicacionEsperada = ubicacion };
+        return d;
+    }
+    public DatosBajaCliente BorradorBaja(int servicio)
+    {
+        var clave = ClaveBorrador(servicio);
+        if (!bajas.TryGetValue(clave, out var d)) bajas[clave] = d = new(); return d;
+    }
+    public void LimpiarDireccionBaja(int servicio, bool baja)
+    {
+        var clave = ClaveBorrador(servicio); if (baja) bajas.Remove(clave); else direcciones.Remove(clave);
+    }
     public DatosSolicitudServicio BorradorOperacion(int servicio, bool reclamo)
     {
         if (Estado != EstadoSesion.Activa || Cuenta?.Rol != "Cliente" || Cuenta.IdUsuario is not int usuario)
@@ -117,6 +136,7 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
             token = null; Cuenta = null; Estado = EstadoSesion.SinSesion; Mensaje = "Se cerró la sesión.";
             borradorServicio = null; duenoBorrador = null;
             borradoresOperacion.Clear();
+            direcciones.Clear(); bajas.Clear();
             try { await almacen.BorrarAsync(); }
             catch { Mensaje = "Se cerró la sesión. No fue posible limpiar el almacén seguro; su restauración quedó deshabilitada."; }
         }
@@ -132,6 +152,10 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     public Task<ResumenTareas> ResumenTareasAsync() => ComoRolAsync("Empleado", api.ResumenTareasAsync);
     public Task<ResumenServiciosCliente> ResumenServiciosClienteAsync() => ComoRolAsync("Cliente", api.ResumenServiciosClienteAsync);
     public Task<List<SolicitudPropia>> MisSolicitudesAsync() => ComoRolAsync("Cliente", api.MisSolicitudesAsync);
+    public Task<SolicitudPropia> CambiarDireccionAsync(int id, DatosDireccionCliente d) => ComoRolAsync("Cliente", t => api.CambiarDireccionAsync(t, id, d));
+    public Task<SolicitudPropia> PedirBajaAsync(int id, DatosBajaCliente d) => ComoRolAsync("Cliente", t => api.PedirBajaAsync(t, id, d));
+    public Task<RevisionDireccion> RevisionDireccionAsync(int id) => ComoAdministradorAsync(t => api.RevisionDireccionAsync(t, id));
+    public Task<RevisionDireccion> RevisarDireccionAsync(int id, RevisarDireccion d) => ComoAdministradorAsync(t => api.RevisarDireccionAsync(t, id, d));
     public Task<SolicitudPropia> SolicitarSobreServicioAsync(int id, bool reclamo, DatosSolicitudServicio datos) =>
         ComoRolAsync("Cliente", t => api.SolicitarSobreServicioAsync(t, id, reclamo, datos));
     public Task<List<TipoBanoPedido>> TiposBanoPedidoAsync() => ComoRolAsync("Cliente", api.TiposBanoPedidoAsync);

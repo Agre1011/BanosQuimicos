@@ -61,9 +61,9 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/limpieza-reclamos-cliente`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/direccion-baja-cliente`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
-Cliente: [Mis Servicios](docs/servicios-cliente.md), [nuevo servicio y Mis Solicitudes](docs/solicitudes-cliente.md) y [limpieza extra y reclamos](docs/limpieza-reclamos-cliente.md), habilitados para probar localmente. Cambio de dirección y baja del cliente siguen deshabilitados.
+Cliente: [Mis Servicios](docs/servicios-cliente.md), [nuevo servicio y Mis Solicitudes](docs/solicitudes-cliente.md), [limpieza extra y reclamos](docs/limpieza-reclamos-cliente.md) y [cambio de dirección y baja](docs/direccion-baja-cliente.md), habilitados para probar localmente. La última guía incluye revisión administrativa de tareas y los tres escenarios Windows preparados.
 
 ## Gestión de cuentas
 

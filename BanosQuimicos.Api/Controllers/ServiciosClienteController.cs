@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BanosQuimicos.Api.Controllers;
 
 public record ServicioClienteRespuesta(int IdServicio, string CodigoBano, string TipoBano, string TipoUso,
-    string? Direccion, int CantidadLimpiezasSemana, string EstadoServicio);
+    string? Direccion, int CantidadLimpiezasSemana, string EstadoServicio, int? IdUbicacionActual = null);
 
 [ApiController]
 [Route("api/servicios-cliente")]
@@ -32,7 +32,8 @@ public class ServiciosClienteController(BanosQuimicosDbContext db) : ControllerB
                 db.UbicacionesServicio.Where(u => u.IdServicio == s.IdServicio)
                     .OrderByDescending(u => u.EsActual).ThenByDescending(u => u.IdUbicacion)
                     .Select(u => u.Direccion).FirstOrDefault(),
-                s.CantidadLimpiezasSemana, s.EstadoServicio));
+                s.CantidadLimpiezasSemana, s.EstadoServicio,
+                db.UbicacionesServicio.Where(u => u.IdServicio == s.IdServicio && u.EsActual).Select(u => (int?)u.IdUbicacion).FirstOrDefault()));
     }
 
     [HttpGet("mios/resumen")]

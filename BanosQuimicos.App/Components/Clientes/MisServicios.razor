@@ -1,7 +1,11 @@
 @using BanosQuimicos.App.Autenticacion
 @inject SesionUsuario Sesion
 
-@if (reclamoAbierto && detalle is not null)
+@if (direccionAbierta && detalle is not null)
+{
+    <DireccionBajaCliente Servicio="detalle" Volver="CerrarAccion" />
+}
+else if (reclamoAbierto && detalle is not null)
 {
     <SolicitudServicio Servicio="detalle" Reclamo="true" Volver="CerrarAccion" />
 }
@@ -26,18 +30,21 @@ else
                 <dt>Estado</dt><dd>@s.EstadoServicio</dd>
             </dl>
         </article>
-        @if (confirmarLimpieza)
+        @if (confirmarBaja)
+        {
+            <DireccionBajaCliente Servicio="s" Baja="true" Volver="CerrarAccion" />
+        }
+        else if (confirmarLimpieza)
         {
             <SolicitudServicio Servicio="s" Volver="CerrarAccion" />
         }
         else
         {
         <button class="cliente-opcion" disabled="@(s.EstadoServicio != "Entregado")" @onclick="() => confirmarLimpieza = true">Solicitar Limpieza Extra</button>
-        <button class="cliente-opcion" disabled>Solicitar o informar cambio de dirección</button>
-        <p class="cliente-pendiente">Pendiente: «Ya realicé el cambio de dirección» o «Necesito que lo trasladen».</p>
+        <button class="cliente-opcion" disabled="@(s.EstadoServicio != "Entregado" || s.IdUbicacionActual is null)" @onclick="() => direccionAbierta = true">Solicitar o informar cambio de dirección</button>
         <button class="cliente-opcion" disabled="@(s.EstadoServicio != "Entregado")" @onclick="() => reclamoAbierto = true">Realizar Reclamo</button>
-        <button class="cliente-opcion cliente-baja" disabled>Dar de Baja</button>
-        <p class="cliente-pendiente">Cambio de dirección y baja todavía no disponibles. Limpieza extra y reclamos requieren un servicio Entregado.</p>
+        <button class="cliente-opcion cliente-baja" disabled="@(s.EstadoServicio != "Entregado")" @onclick="() => confirmarBaja = true">Dar de Baja</button>
+        <p class="cliente-pendiente">Estas solicitudes requieren un servicio Entregado y revisión del administrador.</p>
         }
     }
     else if (!enDetalle)
@@ -57,7 +64,7 @@ else
         }
         <button class="principal" @onclick="Cargar">Consultar nuevamente</button>
     }
-    @if (!confirmarLimpieza) { <button class="volver" disabled="@cargando" @onclick="Regresar">Volver</button> }
+    @if (!confirmarLimpieza && !confirmarBaja) { <button class="volver" disabled="@cargando" @onclick="Regresar">Volver</button> }
 </section>
 }
 
@@ -67,6 +74,7 @@ else
     private ServicioCliente? detalle;
     private bool cargando, enDetalle;
     private bool confirmarLimpieza, reclamoAbierto;
+    private bool direccionAbierta, confirmarBaja;
     private int idDetalle;
     private string? error;
     protected override Task OnInitializedAsync() => Cargar();
@@ -82,6 +90,7 @@ else
     private async Task Abrir(int id)
     {
         confirmarLimpieza = false; reclamoAbierto = false;
+        direccionAbierta = false; confirmarBaja = false;
         enDetalle = true; idDetalle = id; detalle = null; error = null; cargando = true;
         // Consultar nuevamente protege también cambios ocurridos desde la carga del listado.
         try { detalle = await Sesion.MiServicioAsync(id); }

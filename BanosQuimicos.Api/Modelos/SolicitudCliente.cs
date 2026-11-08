@@ -4,6 +4,8 @@ public class SolicitudCliente
 {
     public int IdSolicitud { get; set; }
     public Guid? ClaveEnvio { get; set; }
+    // Evidencia técnica de la revisión administrativa, no observaciones del cliente.
+    public string? RevisionUbicacionJson { get; set; }
     public int IdCliente { get; set; }
     public int IdTipoOperacion { get; set; }
     public int IdEstadoOperacion { get; set; }

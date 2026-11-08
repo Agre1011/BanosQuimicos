@@ -84,6 +84,19 @@ public class ClienteAutenticacion
     public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerAutenticadoAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
     public Task<ResumenServiciosCliente> ResumenServiciosClienteAsync(string token) => LeerAutenticadoAsync<ResumenServiciosCliente>(token, "api/servicios-cliente/mios/resumen", "servicios");
     public Task<List<SolicitudPropia>> MisSolicitudesAsync(string token) => LeerAutenticadoAsync<List<SolicitudPropia>>(token, "api/solicitudes-cliente/mias", "solicitudes");
+    public Task<SolicitudPropia> CambiarDireccionAsync(string token, int id, DatosDireccionCliente d) =>
+        EnviarDireccionAsync<SolicitudPropia>(token, $"api/solicitudes-cliente/servicios/{id}/cambio-direccion",
+            new { d.ClaveEnvio, d.IdUbicacionEsperada, nuevaDireccion = d.NuevaDireccion.Trim(), d.Modalidad, d.FechaEfectiva });
+    public Task<SolicitudPropia> PedirBajaAsync(string token, int id, DatosBajaCliente d) =>
+        EnviarDireccionAsync<SolicitudPropia>(token, $"api/solicitudes-cliente/servicios/{id}/baja", new { d.ClaveEnvio });
+    public Task<RevisionDireccion> RevisionDireccionAsync(string token, int id) => LeerAutenticadoAsync<RevisionDireccion>(token, $"api/solicitudes/{id}/direccion", "direccion");
+    public Task<RevisionDireccion> RevisarDireccionAsync(string token, int id, RevisarDireccion d) =>
+        EnviarDireccionAsync<RevisionDireccion>(token, $"api/solicitudes/{id}/direccion", d);
+    private async Task<T> EnviarDireccionAsync<T>(string token, string ruta, object datos)
+    {
+        using var request = PeticionCuenta(HttpMethod.Post, ruta, token); request.Content = JsonContent.Create(datos);
+        using var response = await EnviarAsync(request); await ComprobarAsync(response, "direccion"); return await LeerAsync<T>(response);
+    }
     public async Task<SolicitudPropia> SolicitarSobreServicioAsync(string token, int id, bool reclamo, DatosSolicitudServicio datos)
     {
         using var request = PeticionCuenta(HttpMethod.Post, $"api/solicitudes-cliente/servicios/{id}/{(reclamo ? "reclamo" : "limpieza-extra")}", token);
@@ -203,6 +216,11 @@ public class ClienteAutenticacion
                 operacion == "login" ? "La cuenta no está habilitada. Consultá al administrador." : "No tenés permiso para realizar esta operación.");
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
+            if (operacion is "direccion" or "solicitudes" or "servicios" or "tareas")
+            {
+                var mensaje = await MensajeNegocioAsync(response);
+                if (mensaje is not null) throw new ErrorApi(TipoErrorApi.Conflicto, mensaje);
+            }
             if (operacion == "servicios") throw new ErrorApi(TipoErrorApi.Conflicto, "El servicio, sus solicitudes o tareas cambiaron, ya existe retiro o la operación no está permitida. Consultá nuevamente antes de confirmar.");
             if (operacion == "solicitudes") throw new ErrorApi(TipoErrorApi.Conflicto, "La solicitud ya tiene servicios o trabajos, cambió su estado o algún baño o empleado no permite la asignación. Consultá el detalle y la disponibilidad antes de continuar.");
             if (operacion == "banos") throw new ErrorApi(TipoErrorApi.Conflicto, "El baño, servicio o empleado cambió, o la programación no es válida. Consultá nuevamente antes de intentar otra operación.");
@@ -211,12 +229,15 @@ public class ClienteAutenticacion
         }
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
+            if (operacion == "direccion") throw new ErrorApi(TipoErrorApi.NoEncontrado, "La solicitud o el servicio no están disponibles.");
             if (operacion == "servicios") throw new ErrorApi(TipoErrorApi.NoEncontrado, "El servicio no está disponible.");
             if (operacion == "solicitudes") throw new ErrorApi(TipoErrorApi.NoEncontrado, "La solicitud no está disponible.");
             throw new ErrorApi(TipoErrorApi.NoEncontrado, operacion == "banos" ? "El baño no está disponible." : operacion == "tareas" ? "La tarea no está disponible." : "La cuenta ya no está disponible.");
         }
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
+            if (operacion == "direccion" && await MensajeNegocioAsync(response) is { } detalle)
+                throw new ErrorApi(TipoErrorApi.Validacion, detalle);
             var mensaje = "Revisá los datos ingresados y los campos obligatorios.";
             try
             {
@@ -233,5 +254,15 @@ public class ClienteAutenticacion
             throw new ErrorApi(TipoErrorApi.Validacion, mensaje);
         }
         throw new ErrorApi(TipoErrorApi.Servidor, "No pudimos completar la solicitud. Intentá nuevamente más tarde.");
+    }
+    private static async Task<string?> MensajeNegocioAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            if (json.RootElement.ValueKind == JsonValueKind.Object && json.RootElement.TryGetProperty("mensaje", out var m) && m.ValueKind == JsonValueKind.String && m.GetString() is { Length: > 0 and <= 1500 } texto) return texto;
+        }
+        catch (JsonException) { }
+        return null; // No mostrar cuerpos internos ni errores 500 del servidor.
     }
 }
