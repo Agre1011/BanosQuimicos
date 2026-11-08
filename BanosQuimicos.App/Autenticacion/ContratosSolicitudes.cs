@@ -17,3 +17,10 @@ public record ServicioSolicitud(int IdServicio, int IdBano, string CodigoBano, s
     string TipoUso, int LimpiezasSemana, string? Direccion);
 public record AsignacionBanos(Guid ClaveProgramacion, List<int> IdBanos, int IdEmpleado,
     int IdEstadoAnterior, int? CantidadLimpiezasSemana, DateOnly Fecha);
+
+public record ResolverReclamo(string Respuesta, int IdEstadoAnterior);
+public class BorradorRespuestaReclamo
+{
+    public string Texto { get; set; } = "";
+    public ResolverReclamo? Envio { get; set; }
+}

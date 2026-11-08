@@ -25,7 +25,8 @@ public partial class SolicitudesClienteController(BanosQuimicosDbContext db, Tim
             s.TipoBanoSolicitado == null ? null : s.TipoBanoSolicitado.NombreTipo,
             s.TipoUsoSolicitado, s.DireccionSolicitada, s.FechaDeseada,
             db.Servicios.Where(v => v.IdSolicitudOrigen == s.IdSolicitud || v.IdServicio == s.IdServicioReferencia)
-                .OrderBy(v => v.IdServicio).Select(v => v.Bano.CodigoInterno).ToList(), s.ModalidadCambioDireccion, s.NuevaDireccion, s.FechaCambioEfectiva));
+                .OrderBy(v => v.IdServicio).Select(v => v.Bano.CodigoInterno).ToList(), s.ModalidadCambioDireccion, s.NuevaDireccion, s.FechaCambioEfectiva,
+            s.IdTipoOperacion == 5 && s.IdEstadoOperacion == 4 ? s.ObservacionesAdministrador : null, s.FechaResolucion));
 
     [HttpGet("mias")]
     public async Task<ActionResult<List<SolicitudPropiaRespuesta>>> Listar(CancellationToken ct) =>

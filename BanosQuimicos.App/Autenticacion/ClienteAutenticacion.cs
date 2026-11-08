@@ -142,6 +142,13 @@ public class ClienteAutenticacion
         using var response = await EnviarAsync(request); await ComprobarAsync(response, "servicios");
         return await LeerAsync<ServicioGestion>(response);
     }
+    public async Task<SolicitudDetalle> ResponderReclamoAsync(string token, int id, ResolverReclamo datos)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"api/solicitudes/{id}/responder-resolver");
+        request.Headers.Authorization = new("Bearer", token); request.Content = JsonContent.Create(datos);
+        using var response = await EnviarAsync(request); await ComprobarAsync(response, "solicitudes");
+        return await LeerAsync<SolicitudDetalle>(response);
+    }
     public Task<List<SolicitudResumen>> SolicitudesAsync(string token) => LeerAutenticadoAsync<List<SolicitudResumen>>(token, "api/solicitudes", "solicitudes");
     public Task<SolicitudDetalle> DetalleSolicitudAsync(string token, int id) => LeerAutenticadoAsync<SolicitudDetalle>(token, $"api/solicitudes/{id}", "solicitudes");
     public Task<List<BanoDisponible>> BanosDisponiblesAsync(string token, int id) => LeerAutenticadoAsync<List<BanoDisponible>>(token, $"api/solicitudes/{id}/banos-disponibles", "solicitudes");

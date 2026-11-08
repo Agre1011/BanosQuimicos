@@ -27,6 +27,11 @@
                     <p>Inicio deseado: @s.FechaDeseada?.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy")</p>
                     @if (s.Banos.Count == 0) { <p>Sin baños asignados.</p> }
                 }
+                @if (!string.IsNullOrWhiteSpace(s.RespuestaAdministrativa))
+                {
+                    <p class="texto-trabajo"><strong>Respuesta administrativa:</strong> @s.RespuestaAdministrativa</p>
+                    @if (s.FechaResolucion is { } cierre) { <p>Resuelto: @cierre.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy HH:mm")</p> }
+                }
                 <span class="indicador-solicitud @Clase(s.Estado)">@s.Estado</span>
                 @if (s.Estado == "Aprobada") { <p>Aprobada no significa Resuelta: los trabajos requeridos todavía no están completos.</p> }
             </article>

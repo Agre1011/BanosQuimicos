@@ -58,3 +58,7 @@ Se agregaron **11 casos** para las nuevas entradas del cliente: dos conexiones c
 - App Debug Windows y Android: **0 errores y 0 advertencias**, con los parámetros temporales de Java ya documentados. Comprobación incremental final tras ajustar el texto de Volver para no sugerir cancelación de un envío incierto; sin nuevas pruebas visuales.
 
 Diff y 182 candidatos no ignorados revisados: índice Git vacío, sin generados, perfiles privados ni indicadores de secretos en las rutas/textos examinados. Originales PDF/PNG con hashes conservados. Los recorridos manuales Windows aprobados se registran arriba; la integral Android sigue para el final. Este cierre solo modifica documentación, sin repetir pruebas ni compilaciones. **Bloque cerrado y listo para commit**, sin comenzar el siguiente, commit, push, merge ni cambios en hosting. Mensaje sugerido: `feat: solicitar limpieza extra y registrar reclamos del cliente`.
+
+## Respuesta administrativa posterior
+
+Además de generar trabajos, el administrador puede responder y resolver un reclamo que no los necesite. El cliente ve la respuesta y la fecha en Mis Solicitudes al actualizar; no se omiten tareas activas. Ver [respuesta de reclamos](respuesta-reclamos.md). La aprobación manual Windows previa de limpieza/mantenimiento no acredita esta función nueva.
