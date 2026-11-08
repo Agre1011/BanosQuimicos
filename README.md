@@ -61,7 +61,7 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/estado-cuentas`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/respuesta-reclamos`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 Cliente: [Mis Servicios](docs/servicios-cliente.md), [nuevo servicio y Mis Solicitudes](docs/solicitudes-cliente.md), [limpieza extra y reclamos](docs/limpieza-reclamos-cliente.md) y [cambio de dirección y baja](docs/direccion-baja-cliente.md), habilitados para probar localmente. La última guía incluye revisión administrativa de tareas y los tres escenarios Windows preparados.
 
@@ -102,3 +102,7 @@ Alta con código automático, condición física manual, baja lógica y mantenim
 ## Registro y estado de cuentas
 
 Registro público Cliente/Activa con login habitual; cuentas antiguas Pendientes activables como Cliente o Empleado. Suspensión con motivo, reactivación de Suspendidas y baja lógica definitiva desde la app, con bloqueos operativos y protección de administradores. [Guía local Windows y migración](docs/estado-cuentas.md). Las evidencias previas de registro pendiente conservan su carácter histórico. Sin publicación.
+
+## Respuesta administrativa a reclamos
+
+El administrador responde y resuelve sin tarea ficticia cuando no hay trabajos activos; el cliente consulta la respuesta en Mis Solicitudes. Se mantiene la asignación de limpieza/mantenimiento. [Guía local Windows](docs/respuesta-reclamos.md). Sin migración nueva ni publicación.

@@ -63,6 +63,10 @@
                 {
                     <AsignarBanosServicio @key="s.IdSolicitud" Solicitud="s" Guardada="PedidoGuardado" />
                 }
+                @if (s.IdTipoOperacion == 5 && s.IdEstadoOperacion is 1 or 2)
+                {
+                    <ResponderReclamo @key="s.IdSolicitud" Solicitud="s" Guardada="RespuestaGuardada" />
+                }
                 @if (PuedeAsignar(s))
                 {
                     <button class="tareas-empleado" disabled="@ocupada" aria-expanded="@seleccion" @onclick="() => seleccion = !seleccion">Asignar ▾</button>
@@ -122,7 +126,7 @@
         2 => "El baño adicional requiere su tratamiento con servicio de referencia. No se procesa como limpieza ni mediante el alta de servicio nuevo de esta pantalla.",
         4 when s.ModalidadCambioDireccion == "Informado" => "Es un aviso de traslado ya realizado. Requiere validación administrativa de ubicación y fecha efectiva; no corresponde enviar otro traslado.",
         4 => "El traslado solicitado cambia la ubicación al completar su tarea, conservando la anterior.",
-        5 => "Un reclamo puede requerir un trabajo o una respuesta administrativa. Aquí se asignan los que necesitan limpieza o mantenimiento. La respuesta sin tareas requiere su tratamiento administrativo, no una tarea ficticia.",
+        5 => "Un reclamo puede requerir un trabajo o una respuesta administrativa. Asigná limpieza o mantenimiento si necesita trabajo físico, o respondé y resolvé si no lo necesita. No se pueden omitir trabajos activos.",
         6 => "La baja requiere retiro. El baño no se libera hasta confirmar el retiro y cerrar el servicio.",
         _ => "La solicitud se resuelve al completar todos los trabajos necesarios, no al asignar un empleado."
     };
@@ -136,6 +140,7 @@
         finally { ocupada = false; }
     }
     private void Cancelar() { seleccion = false; intento = null; empleado = 0; tipoReclamo = 0; bloquea = false; }
+    private void RespuestaGuardada(SolicitudDetalle resultado) { detalle = resultado; Cancelar(); aviso = "Respuesta guardada. Reclamo Resuelto sin crear tareas."; }
     private void PedidoGuardado(SolicitudDetalle resultado) { detalle = resultado; aviso = "Pedido guardado. Los servicios y entregas se muestran con su estado actual."; }
     private Task CargarAsync() => EjecutarAsync(async () =>
     {

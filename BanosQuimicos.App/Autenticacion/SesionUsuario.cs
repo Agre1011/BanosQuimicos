@@ -137,7 +137,7 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
             token = null; Cuenta = null; Estado = EstadoSesion.SinSesion; Mensaje = "Se cerró la sesión.";
             borradorServicio = null; duenoBorrador = null;
             borradoresOperacion.Clear();
-            direcciones.Clear(); bajas.Clear();
+            direcciones.Clear(); bajas.Clear(); respuestasReclamo.Clear();
             try { await almacen.BorrarAsync(); }
             catch { Mensaje = "Se cerró la sesión. No fue posible limpiar el almacén seguro; su restauración quedó deshabilitada."; }
         }
@@ -180,6 +180,14 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     public Task<List<ServicioGestion>> ServiciosAsync() => ComoAdministradorAsync(api.ServiciosAsync);
     public Task<ServicioGestion> ProgramarRetiroAsync(int id, ProgramarRetiro datos) => ComoAdministradorAsync(t => api.ProgramarRetiroAsync(t, id, datos));
     public Task<ServicioGestion> ResolverPendientesAsync(int id, ResolverPendientes datos) => ComoAdministradorAsync(t => api.ResolverPendientesAsync(t, id, datos));
+    private readonly Dictionary<(int Usuario, int Solicitud), BorradorRespuestaReclamo> respuestasReclamo = [];
+    public BorradorRespuestaReclamo BorradorRespuesta(int id)
+    {
+        if (Estado != EstadoSesion.Activa || Cuenta?.Rol != "Administrador" || Cuenta.IdUsuario is not int usuario)
+            throw new ErrorApi(TipoErrorApi.SinPermiso, "Se requiere un administrador activo.");
+        if (!respuestasReclamo.TryGetValue((usuario, id), out var b)) respuestasReclamo[(usuario, id)] = b = new(); return b;
+    }
+    public Task<SolicitudDetalle> ResponderReclamoAsync(int id, ResolverReclamo datos) => ComoAdministradorAsync(t => api.ResponderReclamoAsync(t, id, datos));
     public Task<List<SolicitudResumen>> SolicitudesAsync() => ComoAdministradorAsync(api.SolicitudesAsync);
     public Task<SolicitudDetalle> DetalleSolicitudAsync(int id) => ComoAdministradorAsync(t => api.DetalleSolicitudAsync(t, id));
     public Task<List<BanoDisponible>> BanosDisponiblesAsync(int id) => ComoAdministradorAsync(t => api.BanosDisponiblesAsync(t, id));

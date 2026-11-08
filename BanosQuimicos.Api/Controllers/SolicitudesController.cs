@@ -14,7 +14,7 @@ namespace BanosQuimicos.Api.Controllers;
 [Route("api/solicitudes")]
 [Authorize(Policy = Politicas.Administrador)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public class SolicitudesController(BanosQuimicosDbContext db, TimeProvider reloj) : ControllerBase
+public partial class SolicitudesController(BanosQuimicosDbContext db, TimeProvider reloj) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<SolicitudResumenRespuesta>>> Listar(CancellationToken ct) =>

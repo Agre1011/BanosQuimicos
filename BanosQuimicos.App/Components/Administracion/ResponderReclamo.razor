@@ -1,0 +1,45 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+<button class="principal" disabled="@ocupada" @onclick="() => abierto = !abierto">Responder y resolver</button>
+@if (abierto)
+{
+    <div class="aviso">
+        <label for="respuesta-reclamo">Respuesta al cliente (obligatoria)</label>
+        <textarea id="respuesta-reclamo" maxlength="2000" style="width:100%;min-height:6rem;font:inherit" @bind="borrador.Texto" disabled="@(ocupada || borrador.Envio is not null)"></textarea>
+        <p>¿Confirmás guardar esta respuesta y resolver el reclamo @Solicitud.IdSolicitud? No se crearán tareas ni se cancelarán trabajos existentes. Si hay tareas activas no se permitirá este cierre.</p>
+        <button class="principal" disabled="@(ocupada || string.IsNullOrWhiteSpace(borrador.Texto))" @onclick="GuardarAsync">@(borrador.Envio is null ? "Confirmar respuesta y resolución" : "Reintentar la misma respuesta")</button>
+        <button class="secundario" disabled="@ocupada" @onclick="() => abierto = false">Cancelar</button>
+        @if (borrador.Envio is not null) { <p>El resultado del envío está pendiente de confirmar. Se conservan los mismos datos para reintentar sin duplicar el cierre.</p> }
+    </div>
+}
+@if (ocupada) { <p role="status">Guardando respuesta…</p> }
+@if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+
+@code {
+    [Parameter, EditorRequired] public SolicitudDetalle Solicitud { get; set; } = null!;
+    [Parameter] public EventCallback<SolicitudDetalle> Guardada { get; set; }
+    private BorradorRespuestaReclamo borrador = new();
+    private bool abierto, ocupada;
+    private string? error;
+    protected override void OnInitialized() { borrador = Sesion.BorradorRespuesta(Solicitud.IdSolicitud); abierto = borrador.Envio is not null; }
+    private async Task GuardarAsync()
+    {
+        if (ocupada || string.IsNullOrWhiteSpace(borrador.Texto)) return;
+        ocupada = true; error = null;
+        try
+        {
+            borrador.Envio ??= new(borrador.Texto.Trim(), Solicitud.IdEstadoOperacion);
+            var resultado = await Sesion.ResponderReclamoAsync(Solicitud.IdSolicitud, borrador.Envio);
+            borrador.Envio = null; borrador.Texto = "";
+            await Guardada.InvokeAsync(resultado);
+        }
+        catch (ErrorApi ex)
+        {
+            error = ex.Message;
+            // Un rechazo conocido permite corregir; sin conexión se conserva el envío incierto.
+            if (ex.Tipo is TipoErrorApi.Validacion or TipoErrorApi.Conflicto) borrador.Envio = null;
+        }
+        finally { ocupada = false; }
+    }
+}

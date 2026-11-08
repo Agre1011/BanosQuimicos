@@ -1,6 +1,6 @@
 # Plan de trabajo
 
-Última actualización: 08/11/2026. Estado de cuentas cerrado y listo para commit, con tres recorridos manuales Windows aprobados: sección 28. Inventario conserva su cierre y aprobación manual en la sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
+Última actualización: 08/11/2026. Respuesta administrativa de reclamos cerrada y lista para commit, con tres recorridos manuales Windows aprobados: sección 29. Estado de cuentas conserva su cierre y tres recorridos Windows aprobados en la sección 28. Inventario conserva su cierre y aprobación manual en la sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
 
 ## 1. Fuentes revisadas y límites de lectura
 
@@ -1535,3 +1535,57 @@ Descripción breve sugerida del PR: «El registro crea Cliente/Activa y permite 
 Sin commit, push, merge ni cambios en hosting. Esperar confirmación antes de comenzar el siguiente bloque.
 
 Revisión final para commit: 28 archivos candidatos del bloque, diff sin errores de espacios e índice vacío; sin generados, perfiles de publicación ni indicadores de secretos en las rutas/textos examinados. PDF y dos PNG originales conservan sus hashes. No se ejecutó git add ni se cambiaron código, configuración, datos u hosting en este cierre documental.
+
+
+## 29. Reclamos: respuesta administrativa sin trabajo físico — 08/11/2026
+
+### Revisión y alcance
+
+Se revisaron AGENTS.md, decisiones C4 y campos del esquema, plan completo de decisiones/evidencias relevantes, documentación administrativa y cliente de solicitudes/reclamos, contratos y código existentes. Master limpio y coincidente con origin/master en **cb4b0a8** (merge estado-cuentas); se creó **feature/respuesta-reclamos**, sin descartar cambios ni hacer pull adicional. Se conserva el alcance confirmado: solo Reclamo, respuesta obligatoria y confirmación dentro de la pantalla administrativa existente, sin diseño/pantalla adicional. Los originales no se modifican.
+
+El modelo permite representar el cierre con **ObservacionesAdministrador (máximo 2000 caracteres)** y **FechaResolucion**, estado Solicitud/Resuelta (4). No se agregan campos, tablas ni migración; se conservan las 12 tablas y sus datos. El bloque no incluye rechazo/cancelación de solicitudes ni respuesta de otros tipos.
+
+### Implementación
+
+- **POST /api/solicitudes/{id}/responder-resolver**, controlador parcial SolicitudesRespuestaReclamo.cs y contrato ResponderReclamoSolicitud: solo administrador activo, revalidado dentro de la transacción compartida con asignación y cumplimiento. Respuesta obligatoria, trim, hasta 2000 caracteres, estado anterior 1/2. Rechaza campos extra y textos vacíos/espacios. Guarda respuesta/fecha y Resuelta sin tarea ni aprobación ficticia.
+- Permite cierre desde Pendiente/Aprobada si no hay trabajos activos ni cumplimiento inconcluso. Consulta todas las tareas de la solicitud: Pendiente/En curso o FechaTrabajoRegistrado con FechaRealizada ausente impiden continuar, incluso si un registro cancelado tuviera trabajo sin cierre. Muestra ID/tipo/estado en el conflicto. No cancela tareas ni altera servicio, ubicaciones, condición o responsable habitual.
+- Reintento con mismo ID/texto normalizado recupera el reclamo resuelto sin reemplazar fecha ni contenido. Respuestas distintas compiten: una se guarda y la otra recibe 409. Estado cerrado o explicación previa distinta se conservan, sin edición/sobrescritura de historia. No necesita ClaveEnvio adicional: un reclamo tiene un único cierre inmutable mediante esta acción. El bloqueo compartido también protege responder frente a asignar una tarea simultáneamente.
+- **ResponderReclamo.razor** es un componente dentro del detalle de SolicitudesReclamos, no una pantalla nueva. Campo, confirmación, cancelación y mensajes de error reales. Controles bloqueados mientras guarda; borrador y envío incierto en memoria por administrador/reclamo durante la sesión, sin disco. Un conflicto/validación permite corregir; fallo de conexión conserva mismo envío. Cerrar sesión limpia borradores. La confirmación visible aparece solo después de la respuesta real de la API. El recorrido Asignar limpieza/mantenimiento se conserva.
+- **SolicitudesClienteController / SolicitudPropiaRespuesta / ContratosSolicitudesCliente** agregan respuestaAdministrativa y fechaResolucion. Respuesta expuesta solo en Reclamo Resuelto; no se publican notas de otras operaciones. MisSolicitudes muestra texto y fecha en la tarjeta al actualizar. Lista y detalle siguen filtrados por propietario desde la sesión; ajeno/inexistente 404, sin confiar en idCliente suministrado.
+
+### Verificaciones realizadas
+
+- **13 casos nuevos**, centrados en recorrido cliente→administrador→respuesta propia, contrato real de la app/sesión, no efectos operativos ni tarea ficticia, aislamiento entre clientes, reintentos/respuestas concurrentes, cuatro variantes de bloqueo (Pendiente, En curso, trabajo registrado sin cierre y cancelada con registro), carrera respuesta↔asignación, permisos (anónimo/cliente/empleado/pendiente/administrador suspendido), validaciones, tipos/estados excluidos e historia no sobrescrita.
+- **60/60 casos afectados correctos**, 0 fallidos/omitidos: RespuestaReclamosPruebas, SolicitudesPruebas, SolicitudesClientePruebas y LimpiezaReclamosClientePruebas. Incluye los 13 nuevos y 47 existentes del recorrido físico/consultas. No se eliminaron pruebas y **no se ejecutó la suite completa**. Hay 230 casos definidos contando los 217 anteriores; la suite completa previa 217/217 sigue como evidencia histórica, sin afirmar una ejecución completa de 230.
+- API y Razor compilaron con las pruebas. **App Debug Windows/Android compiló con 0 errores y 0 advertencias**, proceso finalizado con código 0. Parámetros Java temporales existentes (heap512M, SerialGC, -m:1), sin cambios de configuración versionada. No equivale a ejecutar la app ni probarla manualmente.
+- Tests en bases LocalDB aisladas nuevas BanosQuimicosAuthPruebas_GUID, sin borrar bases anteriores ni modificar cuentas/trabajos del estudiante. La base principal solo se consultó para confirmar acceso local; no se insertaron reclamos ni se ejecutó cierre allí. La conexión respondió por el nombre normal, sin guardar canal temporal.
+- Guía **docs/respuesta-reclamos.md**, documentación previa y README enlazados. El estudiante prepara reclamos nuevos identificados PRUEBA RESPUESTA LOCAL y PRUEBA RESPUESTA BLOQUEADA LOCAL desde un servicio propio Entregado, anota IDs y utiliza los recorridos existentes. Sin credenciales/tokens ni cambios de cuentas anteriores para preparar datos.
+
+### Cierre para revisión manual y pendientes
+
+**Implementación cerrada y lista para revisión manual Windows**, sin declarar aprobada esa prueba. Repetir cliente crea reclamo→administrador responde y resuelve→cliente ve texto/Resuelta; probar rechazo con tarea activa sin cancelar ni omitir trabajo y conservar cumplimiento físico existente. Ver la guía para los pasos y resultados.
+
+Android integral contra API local, vencimiento real del token y alternancia de servidores siguen pendientes. Después de Android/correcciones se revisarán migraciones y republicación: este bloque **no agrega migración**, y las anteriores pendientes de hosting (incluidas InventarioBanosYMantenimiento y RegistroClienteActivo) siguen pendientes. No se modificó MonsterASP, configuración de red, secretos o destinos. Sin commit, push, merge ni publicación; esperar confirmación antes de otro bloque.
+
+Mensaje de commit sugerido: **feat: resolver reclamos con respuesta administrativa sin tareas**.
+
+Revisión final: 18 archivos candidatos, diff sin errores de espacios e índice vacío; sin generados, perfiles de publicación ni indicadores de secretos en las rutas/textos examinados. Sin cambios de modelo/migraciones. PDF y dos PNG originales conservan sus hashes. Los últimos cambios solo documentan el cierre: no se repiten pruebas ni compilaciones.
+
+
+### Cierre final: pruebas manuales Windows aprobadas — 08/11/2026
+
+El estudiante confirmó estos **tres recorridos manuales Windows**:
+
+1. Responder y resolver un reclamo, con validación de respuesta obligatoria.
+2. Consultar como cliente el estado Resuelto, la respuesta y su fecha, sin generar una tarea.
+3. Impedir el cierre administrativo cuando hay una tarea activa, mostrando el bloqueo y conservando los registros.
+
+Esta evidencia manual se registra por separado de las **60/60 pruebas automatizadas afectadas aprobadas** (13 nuevas y 47 existentes). **No se ejecutó la suite completa en este bloque**; 230 es el número de casos definidos, no una suite completa ejecutada. Las compilaciones previas Windows/Android correctas (0 errores/advertencias) conservan su evidencia; no se repiten pruebas ni compilaciones por este cierre exclusivamente documental. No se atribuyen otras verificaciones manuales no informadas.
+
+**Bloque feature/respuesta-reclamos cerrado y listo para commit.** No agrega migración ni cambia las 12 tablas. Se mantienen pendientes Android integral contra API local, correcciones y posterior migraciones/republicación/comprobación de hosting; vencimiento real del token y alternancia de servidores continúan pendientes generales. Las migraciones anteriores pendientes del hosting conservan ese estado. Sin commit, push, merge, cambios en hosting ni inicio de otro bloque.
+
+Mensaje de commit sugerido: **feat: resolver reclamos con respuesta administrativa sin tareas**.
+
+Descripción breve sugerida del PR: «Agrega respuesta obligatoria y confirmación para resolver reclamos sin crear tareas, y muestra al cliente la respuesta, fecha y estado. Bloquea el cierre cuando hay trabajos activos y protege permisos, historial y reintentos, conservando la asignación de limpieza/mantenimiento. Verificado con 60 pruebas automatizadas afectadas y tres recorridos manuales aprobados en Windows; sin migración nueva. Android integral y republicación quedan pendientes.»
+
+Revisión final del cierre: 18 archivos candidatos, diff sin errores de espacios e índice vacío; sin generados, perfiles de publicación ni indicadores de secretos en las rutas/textos examinados. PDF y dos PNG originales mantienen sus hashes. En esta confirmación solo se editaron plan y guía; no se prepararon archivos con git add ni se modificaron código, datos, configuración u hosting.

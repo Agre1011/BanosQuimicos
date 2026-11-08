@@ -23,4 +23,4 @@ public class DatosNuevoServicio
 public record TipoBanoPedido(int IdTipoBano, string Nombre);
 public record SolicitudPropia(int IdSolicitud, string Tipo, string Estado, DateTimeOffset FechaSolicitud,
     string? Descripcion, int? CantidadBanos, string? TipoBano, string? TipoUso, string? Direccion,
-    DateTimeOffset? FechaDeseada, List<string> Banos, string? Modalidad = null, string? NuevaDireccion = null, DateTimeOffset? FechaEfectiva = null);
+    DateTimeOffset? FechaDeseada, List<string> Banos, string? Modalidad = null, string? NuevaDireccion = null, DateTimeOffset? FechaEfectiva = null, string? RespuestaAdministrativa = null, DateTimeOffset? FechaResolucion = null);

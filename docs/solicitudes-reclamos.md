@@ -69,3 +69,7 @@ Son evidencias manuales independientes de las **125 pruebas automatizadas anteri
 **Bloque cerrado y listo para commit.** Se conservan las solicitudes y trabajos resultantes de la prueba como historial. Pendientes: integral manual Android local al terminar los bloques, posterior actualización del hosting, vencimiento real del token y alternancia entre servidores. Sin cambios en hosting, commit, push ni merge. No hay una migración nueva en este bloque.
 
 Ampliación posterior: [Servicio nuevo](asignar-banos-servicio.md) incorpora su selección autorizada de baños y entregas. Las referencias anteriores a ese tipo solo en consulta describen el alcance del bloque previo. Baño adicional y los otros tratamientos separados no cambian con esa ampliación.
+
+## Ampliación: respuesta sin trabajo físico
+
+El bloque respuesta-reclamos habilita Responder y resolver en el detalle y muestra la respuesta al propietario en Mis Solicitudes, sin crear una tarea. La referencia anterior a respuesta no implementada describe el bloque histórico de asignación. Ver [guía actual](respuesta-reclamos.md), permisos, reintentos y bloqueo por trabajos activos.
