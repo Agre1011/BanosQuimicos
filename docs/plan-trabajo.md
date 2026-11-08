@@ -1,6 +1,6 @@
 # Plan de trabajo
 
-Última actualización: 08/11/2026. Respuesta administrativa de reclamos cerrada y lista para commit, con tres recorridos manuales Windows aprobados: sección 29. Estado de cuentas conserva su cierre y tres recorridos Windows aprobados en la sección 28. Inventario conserva su cierre y aprobación manual en la sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
+Última actualización: 08/11/2026. Ajuste de alcance de servicios independientes listo para revisión: sección 30. Respuesta de reclamos conserva su cierre y aprobación Windows en sección 29. Estado de cuentas conserva su cierre y tres recorridos Windows aprobados en la sección 28. Inventario conserva su cierre y aprobación manual en la sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
 
 ## 1. Fuentes revisadas y límites de lectura
 
@@ -46,10 +46,10 @@ Ninguna observación de esta sección cambia por sí misma la documentación apr
 
 | ID | Evidencia o diferencia | Decisión que falta |
 | --- | --- | --- |
-| D1 | UML caso 9 y Figma incluyen solicitar nuevo servicio; el texto enumera baño adicional. Figma pide cantidad, tipo, dirección y fecha. ER almacena un baño por servicio y la solicitud no muestra campos específicos de cantidad/tipo/fecha deseada. | Confirmar flujo de nuevo servicio frente a adicional y cómo representar un pedido de varios baños. |
+| D1 | UML caso 9 y Figma incluyen solicitar nuevo servicio; el texto enumera baño adicional. Figma pide cantidad, tipo, dirección y fecha. ER almacena un baño por servicio y la solicitud no muestra campos específicos de cantidad/tipo/fecha deseada. | Resuelto por cambio de alcance (sección 30): pedidos nuevos, también en la misma dirección, con servicios independientes; no implementar adicionales vinculados. |
 | D2 | UML dice que la cuenta queda pendiente de gestión; texto contempla activarla. Registro de Figma parece conducir a inicio y su botón dice Iniciar Sesión. Login pide nombre de usuario, pero registro no muestra ese campo. | Definir estado inicial, acceso mientras está pendiente, identificador de login y alta del primer administrador. |
 | D3 | Texto permite informar un traslado ya realizado o pedir que la empresa lo haga; Figma muestra ambas opciones. ER tiene NuevaDireccion e historial de ubicaciones, pero no un campo explícito que distinga ambas modalidades. | Definir quién valida, cuándo cambia la ubicación actual y cuándo se genera tarea; conservar historia. |
-| D4 | UML distingue nuevo servicio y baño adicional; Figma no muestra una pantalla separada para adicional. No se ven formularios completos de altas/ediciones administrativas ni de registro de trabajo/reposición de papel. | Acordar las pantallas faltantes con el estudiante/profesor antes de implementarlas; no quitar funciones escritas por faltar una pantalla. |
+| D4 | UML distingue nuevo servicio y baño adicional; Figma no muestra una pantalla separada para adicional. No se ven formularios completos de altas/ediciones administrativas ni de registro de trabajo/reposición de papel. | Adicional vinculado descartado por decisión explícita (sección 30), no por faltar diseño. Acordar referencias para las demás funciones cuando corresponda. |
 | D5 | Pantalla de baños mezcla condición física (buen/mal estado) con disponibilidad/asignación/mantenimiento; ER tiene un catálogo ESTADOS_BANO. | Acordar si son dimensiones separadas o un único estado y sus transiciones. |
 | D6 | Solicitudes y tareas comparten TIPOS_OPERACION y ESTADOS_OPERACION en ER. UML y pantallas no definen catálogos ni todas las transiciones. | Definir estados, tipos válidos por entidad, rechazo/cancelación, quién cambia cada estado y si una solicitud genera varias tareas. |
 | D7 | Pantalla de servicio muestra empleado; ER asigna empleado a tarea. Texto no establece empleado fijo por servicio ni generación automática semanal. | Confirmar origen de ese dato y planificación manual o automática de tareas recurrentes. |
@@ -86,7 +86,7 @@ Antes de cada bloque: explicar objetivo y archivos previstos, resolver sus decis
 | 1. Base técnica mínima | Crear solución sencilla con app MAUI Blazor Hybrid y API con controladores; navegación inicial de referencia y conexión mínima sin reglas de negocio. | Abrir en VS 2026, compilar API y app Android, iniciar app en dispositivo/emulador y comprobar una respuesta de API. Explicar recorrido Razor -> HTTP -> controlador. | Confirmar estructura y nombre, dispositivo/emulador y entorno Android; endpoint local accesible. Si hacen falta instalaciones, consultarlas. |
 | 2. Registro, acceso y cuentas | Primer bloque funcional: registro como cliente, login, permisos y administración de cuentas; persistencia mínima con EF Core/SQL Server. | Registro no permite elegir rol privilegiado; acceso según estado acordado; llamadas directas a API respetan permisos; baja lógica conserva registros; contraseñas no se almacenan en claro. Probar roles y acceso denegado. | D2, D9, D11; instancia SQL Server y autenticación local; revisar modelo mínimo antes de autorizar migraciones. |
 | 3. Baños y servicios | Inventario, cliente, asignación, tipo de uso, frecuencia y ubicación, consulta de servicios propios. | Cliente con varios baños/direcciones; uso cruzado obra/evento; aislamiento entre clientes; probar disponibilidad según reglas acordadas. | D1 en cuanto a servicio por baño, D5, D8; confirmar solapamientos y cardinalidades. |
-| 4. Solicitudes y reclamos | Limpieza extra, dirección, adicional/nuevo servicio si se confirma, baja y seguimiento por cliente; revisión administrativa. | Cada pedido queda asociado al cliente correcto y al servicio cuando corresponda; solo dueño/administrador acceden; estados y cambios de dirección siguen el acuerdo. | D1, D3, D4, D6, D10; acordar datos de formularios faltantes. |
+| 4. Solicitudes y reclamos | Limpieza extra, dirección, nuevo servicio, baja y seguimiento por cliente; revisión administrativa. Adicional vinculado descartado (sección 30). | Cada pedido queda asociado al cliente correcto y al servicio cuando corresponda; solo dueño/administrador acceden; estados y cambios de dirección siguen el acuerdo. | D1, D3, D4, D6, D10; acordar datos de formularios faltantes. |
 | 5. Tareas operativas | Asignar tareas y registrar entrega, retiro, limpieza, mantenimiento, observaciones y papel repuesto. | Empleado ve y completa sus tareas; otro empleado no puede modificarlas; resultado y fecha quedan guardados; evitar duplicación al repetir una finalización. | D4, D6, D7; efectos de cada tarea sobre servicio y baño. |
 | 6. Validación y defensa | Recorrido completo en Android, ajustes de Figma y explicación de arquitectura/reglas. | Demostrar registro -> gestión -> servicio -> solicitud -> tarea -> consulta; probar permisos, persistencia y errores de conexión. Registrar resultados reales y pendientes; estudiante puede explicar cada capa. | Datos ficticios y guion de defensa; confirmar criterios del profesor. |
 
@@ -150,6 +150,8 @@ Resultado: archivos listos para el primer commit de estructura inicial, con V1 r
 Esta sección complementa el diagrama original aprobado por el profesor; no lo reemplaza ni afirma que el profesor ya haya validado estos ajustes. Se conservan sin modificar el PDF y las dos imágenes originales. El estudiante informó que realizó el primer commit y push. Continúa autorizada únicamente la preparación documental del modelo, sin entidades, bases ni migraciones.
 
 ### C1. Solicitudes de varios baños y baño adicional (D1)
+
+**Actualización de alcance, sección 30:** se conserva lo relativo a solicitudes nuevas de varios baños. Las decisiones de adicionales vinculados que siguen son históricas y quedan sustituidas: para más baños usar Solicitar un nuevo servicio, sin agrupación ni herencia.
 
 Confirmado:
 
@@ -1589,3 +1591,37 @@ Mensaje de commit sugerido: **feat: resolver reclamos con respuesta administrati
 Descripción breve sugerida del PR: «Agrega respuesta obligatoria y confirmación para resolver reclamos sin crear tareas, y muestra al cliente la respuesta, fecha y estado. Bloquea el cierre cuando hay trabajos activos y protege permisos, historial y reintentos, conservando la asignación de limpieza/mantenimiento. Verificado con 60 pruebas automatizadas afectadas y tres recorridos manuales aprobados en Windows; sin migración nueva. Android integral y republicación quedan pendientes.»
 
 Revisión final del cierre: 18 archivos candidatos, diff sin errores de espacios e índice vacío; sin generados, perfiles de publicación ni indicadores de secretos en las rutas/textos examinados. PDF y dos PNG originales mantienen sus hashes. En esta confirmación solo se editaron plan y guía; no se prepararon archivos con git add ni se modificaron código, datos, configuración u hosting.
+
+
+## 30. Decisión definitiva: más baños mediante servicios independientes — 08/11/2026
+
+**Se descarta la funcionalidad de baños adicionales vinculados al servicio original**, por decisión explícita del estudiante. Si el cliente necesita otro baño utiliza **Solicitar un nuevo servicio**, pudiendo indicar la misma dirección. Cada servicio resultante es independiente, con su propia frecuencia, tareas, traslados y baja. No se agrega agrupación de contrataciones, herencia de datos ni restricciones recíprocas por adicionales. Se conserva la programación manual de limpiezas existente.
+
+Esta decisión reemplaza las propuestas pendientes de formulario/herencia/frecuencia/conflictos de este bloque y la interpretación anterior de ampliación de una contratación. **No quedan decisiones de adicionales pendientes para implementar.** También sustituye, solo en lo referente a adicionales futuros, C1, D1/D4 y las menciones de bloques previos que lo anunciaban pendiente. Las aprobaciones y pruebas históricas se conservan; no se reescriben como si este alcance hubiera regido desde el principio.
+
+### Trabajo previo conservado como antecedente
+
+Se verificó master limpio y coincidente con origin/master en **8c36877**, merge respuesta-reclamos, y se creó **feature/banos-adicionales**. Solo se había editado el plan: no se implementó botón, formulario, agrupación, herencia ni exclusión de operaciones por adicionales. La revisión de AGENTS.md, C1, DER y modelo identificó la referencia de solicitud a servicio y de servicio a solicitud origen. Las propuestas iniciales contemplaban enlazar ampliaciones, heredar datos y bloquear operaciones incompatibles. La aclaración intermedia definía herencia no editable de dirección, uso y frecuencia por baño y descartaba sumar frecuencias o generar limpiezas automáticamente. Ambas formulaciones del adicional vinculado quedaron sustituidas por la decisión definitiva y **no se implementan**. No hay cambios ajenos descartados.
+
+### Ajuste aplicado al alcance vigente
+
+- Documentación actualizada: README, guías de servicios/solicitudes del cliente, asignación de baños, Estado Baños, solicitudes administrativas y registro de trabajo. Distinguen servicios independientes de los antecedentes de adicionales vinculados.
+- App: solo se reemplaza el texto administrativo del tipo histórico 2, que antes anunciaba un tratamiento pendiente. Ahora indica que está fuera del alcance vigente y que debe usarse Solicitar un nuevo servicio, incluso en la misma dirección. No se agrega botón ni se altera el formulario nuevo existente.
+- Se conservan **TIPOS_OPERACION ID 2 / Baño adicional**, modelo, relaciones, catálogos, migraciones y todos los registros existentes. El código de compatibilidad histórica no se elimina; el tipo no se ofrece para crear/asignar pedidos nuevos. No se reutiliza ni cambia su ID.
+- Sin cambios en creación/asignación de servicio nuevo, entrega, disponibilidad, frecuencia, traslado o baja; sin migración ni consulta/modificación de bases o hosting.
+
+### Referencias que el estudiante debe actualizar manualmente
+
+Los originales quedan intactos. En una nueva versión de la documentación aprobada:
+
+1. **PDF página 1:** referencia de la idea general a pedidos de baños adicionales; aclarar que se atienden como solicitudes de servicios nuevos independientes. En la enumeración del rol Cliente que continúa en la página 2, usar esa misma distinción.
+2. **PDF página 2, inicio:** reemplazar «solicitar un baño adicional» por «solicitar un nuevo servicio, incluso para la misma dirección». Mantener la regla de un baño por registro de servicio y servicios independientes.
+3. **UML de página 4 y PNG original del UML:** retirar del alcance vigente el caso 8 «Solicitar baño adicional» y sus conexiones, conservando el caso 9 «Solicitar nuevo servicio». No es necesario eliminar relaciones del DER ni datos del catálogo por esta decisión.
+4. **Figma de cliente, página 7 / archivo editable:** conservar Inicio → Solicitar un nuevo servicio y sus pantallas actuales, además de Mis Servicios con detalle por baño/servicio independiente. Las capturas originales revisadas no muestran un botón específico de adicional que haya que retirar. Si se agregó en una versión editable posterior, retirar ese botón y cualquier agrupación/herencia propuesta. No se crea otra pantalla como parte de este ajuste.
+
+### Cierre para revisión
+
+Ajuste de alcance listo para revisión en la rama actual, con título de commit acorde a la decisión final: **docs: descartar adicionales vinculados y aclarar servicios independientes**. Solo el texto de ayuda de la app cambia en código; comprobar la compilación Razor afectada sin volver a ejecutar suites o compilaciones de plataformas. No se inventan pruebas manuales aprobadas para este ajuste. Android integral local, vencimiento real del token, alternancia de servidores y posterior migraciones/republicación mantienen sus pendientes. Sin commit, push, merge ni cambios en hosting; no iniciar otro bloque sin confirmación.
+
+
+Verificación de cierre de este ajuste: compilación de API y componentes Razor compartidos mediante BanosQuimicos.Api.Pruebas correcta, **0 errores y 0 advertencias**, sin ejecutar pruebas ni compilar Windows/Android. Comparación estática con HEAD confirma que el único cambio de la app es el texto de ayuda; no cambió lógica. 9 archivos candidatos revisados, diff sin errores de espacios, índice vacío y sin generados/perfiles/indicadores de secretos en lo examinado. Sin cambios de API/modelo/catálogos/migraciones ni acceso a bases; PDF y dos PNG originales conservan sus hashes. Los cambios finales son documentales: no se repiten verificaciones de compilación. Ajuste cerrado y listo para revisión, sin commit, push, merge o publicación.

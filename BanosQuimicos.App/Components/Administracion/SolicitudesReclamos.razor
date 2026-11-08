@@ -123,7 +123,7 @@
     private static string Explicacion(SolicitudDetalle s) => s.IdTipoOperacion switch
     {
         1 => "Seleccionar exactamente la cantidad solicitada. Los servicios quedan asignados antes de entregarlos; el pedido se resuelve al completar todas las entregas.",
-        2 => "El baño adicional requiere su tratamiento con servicio de referencia. No se procesa como limpieza ni mediante el alta de servicio nuevo de esta pantalla.",
+        2 => "Tipo histórico fuera del alcance vigente. Para otro baño, el cliente debe usar Solicitar un nuevo servicio, aunque indique la misma dirección. Los servicios resultantes son independientes.",
         4 when s.ModalidadCambioDireccion == "Informado" => "Es un aviso de traslado ya realizado. Requiere validación administrativa de ubicación y fecha efectiva; no corresponde enviar otro traslado.",
         4 => "El traslado solicitado cambia la ubicación al completar su tarea, conservando la anterior.",
         5 => "Un reclamo puede requerir un trabajo o una respuesta administrativa. Asigná limpieza o mantenimiento si necesita trabajo físico, o respondé y resolvé si no lo necesita. No se pueden omitir trabajos activos.",

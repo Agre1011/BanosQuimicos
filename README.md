@@ -61,7 +61,7 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/respuesta-reclamos`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/banos-adicionales`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 Cliente: [Mis Servicios](docs/servicios-cliente.md), [nuevo servicio y Mis Solicitudes](docs/solicitudes-cliente.md), [limpieza extra y reclamos](docs/limpieza-reclamos-cliente.md) y [cambio de dirección y baja](docs/direccion-baja-cliente.md), habilitados para probar localmente. La última guía incluye revisión administrativa de tareas y los tres escenarios Windows preparados.
 
@@ -89,7 +89,7 @@ El administrador asigna responsable habitual y programa cada limpieza por fecha,
 
 ## Solicitudes y Reclamos
 
-Listado/detalle administrativos, aprobación y asignación puntual con tareas vinculadas, sin cambiar responsables habituales. [Guía Windows y datos locales](docs/solicitudes-reclamos.md). Servicio nuevo tiene [selección de baños y entregas](docs/asignar-banos-servicio.md); baño adicional, traslado informado y respuesta sin trabajos conservan su tratamiento separado. La prueba integral Android se hará al terminar los bloques y contra API local; después se planificará la republicación.
+Listado/detalle administrativos, aprobación y asignación puntual con tareas vinculadas, sin cambiar responsables habituales. [Guía Windows y datos locales](docs/solicitudes-reclamos.md). Servicio nuevo tiene [selección de baños y entregas](docs/asignar-banos-servicio.md); los pedidos posteriores se realizan con Solicitar un nuevo servicio, incluso en la misma dirección, y generan servicios independientes. La prueba integral Android se hará al terminar los bloques y contra API local; después se planificará la republicación.
 
 ## Baños y Servicios
 
@@ -106,3 +106,7 @@ Registro público Cliente/Activa con login habitual; cuentas antiguas Pendientes
 ## Respuesta administrativa a reclamos
 
 El administrador responde y resuelve sin tarea ficticia cuando no hay trabajos activos; el cliente consulta la respuesta en Mis Solicitudes. Se mantiene la asignación de limpieza/mantenimiento. [Guía local Windows](docs/respuesta-reclamos.md). Sin migración nueva ni publicación.
+
+## Alcance vigente: más baños mediante un nuevo servicio
+
+Se descartó el adicional vinculado al servicio original. No hay agrupación de contrataciones ni herencia de dirección, uso o frecuencia. Se reutiliza Solicitar un nuevo servicio sin cambiar su recorrido; cada servicio resultante conserva sus propias frecuencias, tareas, traslados y bajas. El tipo histórico Baño adicional se conserva en el catálogo y los datos, sin ofrecerlo en recorridos nuevos. Ver decisión definitiva y referencias originales a actualizar manualmente en la sección 30 de docs/plan-trabajo.md.
