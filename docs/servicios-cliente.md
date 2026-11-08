@@ -1,5 +1,8 @@
 # Consulta de servicios del cliente
 
+**Alcance vigente (08/11/2026):** para necesitar otro baño se usa **Solicitar un nuevo servicio**, pudiendo repetir la dirección. No hay adicionales vinculados, agrupación de contrataciones ni herencia de datos. Los servicios resultantes son independientes, con sus propias frecuencias, tareas, traslados y bajas. Esta decisión reemplaza las propuestas previas de adicionales; no cambia el recorrido existente ni elimina tipos o registros históricos.
+
+
 Bloque en `feature/servicios-cliente`, exclusivamente con API local y LocalDB. Recorrido: Inicio del cliente → Mis Servicios → Detalle → Volver al listado → Volver al inicio → Cerrar sesión.
 
 ## Reglas y alcance

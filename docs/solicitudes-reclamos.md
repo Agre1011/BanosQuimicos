@@ -15,7 +15,7 @@ Seleccionar empleado/tipo/fecha no guarda. El botón Aprobar y asignar (o Confir
 - **Baja:** tarea Retiro. Asignarla no libera el baño; el cierre del retiro finaliza el servicio.
 - **Cambio de dirección solicitado:** tarea Traslado, con origen actual y destino preparado desde NuevaDireccion. La dirección actual no cambia al asignar; el cierre activa el destino y conserva el historial anterior.
 - **Traslado ya informado:** consulta con aviso de validación administrativa pendiente. No se envía otro traslado ni se valida retroactivamente desde esta asignación.
-- **Servicio nuevo y baño adicional:** consulta de sus datos, sin asignación operativa desde esta pantalla. Requieren selección de unidades disponibles y creación de servicios en el bloque correspondiente. No se convierten en limpieza ni se aprueban/resuelven aquí.
+- **Servicio nuevo:** selección de unidades disponibles y entregas mediante el recorrido posterior ya implementado (ver asignar-banos-servicio.md). Para más baños se utiliza ese mismo recorrido, sin vincularlos como adicionales a un servicio anterior. **Baño adicional histórico:** se conserva para consulta, sin ofrecer su creación ni asignación en recorridos nuevos.
 - **Reclamo sin trabajo:** requiere respuesta administrativa conforme a la regla aprobada; no se crea una tarea ficticia. La captura/validación de esa respuesta no se implementa en este bloque de asignación.
 
 No se implementa papelera ni DELETE: no hay regla de borrado aprobada. El icono del prototipo no autoriza eliminar historial. Tampoco se agregan rechazo/cancelación administrativa, sustitución de tareas canceladas ni reasignación de tareas existentes.
@@ -68,7 +68,7 @@ Son evidencias manuales independientes de las **125 pruebas automatizadas anteri
 
 **Bloque cerrado y listo para commit.** Se conservan las solicitudes y trabajos resultantes de la prueba como historial. Pendientes: integral manual Android local al terminar los bloques, posterior actualización del hosting, vencimiento real del token y alternancia entre servidores. Sin cambios en hosting, commit, push ni merge. No hay una migración nueva en este bloque.
 
-Ampliación posterior: [Servicio nuevo](asignar-banos-servicio.md) incorpora su selección autorizada de baños y entregas. Las referencias anteriores a ese tipo solo en consulta describen el alcance del bloque previo. Baño adicional y los otros tratamientos separados no cambian con esa ampliación.
+Ampliación posterior: [Servicio nuevo](asignar-banos-servicio.md) incorpora su selección autorizada de baños y entregas. Las referencias anteriores a ese tipo solo en consulta describen el alcance del bloque previo. La posterior decisión de alcance descarta el adicional vinculado: usar Solicitar un nuevo servicio para otros baños. Los registros históricos no se eliminan.
 
 ## Ampliación: respuesta sin trabajo físico
 
