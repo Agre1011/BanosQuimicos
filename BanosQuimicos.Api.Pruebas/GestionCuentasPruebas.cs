@@ -98,7 +98,7 @@ public class GestionCuentasPruebas(AplicacionPruebas app, ITestOutputHelper sali
         var vacia = (await http.GetFromJsonAsync<PaginaCuentasRespuesta>($"/api/cuentas?busqueda={marca}&pagina=99", Ct))!;
         Assert.Empty(vacia.Elementos); Assert.Equal(23, vacia.Total);
         var detalle = await http.GetFromJsonAsync<JsonElement>($"/api/cuentas/{ids[0]}", Ct);
-        var permitidos = new[] { "idUsuario", "nombre", "apellido", "email", "telefono", "rol", "estadoCuenta", "fechaRegistro", "puedeActivar" };
+        var permitidos = new[] { "idUsuario", "nombre", "apellido", "email", "telefono", "rol", "estadoCuenta", "fechaRegistro", "puedeActivar", "motivoSuspension", "fechaBaja" };
         Assert.Equal(permitidos.Order(), detalle.EnumerateObject().Select(x => x.Name).Order());
         var listaJson = await http.GetStringAsync($"/api/cuentas?busqueda={marca}", Ct);
         Assert.DoesNotContain("hash", listaJson, StringComparison.OrdinalIgnoreCase);

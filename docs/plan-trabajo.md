@@ -1,6 +1,6 @@
 # Plan de trabajo
 
-Última actualización: 08/11/2026. Inventario de baños cerrado y listo para commit, con recorridos y filtro aprobados manualmente en Windows: sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
+Última actualización: 08/11/2026. Estado de cuentas cerrado y listo para commit, con tres recorridos manuales Windows aprobados: sección 28. Inventario conserva su cierre y aprobación manual en la sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
 
 ## 1. Fuentes revisadas y límites de lectura
 
@@ -1467,3 +1467,71 @@ Evidencia manual separada de las pruebas automatizadas: suite completa previa **
 Se mantiene **20261108174906_InventarioBanosYMantenimiento pendiente para hosting**, aplicada solo en LocalDB, con las 12 tablas conservadas. Android integral contra API local, correcciones y posterior migraciones/republicación/comprobación de hosting siguen para el final. Vencimiento real del token y alternancia de servidores continúan como pendientes generales. Sin commit, push, merge ni cambios en hosting. Mensaje sugerido: **feat: gestionar inventario y mantenimiento de baños sin servicio**. Esperar confirmación antes del siguiente bloque.
 
 Revisión de candidatos al cierre final: 28 archivos del bloque, diff sin errores de espacios, índice vacío; sin archivos generados, perfiles de publicación ni indicadores de secretos en las rutas/textos revisados. PDF y dos PNG originales mantienen sus hashes. No se prepararon archivos con git add. Solo se editaron el plan y la guía en esta confirmación documental.
+
+
+## 28. Estado de cuentas y registro activo — revisión inicial
+
+Rama **feature/estado-cuentas** creada desde master **d90db2e**, limpio y coincidente con origin/master (0 commits de diferencia), sin descartar cambios ni hacer pull adicional. Se revisaron AGENTS.md, requisitos y diferencias D11 del plan, documentación de cuentas/autenticación/acceso de empleados, modelo/configuración de Usuario, controladores y registro/inicio de la app.
+
+**Cambio de negocio confirmado por el estudiante:** las cuentas nuevas se registran Cliente/Activa, con usuario y perfil en una transacción; no eligen rol ni estado. Sustituye para registros nuevos la decisión histórica Cliente/Pendiente; no autoriza activar cuentas existentes masivamente. Conservar login normal después de registrar, eliminando el aviso de espera en ese recorrido. Pendiente sigue existiendo para cuentas antiguas y el administrador podrá activarlas con rol Cliente o Empleado. Cambiar rol continúa separado de cambiar estado. Suspensión y baja lógica con confirmación en Gestionar cuentas; sin borrar perfiles, servicios, solicitudes ni historial. Proteger al administrador propio y la existencia de al menos un administrador activo.
+
+Diagnóstico: CuentasController solo implementa activación Cliente/Pendiente y cambio de rol, sin revisar trabajos/servicios al cambiarlo. No hay transiciones implementadas de suspensión/baja/reactivación; D11 no tiene una decisión posterior que defina esos conflictos. La seguridad JWT ya consulta estado y rol actuales en cada petición y rechaza Suspendida/BajaLogica aunque el token sea previo. El modelo tiene MotivoSuspension y FechaBaja; no hacen falta tablas nuevas para esos datos. UsuarioConfiguracion conserva un DEFAULT Pendiente en EstadoCuenta: se propone migración de solo cambio del DEFAULT a Activa, sin UPDATE de filas existentes, manteniendo 12 tablas; todavía no generada ni aplicada.
+
+**Propuestas pendientes de confirmación, no reglas aprobadas ni implementadas:**
+
+1. Impedir suspender, dar de baja o cambiar Empleado a Cliente mientras tenga tareas Pendiente/En curso, incluidas las que tienen trabajo registrado. Mostrar IDs/tipos/estados. Completar esos trabajos mediante el recorrido existente antes del cambio, sin cancelación/reasignación automática. Responsable habitual por sí solo no bloquearía: conservar referencia y mostrar que dejó de ser empleado activo, sin proponerlo para trabajos nuevos.
+2. Impedir suspensión, baja o cambio Cliente a Empleado mientras el perfil tenga servicios Pendiente de entrega/Entregado o solicitudes Pendiente/Aprobada. Mostrar qué lo impide, resolver mediante recorridos existentes y luego cambiar la cuenta, sin cancelar ni cerrar automáticamente.
+3. Permitir reactivar manualmente Suspendida a Activa por otro administrador, conservando rol y datos; baja lógica definitiva para esta versión, sin restauración. Solicitar motivo al suspender usando el campo existente. Proteger auto-suspensión/auto-baja y último administrador activo también frente a concurrencia.
+
+Bloque abierto y pendiente de estas definiciones antes de implementar transiciones dependientes. No se ejecutaron pruebas/compilaciones, cambios de datos, migraciones ni operaciones en hosting. Sin commit, push o merge. Las pruebas Windows de inventario siguen aprobadas; Android integral y republicación quedan para el final.
+
+
+### Decisiones confirmadas e implementación de estado-cuentas — 08/11/2026
+
+El estudiante confirmó las tres propuestas anteriores: bloquear suspensión/baja/cambio Empleado→Cliente por tareas Pendiente/En curso o trabajo registrado sin finalizar; bloquear suspensión/baja/cambio Cliente→Empleado por servicios vigentes o solicitudes Pendiente/Aprobada; conservar referencias habituales e históricas y no cancelar automáticamente. Reactivar Suspendida→Activa conservando rol; baja lógica definitiva desde la app, con advertencia explícita y datos conservados; motivo obligatorio al suspender. Protecciones del propio administrador y de administradores activos vigentes ante concurrencia. Estas definiciones resuelven D11 para el alcance de este bloque.
+
+Se implementó:
+
+- AutenticacionController fija **Cliente/Activa** al crear usuario y perfil en la transacción existente; RegistroRespuesta confirma guardado sin token. No acepta rol/estado de entrada. Registro/Home de la app eliminan espera del registro nuevo y mantienen el login habitual, sin auto-login.
+- CuentasEstado.cs separa las escrituras del listado/detalle de CuentasController mediante una clase partial sencilla. Activación antigua acepta Pendiente Cliente o Empleado con perfil. Suspensión, reactivación, baja y cambio de rol usan la transacción Serializable y bloqueo compartido con asignación/cierre/programación: no dejar un trabajo nuevo en una cuenta recién deshabilitada. Se revalida al administrador dentro de la transacción.
+- PUT /api/cuentas/{id}/estado recibe estadoAnterior/nuevoEstado/motivo. Conflictos devuelven IDs/tipos/estados de elementos bloqueantes. Suspender requiere motivo; reactivar solo Suspendida; BajaLogica no se restaura por API/app. Repetir el mismo estado final conserva fechas/motivo. Se registra FechaBaja, sin borrar usuarios/perfiles ni relaciones.
+- El cambio de rol sigue independiente: Empleado→Cliente revisa tareas; Cliente→Empleado revisa operaciones del cliente. Bloqueo por trabajos con registro sin finalización además de estados activos. La suspensión/baja revisa ambas clases de referencias por compatibilidad con datos antiguos. Responsables habituales se conservan y las funciones ya existentes excluyen empleados no activos de nuevas asignaciones, mostrando su condición en Estado Baños.
+- La validación JWT por petición ya implementada se conserva: Suspendida/BajaLogica no operan con un token anterior y el login las rechaza. Reactivar recupera el acceso con el mismo rol; no se introduce revocación permanente de todos los tokens anteriores tras reactivar. App trata el 401 con su gestión de sesión existente.
+- GestionCuentas mantiene las pestañas, búsqueda/paginación y detalle. En el detalle incorpora motivo, fecha de baja, botones y confirmaciones de Suspender/Reactivar/Dar de baja. Advierte que la baja no puede reactivarse desde la app. Sin pantalla adicional; adaptación autorizada. Los conflictos de cambio de rol ahora muestran el motivo real (incluidos trabajos bloqueantes), sin confundir todo 409 con un cambio de otra sesión.
+
+### Migración y conservación de cuentas
+
+Migración **20261108193729_RegistroClienteActivo**, explicada y autorizada, generada/revisada y aplicada **solo en (localdb)\MSSQLLocalDB / BanosQuimicosDb**. SQL revisado: elimina la restricción DEFAULT anterior y agrega DEFAULT Activa en USUARIOS.EstadoCuenta, registra la migración. No hay UPDATE de estados existentes, columnas nuevas ni tablas nuevas. Antes y después: **5 Activas y 2 Pendientes**, 12 tablas del negocio + __EFMigrationsHistory. No se activaron masivamente ni se modificaron cuentas suspendidas/bajas. Migración **pendiente para hosting**, junto con InventarioBanosYMantenimiento y las anteriores que falten; no se contactó ni cambió MonsterASP. Comprobar migraciones reales del hosting solo en el futuro bloque de publicación.
+
+### Verificaciones y guía
+
+- Se actualizaron pruebas existentes de registro y cambio de rol para **no exigir activación del registro nuevo**. Las pruebas de cuentas antiguas y permisos mantienen estados Pendiente preparados exclusivamente en bases aisladas; no simulan que el registro normal siga siendo pendiente. El helper compartido de recorridos ahora registra Activa y solo prepara Pendiente cuando la prueba pide explícitamente ese escenario.
+- **13 casos nuevos**: ciclo suspensión/reactivación/baja para Cliente y Empleado con sesiones previas y datos conservados, motivo requerido/reintento, activación antigua en ambos roles, bloqueos por tareas Pendiente y En curso/trabajo registrado, responsable habitual e historial, bloqueos por servicios/solicitudes, permisos y concurrencia de administradores y suspensión/asignación.
+- Desarrollo focalizado: 45 casos existentes de autenticación/roles/gestión (44 correctos y una expectativa de campos de contrato detectada y actualizada para motivoSuspension/fechaBaja, conservando exclusión de secretos); luego 11 casos nuevos correctos antes de ampliar dos teorías. Cierre: **suite completa 217/217 correcta**, 204 casos anteriores conservados + 13 nuevos. No se agregaron pruebas visuales simples. La ejecución completa se justificó por el cambio transversal del registro/helper compartido, y se hizo una sola vez al cierre. Son 273 ejecuciones acumuladas en esas corridas, no 273 casos distintos.
+- API y Razor de la app compilaron con los tests. App Debug **Windows y Android compiladas con 0 errores y 0 advertencias**, con parámetros Java temporales existentes (heap512M/SerialGC/-m:1). No se ejecutó personalmente la interfaz nativa ni se atribuye a compilación una prueba manual.
+- Guía **docs/estado-cuentas.md** con recorrido Windows y contratos reales, sin credenciales ni tokens. Documentación de autenticación/API/app/Postman/cuentas/empleados y README actualizada: registro nuevo Activa, espera/activación solo para cuentas antiguas; se conservan las evidencias históricas y los originales. Los datos locales de prueba manual se crean mediante registros nuevos identificados PRUEBA ESTADOS LOCAL; no se cambian contraseñas/roles de cuentas anteriores como preparación. Tests con bases BanosQuimicosAuthPruebas_GUID aisladas, sin borrar bases previas.
+
+**Implementación cerrada para revisión, prueba manual Windows pendiente.** Verificar registro inmediato, cambio de rol, suspensión/rechazo con sesión previa, reactivación, baja definitiva y mensajes concretos de bloqueos según guía. Android integral local, vencimiento real del token y alternancia de servidores siguen pendientes generales. Migraciones y republicación después de Android integral y correcciones. No comenzar otro bloque sin confirmación. Mensaje de commit sugerido: **feat: habilitar registro activo y gestionar estados de cuentas**. Sin commit, push, merge ni cambios en hosting. No repetir pruebas/compilaciones por el cierre documental.
+
+
+### Cierre final: pruebas manuales Windows aprobadas — 08/11/2026
+
+El estudiante confirmó únicamente estos tres recorridos, registrados como **pruebas manuales Windows**, separados de las pruebas automatizadas:
+
+1. Registro como Cliente/Activa sin aprobación y cambio a Empleado.
+2. Suspensión y reactivación conservando el rol.
+3. Baja lógica y pérdida de acceso.
+
+No se atribuye aprobación manual a otros escenarios de la guía: bloqueos por tareas/servicios/solicitudes, activación de cuentas antiguas Pendientes, motivo vacío, cancelación de confirmaciones, permisos, concurrencia o protección de administradores conservan exclusivamente las evidencias automatizadas que correspondan, no una confirmación manual nueva. Tampoco se afirma una prueba manual específica de token previo por el solo reporte de pérdida de acceso.
+
+**Compilación anterior confirmada:** el proceso finalizó con código 0, compilación Debug Windows y Android correcta, **0 errores y 0 advertencias**. Esa ejecución ya registrada no quedó pendiente; no se repitió para este cierre. API/Razor compilaron con las pruebas. Se mantienen **217/217 automatizadas correctas, 13 casos nuevos** como evidencia previa, separada de estos resultados manuales. EF confirmó que no quedan cambios del modelo sin migración.
+
+**Bloque feature/estado-cuentas cerrado y listo para commit**, sin iniciar otro bloque. Solo se actualizan el plan y la guía; no se ejecutan pruebas, compilaciones ni cambios de datos/configuración. La migración **20261108193729_RegistroClienteActivo** sigue aplicada solo en LocalDB y **pendiente para hosting**, junto con las anteriores que falten. Android integral contra API local, correcciones y posterior migraciones/republicación/comprobación contra hosting se mantienen para el final. Vencimiento real del token y alternancia de servidores siguen pendientes generales.
+
+Mensaje de commit sugerido: **feat: habilitar registro activo y gestionar estados de cuentas**.
+
+Descripción breve sugerida del PR: «El registro crea Cliente/Activa y permite el acceso sin aprobación administrativa. Gestionar cuentas incorpora suspensión con motivo, reactivación y baja lógica, con bloqueos por operaciones abiertas y protección de administradores. Conserva datos y valida el estado actual de las sesiones. Verificado con 217 pruebas automatizadas y compilación Windows/Android; aprobados manualmente en Windows el registro/cambio de rol, suspensión/reactivación y baja/pérdida de acceso. La migración del DEFAULT está aplicada solo en LocalDB; Android integral y despliegue quedan pendientes.»
+
+Sin commit, push, merge ni cambios en hosting. Esperar confirmación antes de comenzar el siguiente bloque.
+
+Revisión final para commit: 28 archivos candidatos del bloque, diff sin errores de espacios e índice vacío; sin generados, perfiles de publicación ni indicadores de secretos en las rutas/textos examinados. PDF y dos PNG originales conservan sus hashes. No se ejecutó git add ni se cambiaron código, configuración, datos u hosting en este cierre documental.

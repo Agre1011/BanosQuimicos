@@ -791,7 +791,7 @@ namespace BanosQuimicos.Api.Datos.Migraciones
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Pendiente");
+                        .HasDefaultValue("Activa");
 
                     b.Property<DateTimeOffset?>("FechaBaja")
                         .HasColumnType("datetimeoffset");

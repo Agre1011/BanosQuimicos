@@ -50,7 +50,7 @@ public class AutenticacionPruebas(AplicacionPruebas app, ITestOutputHelper salid
     private Task<string> TokenAdmin() => Token(app.CorreoAdmin, app.ClaveAdmin);
 
     [Fact]
-    public async Task Cliente_de_app_registra_consulta_pendiente_refleja_activacion_y_cierra()
+    public async Task Cliente_de_app_registra_activo_inicia_sesion_y_cierra()
     {
         salida.WriteLine("Base aislada conservada: " + app.NombreBase);
         using var http = Cliente();
@@ -66,13 +66,7 @@ public class AutenticacionPruebas(AplicacionPruebas app, ITestOutputHelper salid
         await sesion.IngresarAsync(new BanosQuimicos.App.Autenticacion.DatosLogin {
             Email = datos.Email, Contrasena = datos.Contrasena
         });
-        Assert.Equal(BanosQuimicos.App.Autenticacion.EstadoSesion.Pendiente, sesion.Estado);
-        Assert.Null(sesion.Cuenta!.Rol);
         var tokenAnterior = almacen.Token;
-        using var db = app.NuevoContexto();
-        var id = await db.Usuarios.Where(x => x.Email == datos.Email).Select(x => x.IdUsuario).SingleAsync(Ct);
-        using var admin = Cliente(await TokenAdmin());
-        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"/api/cuentas/{id}/activar", null, Ct)).StatusCode);
         await sesion.ActualizarAsync();
         Assert.Equal(BanosQuimicos.App.Autenticacion.EstadoSesion.Activa, sesion.Estado);
         Assert.Equal("Cliente", sesion.Cuenta!.Rol);
@@ -100,7 +94,7 @@ public class AutenticacionPruebas(AplicacionPruebas app, ITestOutputHelper salid
         var usuario = await db.Usuarios.Include(x => x.Rol).Include(x => x.Cliente).SingleAsync(x => x.Email == correo, Ct);
         Assert.Equal(correo.ToUpperInvariant(), usuario.Email);
         Assert.Equal("Cliente", usuario.Rol.NombreRol);
-        Assert.Equal("Pendiente", usuario.EstadoCuenta);
+        Assert.Equal("Activa", usuario.EstadoCuenta);
         Assert.NotNull(usuario.Cliente);
         Assert.Null(usuario.Cliente.RazonSocial);
         Assert.Equal(datos.Telefono, usuario.Telefono);
@@ -178,6 +172,7 @@ public class AutenticacionPruebas(AplicacionPruebas app, ITestOutputHelper salid
     public async Task Pendiente_solo_obtiene_aviso_y_no_puede_activarse_ni_operar()
     {
         var (datos, id) = await Registrar();
+        using (var db = app.NuevoContexto()) await db.Usuarios.Where(x => x.IdUsuario == id).ExecuteUpdateAsync(x => x.SetProperty(u => u.EstadoCuenta, "Pendiente"), Ct);
         var token = await Token("  " + datos.Email.ToUpperInvariant() + "  ", datos.Contrasena);
         using var http = Cliente(token);
         var yo = await http.GetFromJsonAsync<JsonElement>("/api/autenticacion/yo", Ct);
@@ -192,6 +187,7 @@ public class AutenticacionPruebas(AplicacionPruebas app, ITestOutputHelper salid
     public async Task Administrador_activa_y_cliente_no_puede_activar_otras_cuentas()
     {
         var (datos, id) = await Registrar();
+        using (var db = app.NuevoContexto()) await db.Usuarios.Where(x => x.IdUsuario == id).ExecuteUpdateAsync(x => x.SetProperty(u => u.EstadoCuenta, "Pendiente"), Ct);
         var tokenPrevio = await Token(datos.Email, datos.Contrasena);
         using var admin = Cliente(await TokenAdmin());
         Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"/api/cuentas/{id}/activar", null, Ct)).StatusCode);
@@ -213,8 +209,7 @@ public class AutenticacionPruebas(AplicacionPruebas app, ITestOutputHelper salid
     public async Task Cambiar_estado_invalida_el_acceso_de_una_sesion_anterior(string estado)
     {
         var (datos, id) = await Registrar();
-        using (var admin = Cliente(await TokenAdmin()))
-            Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"/api/cuentas/{id}/activar", null, Ct)).StatusCode);
+
         var token = await Token(datos.Email, datos.Contrasena);
         using var http = Cliente(token);
         Assert.Equal(HttpStatusCode.NoContent, (await http.GetAsync("/_pruebas/operacion", Ct)).StatusCode);

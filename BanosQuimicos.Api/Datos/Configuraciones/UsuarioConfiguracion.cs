@@ -22,7 +22,7 @@ public class UsuarioConfiguracion : IEntityTypeConfiguration<Usuario>
         b.Property(x => x.ContrasenaHash).HasMaxLength(1000).IsRequired();
         b.Property(x => x.EstadoCuenta).HasMaxLength(20).IsRequired();
         b.Property(x => x.MotivoSuspension).HasMaxLength(1000);
-        b.Property(x => x.EstadoCuenta).HasDefaultValue("Pendiente");
+        b.Property(x => x.EstadoCuenta).HasDefaultValue("Activa");
         b.HasIndex(x => x.Email).IsUnique();
         b.HasOne(x => x.Rol).WithMany().HasForeignKey(x => x.IdRol);
         b.HasOne(x => x.Cliente).WithOne(x => x.Usuario).HasForeignKey<Cliente>(x => x.IdUsuario);

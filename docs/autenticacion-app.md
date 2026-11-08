@@ -1,5 +1,8 @@
 # Autenticación de la app: guía de prueba
 
+**Regla vigente desde estado-cuentas (08/11/2026):** los registros nuevos son **Cliente/Activa** y no requieren aprobación. La espera y activación documentadas en evidencias históricas corresponden solo a cuentas antiguas Pendientes. Suspensión, reactivación, baja definitiva desde la app y bloqueos se describen en [la guía actual](estado-cuentas.md). No activar masivamente cuentas existentes.
+
+
 Bloque de .NET MAUI Blazor Hybrid para Windows y Android físico por USB. Usa la API existente y sus 12 tablas; no agrega CRUD ni pantallas administrativas. Login y registro toman como referencia la captura de Figma del PDF aprobado: paleta marrón, acciones azul/rosa y campos acordados. El encabezado BQ es textual; no sustituye un logotipo original. Se aplica el cambio confirmado de «Nombre de usuario» a «Correo electrónico».
 
 ## Destino actual: API local para cambio de rol
@@ -57,12 +60,12 @@ También se pueden configurar ambos proyectos como inicio múltiple, verificando
 1. Pulsar **Crear cuenta**. Probar primero enviar el formulario vacío: debe marcar campos obligatorios sin realizar el registro.
 2. Completar nombre y apellido identificables como `PRUEBA APP`, un correo nuevo, teléfono como texto (por ejemplo con prefijo `+`) y una contraseña propia de 12 a 128 caracteres. No compartirla en el chat ni guardarla en archivos de prueba versionados. Razón social, CUIT y dirección principal son opcionales.
 3. Pulsar **Crear cuenta** una sola vez. Mientras se procesa, los controles quedan deshabilitados. La API recibe `POST /api/autenticacion/registro` con los ocho campos del contrato, sin rol ni estado.
-4. Esperado: aviso de cuenta creada y activación requerida; vuelve al login con el correo precargado. El registro no inicia automáticamente una sesión. Usuario y perfil se crean juntos como Cliente/Pendiente.
+4. Esperado: aviso de cuenta creada y acceso habilitado; vuelve al login con el correo precargado. El registro no inicia automáticamente una sesión. Usuario y perfil se crean juntos como Cliente/Activa.
 5. Repetir con el mismo correo debe mostrar **El correo electrónico ya está registrado** (409). Espacios exteriores y mayúsculas no permiten duplicarlo. No borrar cuentas anteriores para repetir pruebas; usar otro correo de prueba.
 
-## 4. Ingresar como pendiente
+## 4. Compatibilidad: ingresar con una cuenta antigua Pendiente
 
-1. Usar correo y contraseña del registro. El login real es `POST /api/autenticacion/login` con `{ "email": "correo elegido", "contrasena": "contraseña elegida" }`.
+1. Usar una cuenta antigua Pendiente ya existente. Un registro nuevo ingresa directamente Activa. El login real es `POST /api/autenticacion/login` con `{ "email": "correo elegido", "contrasena": "contraseña elegida" }`.
 2. Después del login, la app consulta `GET /api/autenticacion/yo` con Bearer. Debe mostrar únicamente **Cuenta pendiente**, aviso, **Consultar nuevamente el estado** y **Cerrar sesión**. No debe mostrar nombre, rol ni opciones operativas.
 3. Consultar nuevamente antes de activar mantiene el aviso. Una contraseña incorrecta muestra un mensaje genérico de credenciales incorrectas (401), sin indicar si el correo existe.
 

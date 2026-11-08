@@ -1,5 +1,8 @@
 # Guía manual: primer administrador, Visual Studio y Postman
 
+**Regla vigente desde estado-cuentas (08/11/2026):** los registros nuevos son **Cliente/Activa** y no requieren aprobación. La espera y activación documentadas en evidencias históricas corresponden solo a cuentas antiguas Pendientes. Suspensión, reactivación, baja definitiva desde la app y bloqueos se describen en [la guía actual](estado-cuentas.md). No activar masivamente cuentas existentes.
+
+
 Estas pruebas las realiza el estudiante con sus propias contraseñas. No enviarlas al chat ni escribirlas en código, archivos versionados o colecciones exportadas. Las rutas y cuerpos corresponden a la implementación actual; no se agregan endpoints del negocio.
 
 ## 1. Crear personalmente el primer administrador
@@ -52,9 +55,9 @@ Esperado: **200 OK**, con accessToken, expiraEn, estadoCuenta = Activa y mensaje
 
 Comprobar `GET {{base_url}}/api/autenticacion/yo`, Authorization Bearer Token = `{{vault:token_admin}}`. Esperado: 200, rol Administrador y estadoCuenta Activa; el idUsuario es el del administrador. Nunca aparecen contraseña ni hash.
 
-## 4. Registrar cliente y comprobar que queda Pendiente
+## 4. Registrar cliente activo
 
-POST `{{base_url}}/api/autenticacion/registro`, Authorization = No Auth:
+POST `{{base_url}}/api/autenticacion/registro`, No Auth:
 
 ```json
 {
@@ -66,81 +69,25 @@ POST `{{base_url}}/api/autenticacion/registro`, Authorization = No Auth:
 }
 ```
 
-Razón social, CUIT y dirección principal pueden omitirse. No agregar rol, IdRol ni estado. La contraseña debe tener de 12 a 128 caracteres. Elegir un correo nuevo si ya existe; no borrar cuentas para repetir la prueba.
+Usar contraseña propia en Postman Vault (12 a 128 caracteres); no guardarla en la colección exportada. Razón social, CUIT y dirección principal pueden omitirse. No enviar rol ni estado. Esperado **201**, estadoCuenta Activa y mensaje «Cuenta creada. Ya podés iniciar sesión.». Repetir correo:409; campos obligatorios ausentes o rol/estado extra:400.
 
-Esperado: **201 Created**:
+## 5. Login inmediato y consulta /yo
 
-```json
-{
-  "estadoCuenta": "Pendiente",
-  "mensaje": "Tu cuenta está pendiente de activación por el administrador."
-}
-```
+POST `{{base_url}}/api/autenticacion/login`, No Auth, email con la variable correo_cliente y contrasena con Vault. Esperado **200**, estadoCuenta Activa y accessToken. Guardar el token solo localmente como token_cliente. GET `{{base_url}}/api/autenticacion/yo` con Bearer token_cliente devuelve datos reales, rol Cliente y Activa, sin hashes ni contraseñas. No requiere activación administrativa. GET `/api/servicios-cliente/mios` devuelve sus servicios o lista vacía.
 
-Repetir el mismo registro produce 409. Registrar sin teléfono, o enviando rol/estado, produce 400.
+## 6. Activación solo de cuentas antiguas
 
-Hacer login del cliente por POST `/api/autenticacion/login`, No Auth:
+No ejecutar este paso sobre el registro nuevo anterior. Si se dispone de una cuenta antigua Pendiente de prueba, consultar su IdUsuario en Gestionar cuentas y usar POST `{{base_url}}/api/cuentas/{{id_cliente_usuario}}/activar`, sin cuerpo, con token_admin. Admite Cliente o Empleado Pendiente con perfil:204. Repetir:409. /yo con la sesión previa de esa cuenta debe reflejar Activa y su rol real. No cambiar cuentas a Pendiente por SQL ni activar masivamente para seguir esta guía.
 
-```json
-{
-  "email": "{{correo_cliente}}",
-  "contrasena": "{{vault:clave_cliente}}"
-}
-```
-
-Esperado: **200**, token y estadoCuenta Pendiente con el aviso. Guardar accessToken como token_cliente. `GET /api/autenticacion/yo` con ese token debe devolver solo los dos campos del aviso anterior, sin datos de perfil ni rol.
-
-Para obtener el ID que necesitará el administrador, abrir Visual Studio > Ver > Explorador de objetos de SQL Server, conectar a `(localdb)\MSSQLLocalDB`, elegir BanosQuimicosDb y ejecutar una consulta de solo lectura con el correo real de prueba:
-
-```sql
-SELECT u.IdUsuario, u.Email, u.EstadoCuenta, r.NombreRol, c.IdCliente
-FROM dbo.USUARIOS u
-JOIN dbo.ROLES r ON r.IdRol = u.IdRol
-LEFT JOIN dbo.CLIENTES c ON c.IdUsuario = u.IdUsuario
-WHERE u.Email = N'prueba.postman.01@example.invalid';
-```
-
-Esperado: una fila Cliente/Pendiente y un IdCliente no nulo. Guardar **IdUsuario**, no IdCliente, como variable `id_cliente_usuario` en Postman. El registro pendiente no expone un listado administrativo para obtenerlo; en este bloque se consulta desde SQL local.
-
-Con token_cliente, POST `{{base_url}}/api/cuentas/{{id_cliente_usuario}}/activar`, Body = none, debe dar **403 Forbidden** y mantener Pendiente. La API, no solo la interfaz, rechaza la autoactivación.
-
-No hay todavía controladores de servicios ni solicitudes. No usar un 404 de una ruta inexistente como prueba de permisos ni esperar datos de negocio en esta etapa. La restricción general CuentaActiva está verificada en las pruebas de integración con rutas auxiliares exclusivas del host de pruebas; en Postman se comprueban el aviso mínimo y la denegación de activación con rutas reales.
-
-## 5. Activarlo como administrador
-
-POST `{{base_url}}/api/cuentas/{{id_cliente_usuario}}/activar`, Body = none. En Authorization, usar **token_admin**.
-
-Esperado: **204 No Content**, sin JSON de respuesta. En SQL el cliente pasa a Activa. Repetir la activación con token_admin da 409, porque ya no está Pendiente. Un ID inexistente da 404 solo si el solicitante es un administrador autorizado.
-
-## 6. Comprobar el acceso del cliente y consultar /yo
-
-GET `{{base_url}}/api/autenticacion/yo`, usando **token_cliente**. El token anterior puede seguir usándose si no venció: la API consulta el estado actual en cada petición.
-
-Esperado: **200**, con estos campos y los valores de esa cuenta:
-
-```json
-{
-  "idUsuario": 0,
-  "nombre": "PRUEBA POSTMAN",
-  "apellido": "Cliente",
-  "email": "correo de prueba utilizado",
-  "telefono": "+00 123 PRUEBA",
-  "rol": "Cliente",
-  "estadoCuenta": "Activa"
-}
-```
-
-El 0 es ilustrativo: idUsuario debe ser el ID real consultado en SQL. Ya no se recibe únicamente el aviso de espera. Si el token venció (30 minutos), repetir login y reemplazar token_cliente. Sin token o con un token inválido, `/yo` da 401.
-
-Esto verifica identidad y estado de acceso habilitado; no demuestra un CRUD de servicios que aún no existe.
+Para suspensión, reactivación y baja, seguir [la guía vigente](estado-cuentas.md), con los cuerpos reales y resultados esperados.
 
 ## 7. Comprobar que el cliente no activa otras cuentas
 
 1. Registrar un segundo cliente con otro correo único, por ejemplo prueba.postman.02@example.invalid, identificándolo como PRUEBA POSTMAN. No necesita activación para preparar el intento.
 2. Consultar su IdUsuario con la misma consulta SQL de solo lectura y guardarlo como `id_otro_cliente_usuario`.
 3. Enviar POST `{{base_url}}/api/cuentas/{{id_otro_cliente_usuario}}/activar`, Body = none, **con token_cliente del primer cliente activo**.
-4. Esperado: **403 Forbidden**, aunque el primer cliente esté Activa. SQL debe mostrar que el segundo sigue Pendiente.
-5. Repetir sin ningún token devuelve 401. No repetir con token_admin salvo que se desee activar realmente al segundo cliente.
+4. Esperado: **403 Forbidden**, aunque el primer cliente esté Activa. La segunda cuenta permanece Activa, como nació desde el registro.
+5. Repetir sin ningún token devuelve 401. El administrador tampoco necesita activar ese registro nuevo.
 
 ## Registro de resultados
 

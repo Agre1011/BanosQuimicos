@@ -81,6 +81,12 @@ public class ClienteAutenticacion
         using var response = await EnviarAsync(request);
         await ComprobarAsync(response, "rol");
     }
+    public async Task CambiarEstadoCuentaAsync(string token, int id, string anterior, string nuevo, string? motivo)
+    {
+        using var request = PeticionCuenta(HttpMethod.Put, $"api/cuentas/{id}/estado", token);
+        request.Content = JsonContent.Create(new { estadoAnterior = anterior, nuevoEstado = nuevo, motivo });
+        using var response = await EnviarAsync(request); await ComprobarAsync(response, "estado-cuenta");
+    }
     public Task<ResumenTareas> ResumenTareasAsync(string token) => LeerAutenticadoAsync<ResumenTareas>(token, "api/tareas/mias/resumen");
     public Task<ResumenServiciosCliente> ResumenServiciosClienteAsync(string token) => LeerAutenticadoAsync<ResumenServiciosCliente>(token, "api/servicios-cliente/mios/resumen", "servicios");
     public Task<List<SolicitudPropia>> MisSolicitudesAsync(string token) => LeerAutenticadoAsync<List<SolicitudPropia>>(token, "api/solicitudes-cliente/mias", "solicitudes");
@@ -225,7 +231,7 @@ public class ClienteAutenticacion
                 operacion == "login" ? "La cuenta no está habilitada. Consultá al administrador." : "No tenés permiso para realizar esta operación.");
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
-            if (operacion is "direccion" or "solicitudes" or "servicios" or "tareas" or "banos")
+            if (operacion is "direccion" or "solicitudes" or "servicios" or "tareas" or "banos" or "rol" or "estado-cuenta")
             {
                 var mensaje = await MensajeNegocioAsync(response);
                 if (mensaje is not null) throw new ErrorApi(TipoErrorApi.Conflicto, mensaje);
@@ -245,7 +251,7 @@ public class ClienteAutenticacion
         }
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
-            if ((operacion is "direccion" or "banos") && await MensajeNegocioAsync(response) is { } detalle)
+            if ((operacion is "direccion" or "banos" or "estado-cuenta") && await MensajeNegocioAsync(response) is { } detalle)
                 throw new ErrorApi(TipoErrorApi.Validacion, detalle);
             var mensaje = "Revisá los datos ingresados y los campos obligatorios.";
             try

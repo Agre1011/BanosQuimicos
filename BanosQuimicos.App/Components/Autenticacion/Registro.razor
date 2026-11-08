@@ -3,7 +3,7 @@
 
 <section class="tarjeta" aria-labelledby="titulo-registro">
     <h1 id="titulo-registro">Crear cuenta</h1>
-    <p>Los campos con * son obligatorios. Tu cuenta necesitará activación.</p>
+    <p>Los campos con * son obligatorios. Tu cuenta se creará como Cliente y podrás iniciar sesión al terminar.</p>
     @if (!string.IsNullOrEmpty(error)) { <div class="aviso error" role="alert">@error</div> }
     <EditForm Model="datos" OnValidSubmit="RegistrarAsync" FormName="registro">
         <DataAnnotationsValidator />

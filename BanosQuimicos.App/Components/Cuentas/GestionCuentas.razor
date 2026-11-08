@@ -70,19 +70,43 @@
                 <dt>Teléfono</dt><dd>@cuenta.Telefono</dd>
                 <dt>Rol</dt><dd>@cuenta.Rol</dd>
                 <dt>Estado</dt><dd>@EstadoVisible(cuenta.EstadoCuenta)</dd>
+                @if (cuenta.MotivoSuspension is not null) { <dt>Último motivo de suspensión</dt><dd>@cuenta.MotivoSuspension</dd> }
+                @if (cuenta.FechaBaja is { } baja) { <dt>Fecha de baja (hora local)</dt><dd>@baja.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd> }
                 <dt>Fecha de registro (hora local)</dt><dd>@cuenta.FechaRegistro.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
             </dl>
+            @if (cuenta.EstadoCuenta == "BajaLogica")
+            { <p class="aviso">Cuenta dada de baja. No puede reactivarse desde la app. Los datos y el historial se conservan.</p> }
+            else if (cuenta.IdUsuario != Sesion.Cuenta?.IdUsuario)
+            {
+                @if (cuenta.EstadoCuenta == "Activa") { <button class="secundario" @onclick='() => PrepararEstado("Suspendida")'>Suspender cuenta</button> }
+                @if (cuenta.EstadoCuenta == "Suspendida") { <button class="principal" @onclick='() => PrepararEstado("Activa")'>Reactivar cuenta</button> }
+                <button class="salir" @onclick='() => PrepararEstado("BajaLogica")'>Dar de baja la cuenta</button>
+                @if (destinoEstado is not null)
+                {
+                    <div class="aviso" role="group" aria-label="Confirmación de estado">
+                        <p>¿Confirmás cambiar a @EstadoVisible(destinoEstado) la cuenta de @cuenta.Nombre @cuenta.Apellido (@cuenta.Email)? Se conserva su rol @cuenta.Rol.</p>
+                        @if (destinoEstado == "Suspendida")
+                        {
+                            <label for="motivo-suspension">Motivo de suspensión (obligatorio)</label>
+                            <textarea id="motivo-suspension" maxlength="1000" style="width:100%;min-height:5rem;font:inherit" @bind="motivo"></textarea>
+                        }
+                        @if (destinoEstado == "BajaLogica") { <p><strong>La baja es definitiva desde la app: no podrá reactivarse.</strong> No borra datos, servicios ni historial.</p> }
+                        <button class="principal" disabled='@(destinoEstado == "Suspendida" && string.IsNullOrWhiteSpace(motivo))' @onclick="ConfirmarEstadoAsync">Confirmar cambio de estado</button>
+                        <button class="secundario" @onclick="CancelarEstado">Cancelar</button>
+                    </div>
+                }
+            }
             @if (cuenta.PuedeActivar)
             {
                 @if (confirmar)
                 {
                     <div class="aviso" role="group" aria-labelledby="confirmar-activacion">
-                        <p id="confirmar-activacion">¿Confirmás activar a @cuenta.Nombre @cuenta.Apellido (@cuenta.Email)? Podrá acceder como Cliente.</p>
+                        <p id="confirmar-activacion">¿Confirmás activar a @cuenta.Nombre @cuenta.Apellido (@cuenta.Email)? Podrá acceder con su rol @cuenta.Rol.</p>
                         <button class="principal" @onclick="ActivarAsync">Confirmar activación</button>
                         <button class="secundario" @onclick="() => confirmar = false">Cancelar</button>
                     </div>
                 }
-                else { <button class="principal" @onclick="() => confirmar = true">Activar cliente</button> }
+                else { <button class="principal" @onclick="() => confirmar = true">Activar cuenta pendiente</button> }
             }
         }
         <button class="principal" @onclick="RecargarDetalleAsync">Actualizar detalle</button>
@@ -99,7 +123,8 @@
     private int pagina = 1;
     private int? idSeleccionado;
     private string busqueda = "", estado = "", filtroBusqueda = "", filtroEstado = "";
-    private string? error, aviso;
+    private string? error, aviso, destinoEstado;
+    private string motivo = "";
     private bool ocupada, confirmar, dispuesto;
     private int TotalPaginas => (int)Math.Max(1, ((long)(listado?.Total ?? 0) + 9) / 10);
     private static string EstadoVisible(string valor) => valor == "BajaLogica" ? "Baja lógica" : valor;
@@ -151,7 +176,7 @@
             aviso = $"Rol guardado: {guardada.Rol}. El cambio de rol no activa la cuenta. Consultá la pestaña {guardada.Rol}.";
         }
         catch (ErrorApi ex) when (ex.Tipo == TipoErrorApi.Conflicto)
-        { aviso = "El rol cambió en otra sesión. Se actualizó el listado; revisá la pestaña correspondiente."; }
+        { error = ex.Message; aviso = null; }
         await LeerListadoAsync();
     });
     private Task CargarAsync() => EjecutarAsync(LeerListadoAsync);
@@ -170,7 +195,7 @@
     private Task AbrirAsync(int id)
     {
         if (ocupada) return Task.CompletedTask;
-        idSeleccionado = id; aviso = null; CancelarRol();
+        idSeleccionado = id; aviso = null; CancelarRol(); CancelarEstado();
         return RecargarDetalleAsync();
     }
     private Task RecargarDetalleAsync() => EjecutarAsync(async () =>
@@ -185,6 +210,21 @@
         idSeleccionado = null; detalle = null; aviso = null;
         return CargarAsync();
     }
+    private void CancelarEstado() { destinoEstado = null; motivo = ""; }
+    private void PrepararEstado(string destino) { destinoEstado = destino; motivo = ""; confirmar = false; error = null; aviso = null; }
+    private Task ConfirmarEstadoAsync() => EjecutarAsync(async () =>
+    {
+        if (detalle is not { } c || destinoEstado is null) return;
+        aviso = null;
+        try
+        {
+            await Sesion.CambiarEstadoCuentaAsync(c.IdUsuario, c.EstadoCuenta, destinoEstado, destinoEstado == "Suspendida" ? motivo.Trim() : null);
+            aviso = "Estado de cuenta guardado correctamente."; CancelarEstado();
+        }
+        catch (ErrorApi ex) when (ex.Tipo == TipoErrorApi.Conflicto) { error = ex.Message; CancelarEstado(); }
+        detalle = await Sesion.DetalleCuentaAsync(c.IdUsuario);
+        await LeerListadoAsync();
+    });
     private Task ActivarAsync() => EjecutarAsync(async () =>
     {
         if (detalle is not { PuedeActivar: true } cuenta) return;
@@ -193,7 +233,7 @@
         try { await Sesion.ActivarCuentaAsync(cuenta.IdUsuario); }
         catch (ErrorApi ex) when (ex.Tipo == TipoErrorApi.Conflicto) { conflicto = true; }
         detalle = null;
-        aviso = conflicto ? "La cuenta cambió en otra sesión. Se muestra su estado actual." : "Cliente activado correctamente.";
+        aviso = conflicto ? "La cuenta cambió en otra sesión. Se muestra su estado actual." : "Cuenta activada correctamente.";
         var actual = await Sesion.DetalleCuentaAsync(cuenta.IdUsuario);
         if (!dispuesto) detalle = actual;
         await LeerListadoAsync();

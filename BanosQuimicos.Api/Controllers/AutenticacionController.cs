@@ -25,7 +25,7 @@ public class AutenticacionController(BanosQuimicosDbContext db, IPasswordHasher<
         var rol = await db.Roles.SingleAsync(x => x.NombreRol == "Cliente", ct);
         var usuario = new Usuario {
             Nombre = datos.Nombre, Apellido = datos.Apellido, Email = datos.Email,
-            Telefono = datos.Telefono, IdRol = rol.IdRol, EstadoCuenta = "Pendiente",
+            Telefono = datos.Telefono, IdRol = rol.IdRol, EstadoCuenta = "Activa",
             FechaRegistro = DateTimeOffset.UtcNow
         };
         usuario.ContrasenaHash = hasher.HashPassword(usuario, datos.Contrasena);
@@ -45,7 +45,7 @@ public class AutenticacionController(BanosQuimicosDbContext db, IPasswordHasher<
             await transaction.RollbackAsync(ct);
             return Conflict(new { mensaje = "El correo electrónico ya está registrado." });
         }
-        return StatusCode(StatusCodes.Status201Created, new EsperaRespuesta("Pendiente", Politicas.AvisoEspera));
+        return StatusCode(StatusCodes.Status201Created, new RegistroRespuesta("Activa", "Cuenta creada. Ya podés iniciar sesión."));
     }
 
     [AllowAnonymous]

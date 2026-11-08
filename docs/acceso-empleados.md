@@ -1,6 +1,9 @@
 # Acceso de empleados mediante cambio de rol
 
-El recorrido confirmado reemplaza la idea de alta directa: cada persona se registra en el formulario público, obtiene Cliente/Pendiente y conserva su contraseña. Un administrador activo puede cambiar Cliente ↔ Empleado sobre esa misma cuenta. **Rol y estado son independientes:** el cambio no activa, suspende ni da de baja. No se crea otro usuario ni otro perfil.
+**Regla vigente desde estado-cuentas (08/11/2026):** los registros nuevos son **Cliente/Activa** y no requieren aprobación. La espera y activación documentadas en evidencias históricas corresponden solo a cuentas antiguas Pendientes. Suspensión, reactivación, baja definitiva desde la app y bloqueos se describen en [la guía actual](estado-cuentas.md). No activar masivamente cuentas existentes.
+
+
+El recorrido confirmado reemplaza la idea de alta directa: cada persona se registra en el formulario público, obtiene Cliente/Activa y conserva su contraseña. Un administrador activo puede cambiar Cliente ↔ Empleado sobre esa misma cuenta. **Rol y estado son independientes:** el cambio no activa, suspende ni da de baja. No se crea otro usuario ni otro perfil.
 
 ## Interfaz y referencia aprobada
 
@@ -19,7 +22,7 @@ El inicio Empleado corresponde a la página 5: saludo destacado, acceso a Tareas
 }
 ```
 
-La vuelta usa Empleado → Cliente. Solo se aceptan esos dos valores y roles distintos; no se puede asignar Administrador ni cambiar una cuenta que sea Administrador. Campos JSON extra, incluido estadoCuenta, se rechazan. El UPDATE modifica únicamente IdRol y condiciona el rol anterior para detectar otra sesión. La aplicación vuelve a consultar el listado después del cambio o conflicto; no reintenta automáticamente la escritura.
+La vuelta usa Empleado → Cliente. Solo se aceptan esos dos valores y roles distintos; no se puede asignar Administrador ni cambiar una cuenta que sea Administrador. Campos JSON extra, incluido estadoCuenta, se rechazan. La transacción verifica el rol anterior y los bloqueos, y modifica únicamente IdRol. La aplicación vuelve a consultar el listado después del cambio o conflicto; no reintenta automáticamente la escritura.
 
 - 204: cambio realizado; se mantienen estado, ID, contraseña, datos de contacto, fecha de registro, perfil e historial.
 - 400: valores inválidos, mismo rol o campos adicionales.
@@ -30,7 +33,7 @@ La vuelta usa Empleado → Cliente. Solo se aceptan esos dos valores y roles dis
 
 El listado admite `rol=Cliente` o `rol=Empleado`, combinado con búsqueda/estado/paginación y orden estable existentes. Omitir rol mantiene el listado general de API. Las pestañas de la app solicitan este filtro al servidor; no filtran solo la página descargada.
 
-La activación existente permanece `POST /api/cuentas/{id}/activar` para Cliente/Pendiente. **Para el recorrido de este bloque, activar antes de asignar Empleado.** Cambiar un Pendiente a Empleado no lo habilita; la restricción sigue aplicándose. Si se hizo en ese orden, volver a Cliente antes de usar la activación existente. No se amplió el contrato de activación.
+La activación POST /api/cuentas/{id}/activar se reserva para cuentas antiguas Pendientes Cliente o Empleado. No se exige activación para registros nuevos. Cambiar de rol no cambia su estado; aplican los bloqueos de trabajos, servicios y solicitudes de la guía estado-cuentas.md.
 
 ## Preparar exclusivamente el entorno local
 
@@ -49,13 +52,13 @@ La activación existente permanece `POST /api/cuentas/{id}/activar` para Cliente
 
 ## Recorrido manual y resultados esperados
 
-1. Registrar una persona nueva identificada PRUEBA ROL LOCAL, con correo único, teléfono y contraseña elegida localmente. Esperado 201, Cliente/Pendiente y perfil cliente. Ingresar: solo aviso de espera, sin rol ni gestión.
-2. Ingresar como administrador local, Gestionar cuentas → Clientes, buscar la cuenta y Ver detalle. Activar con confirmación. Esperado Activa; la contraseña no cambia.
+1. Registrar una persona nueva identificada PRUEBA ROL LOCAL, con correo único, teléfono y contraseña elegida localmente. Esperado 201, Cliente/Activa y perfil cliente. Ingresar: acceso Cliente sin aprobación.
+2. Ingresar como administrador local, Gestionar cuentas → Clientes, buscar la cuenta y Ver detalle. Verificar Activa sin activación adicional; la contraseña no cambia.
 3. Volver al listado, en la tarjeta seleccionar Empleado. **Elegir una opción todavía no guarda:** la tarjeta debe mantener «Rol guardado: Cliente» y mostrar «Cambio sin guardar: Cliente → Empleado». La confirmación aparece debajo del selector de esa misma tarjeta. Cancelar una vez: no debe cambiar nada. Repetir y pulsar **Confirmar cambio de rol**. Solo después de guardar y consultar la cuenta a la API aparece «Rol guardado: Empleado»; la cuenta sale de Clientes y aparece en Empleados, con estado Activa.
-4. Cerrar sesión e ingresar con el correo y contraseña originales de esa persona. Esperado: inicio de empleado con saludo, Rol Empleado, Tareas asignadas deshabilitado para este bloque y Cerrar sesión. No debe aparecer Gestionar cuentas ni un formulario de alta administrativa.
+4. Cerrar sesión e ingresar con el correo y contraseña originales de esa persona. Esperado: inicio de empleado con saludo, Rol Empleado, Tareas asignadas habilitado por los bloques posteriores y Cerrar sesión. No debe aparecer Gestionar cuentas ni un formulario de alta administrativa.
 5. Como administrador, devolver Empleado → Cliente desde la tarjeta. Con la misma cuenta al ingresar otra vez se muestra inicio Cliente; estado y perfil se mantienen. No se borran referencias históricas.
 6. En Postman local, intentar PUT /api/cuentas/{id}/rol con token de cliente y luego empleado: 403. Listado y detalle administrativos también 403. Sin token: 401. Usar Vault; no guardar contraseñas ni tokens en documentos. El cliente público no puede mandar rol/estado privilegiados en el registro.
-7. Con otro registro pendiente de prueba, cambiar a Empleado antes de activar y comprobar que sigue Pendiente sin acceso operativo. Devolver a Cliente para usar la activación existente. Esto comprueba que rol no equivale a estado.
+7. Solo si se dispone de una cuenta antigua Pendiente: cambiar a Empleado sin activarla y comprobar que sigue restringida. Puede activarse como Empleado desde el detalle; ya no es necesario devolverla a Cliente. No generar pendientes nuevos mediante SQL en la base del estudiante.
 8. Con dos sesiones del administrador, abrir el mismo rol previo y confirmar el mismo cambio: una operación puede devolver 204 y la segunda 409; debe refrescar el listado sin error inesperado. No se asegura detectar una secuencia completa de ida y vuelta que termine en el mismo rol: no hay versión de fila en este bloque.
 9. Repetir en Windows y Android; comprobar tarjetas, selector, confirmación, teclado, pestañas, paginación e inicio de empleado con desplazamiento/rotación. Estas comprobaciones de interfaz requieren confirmación del estudiante; compilar no las certifica.
 
