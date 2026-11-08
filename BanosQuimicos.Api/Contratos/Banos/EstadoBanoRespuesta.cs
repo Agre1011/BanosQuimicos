@@ -7,7 +7,7 @@ public record EmpleadoAsignableRespuesta(int IdUsuario, string Nombre);
 public record EstadoBanoRespuesta(int IdBano, string Codigo, string TipoBano, string Condicion,
     bool MantenimientoBloqueante, bool Disponible, int? IdResponsable, string? Responsable,
     bool ResponsableActivo, int? IdServicio, string? EstadoServicio, string? TipoUso,
-    string? Cliente, int? IdUbicacion, string? Direccion, int? LimpiezasSemana);
+    string? Cliente, int? IdUbicacion, string? Direccion, int? LimpiezasSemana, DateTimeOffset? FechaBaja = null);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public class AsignarResponsableSolicitud

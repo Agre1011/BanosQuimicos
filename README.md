@@ -61,7 +61,7 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/direccion-baja-cliente`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/inventario-banos`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 Cliente: [Mis Servicios](docs/servicios-cliente.md), [nuevo servicio y Mis Solicitudes](docs/solicitudes-cliente.md), [limpieza extra y reclamos](docs/limpieza-reclamos-cliente.md) y [cambio de dirección y baja](docs/direccion-baja-cliente.md), habilitados para probar localmente. La última guía incluye revisión administrativa de tareas y los tres escenarios Windows preparados.
 
@@ -94,3 +94,7 @@ Listado/detalle administrativos, aprobación y asignación puntual con tareas vi
 ## Baños y Servicios
 
 Tarjetas e historial, retiro programado sin liberar anticipadamente la unidad y revisión explícita de tareas pendientes. El cierre del empleado finaliza el servicio y calcula disponibilidad respetando condición y mantenimiento. [Guía Windows con dos servicios de prueba](docs/banos-servicios.md). Sin migración nueva ni publicación en hosting.
+
+## Inventario de baños
+
+Alta con código automático, condición física manual, baja lógica y mantenimiento sin servicio dentro de Estado Baños. [Guía local y migración](docs/inventario-banos.md). Conserva las 12 tablas y el historial; sin publicación.

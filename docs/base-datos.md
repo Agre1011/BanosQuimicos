@@ -109,3 +109,8 @@ Pendiente para servicios de negocio y endpoints posteriores (no queda implementa
 - Cambios de condición por administrador, bajas lógicas y asignación/programación manual de tareas; sin generación automática semanal.
 
 El bloque de persistencia no escribió pruebas de altas/modificaciones con datos operativos. La verificación de su script consulta estructura y catálogos reales sin insertar usuarios. El bloque posterior de autenticación sí agrega integración de cuentas en bases nuevas de prueba, según docs/autenticacion-api.md, sin alterar BanosQuimicosDb.
+
+
+## Extensión de inventario (08/11/2026)
+
+El esquema actual conserva las 12 tablas. La migración 20261108174906_InventarioBanosYMantenimiento agrega FechaBaja y ClaveAlta opcionales en BANOS_QUIMICOS, índice único filtrado de ClaveAlta, CHECK de fecha de baja y DescripcionTrabajo opcional de hasta 2000 caracteres en TAREAS_OPERATIVAS. Aplicada solo en LocalDB; pendiente para hosting. Ver docs/inventario-banos.md y sección 27 del plan para reglas, evidencias y guía. Los pendientes enumerados en la sección del bloque original de persistencia reflejan su fecha histórica; el plan registra su implementación posterior.

@@ -41,7 +41,8 @@ public class TareasController(BanosQuimicosDbContext db, TimeProvider reloj) : C
             db.TareasOperativas.Where(t => x.IdTipoOperacion == 8 && x.IdServicio != null && t.IdServicio == x.IdServicio && t.IdTarea != x.IdTarea
                 && (t.IdEstadoOperacion == 7 || t.IdEstadoOperacion == 6 && !(t.IdTipoOperacion == 11 && t.BloqueaAsignacion)))
                 .OrderBy(t => t.IdTarea).Select(t => new ImpedimentoRetiroRespuesta(t.IdTarea, t.TipoOperacion.NombreOperacion,
-                    t.EstadoOperacion.NombreEstado, t.FechaTrabajoRegistrado != null)).ToList()));
+                    t.EstadoOperacion.NombreEstado, t.FechaTrabajoRegistrado != null)).ToList(), x.DescripcionTrabajo, x.Bano.EstadoBano.NombreEstado, x.Bano.FechaBaja,
+            db.TareasOperativas.Count(t => t.IdBano == x.IdBano && t.IdTarea != x.IdTarea && t.IdTipoOperacion == 11 && t.BloqueaAsignacion && (t.IdEstadoOperacion == 6 || t.IdEstadoOperacion == 7))));
 
     [HttpGet("mias/resumen")]
     public async Task<ActionResult<ResumenTareasRespuesta>> Resumen(CancellationToken ct)

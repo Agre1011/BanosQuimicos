@@ -1,6 +1,6 @@
 # Plan de trabajo
 
-Fecha de revisión: 28/10/2026. Preparación, estructura, persistencia y autenticación de API/app cerradas. Gestión de cuentas implementada para revisión: ver sección 14. Las secciones anteriores conservan la historia; no autorizan otros bloques funcionales.
+Última actualización: 08/11/2026. Inventario de baños cerrado y listo para commit, con recorridos y filtro aprobados manualmente en Windows: sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
 
 ## 1. Fuentes revisadas y límites de lectura
 
@@ -1393,3 +1393,77 @@ El estudiante confirmó:
 Estas verificaciones son **manuales**, separadas de las 188 pruebas de la suite completa anterior y de los 28 casos automatizados afectados de la corrección (2 regresiones nuevas; 190 casos definidos, sin afirmar una suite completa de 190). No se atribuye a esta confirmación una nueva baja del servicio 9, ni otros controles o escenarios no mencionados. Los estados anteriores del diagnóstico corresponden al momento previo a esta repetición; no se reinician tareas ni se modifican estados SQL para cerrar el bloque.
 
 Solo se actualizaron el plan y la guía: **no se repitieron pruebas ni compilaciones**. **Bloque cerrado y listo para commit.** La migración `20261107211946_RevisionUbicacionSolicitud` permanece aplicada solo en LocalDB y **pendiente para el hosting**, junto con las anteriores que falten. Integral manual Android contra API local y posterior republicación reservadas para el final. Continúan pendientes vencimiento real del token y alternancia de servidores. Sin commit, push, merge, cambios en hosting ni inicio de otro bloque. Mensaje sugerido: **feat: solicitar cambios de dirección y baja con revisión de tareas**.
+
+
+## 27. Inventario de baños: alta, condición, baja lógica y mantenimiento sin servicio
+
+### Alcance confirmado y revisión previa — 08/11/2026
+
+Se revisaron AGENTS.md, fuentes funcionales y Figma del PDF aprobado, DER original, decisiones C3/C8/C9, modelo, disponibilidad, programación y cierre de tareas existentes. Master y origin/master coincidían en 3503ed6 (merge del bloque dirección/baja), sin cambios locales. Se creó feature/inventario-banos conservando los originales; no se hizo pull adicional, commit, push, merge ni publicación.
+
+Decisiones confirmadas en este bloque (adaptaciones autorizadas, distintas del DER/Figma original):
+
+- Agregar baño dentro de Estado Baños con solo el tipo Obra/Evento. Código automático B.O-/B.E- correlativo histórico, incluyendo bajas, sin límite de inventario por los ejemplos 40/50. Nuevo baño Apto, sin servicio ni responsable habitual.
+- Administrador confirma manualmente Apto/No apto. No apto no finaliza servicios ni cancela tareas. Apto no elimina bloqueos ni reactiva un baño dado de baja.
+- Baja lógica del inventario, separada de condición y baja de servicio. Sin borrar registros, código ni historial. Impedida por servicio Pendiente de entrega/Entregado o tareas Pendiente/En curso; respuesta identifica los servicios/trabajos concretos. Consulta mediante filtro Activos/Bajas/Todos; excluida de nuevas asignaciones y programación.
+- Mantenimiento sin servicio: empleado activo, fecha manual, descripción breve e indicador administrativo de bloqueo. Pendiente/En curso bloquea nuevas asignaciones solo cuando se indicó. Se registra y finaliza mediante el recorrido del empleado; conserva condición física hasta confirmación administrativa y no cambia responsable habitual.
+
+No se implementan otros pendientes de la revisión funcional. Se mantienen las 12 tablas; el documento y Figma originales no se modifican.
+
+### Ajuste de persistencia explicado antes de modificar/aplicar
+
+Migración aditiva **20261108174906_InventarioBanosYMantenimiento**, aplicada exclusivamente a **(localdb)\MSSQLLocalDB / BanosQuimicosDb**:
+
+- BANOS_QUIMICOS.FechaBaja nullable: distingue baja del inventario de No apto; CHECK fecha no anterior al alta.
+- BANOS_QUIMICOS.ClaveAlta nullable: índice único filtrado IS NOT NULL para reintentos sin impedir múltiples filas anteriores sin clave.
+- TAREAS_OPERATIVAS.DescripcionTrabajo nullable, nvarchar(2000): instrucciones administrativas, separadas de observaciones del empleado y reposición de papel. No se falsifican esos campos.
+
+Se revisó Up: solo columnas, índice y CHECK, sin eliminación ni transformación de registros/catálogos. Verificación SQL antes/después: 8 baños, 22 tareas conservados, campos nuevos NULL en todos los registros anteriores; 27 filas de catálogos, 12 tablas del negocio más __EFMigrationsHistory. LocalDB respondió por su nombre normal después del primer intento de arranque; no se usó canal temporal, recreación ni reparación. La migración queda **pendiente para hosting**, junto con RegistroTrabajoTarea, ResponsableLimpiezaYProgramacion, ClaveEnvioSolicitud y RevisionUbicacionSolicitud que continúen faltando allí; no se consultó ni modificó MonsterASP.
+
+### Implementación y restricciones
+
+BanosInventario.cs extiende BanosController con catálogo, alta, condición, baja y mantenimiento sin servicio. Se reutiliza el bloqueo transaccional serializable compartido con asignación y cierres; código único en BD y claves únicas de alta/programación. Alta y mantenimiento recuperan la operación repetida y rechazan la reutilización con otro contenido. Las claves no son permisos: todas las rutas exigen administrador activo; se revalida dentro de la transacción. Nuevas altas consideran todos los códigos históricos del prefijo, con mínimo dos dígitos y longitud técnica existente de 30 caracteres, sin límite ilustrativo de cantidades.
+
+Disponibilidad en Estado Baños, selección de baños para servicio y Baños y Servicios excluye la baja lógica, además de condición, asignación vigente y mantenimiento. Programación de limpieza, responsable habitual, asignación de solicitudes y retiro rechazan nuevas operaciones sobre una unidad dada de baja. Las tareas históricas siguen siendo consultables. TareasController/contratos muestran descripción administrativa, condición, baja y otros mantenimientos bloqueantes; no cambian la condición al finalizar.
+
+App: EstadoBanos incorpora filtros y controles en la vista existente; AltaInventario e InventarioBano son componentes internos, no pantallas nuevas. Confirmaciones explícitas, errores de negocio concretos y confirmación de baja visible aunque la tarjeta salga del filtro Activos. ClienteAutenticacion/SesionUsuario reutilizan sesión, API local y permisos. Borradores de alta/mantenimiento con clave en memoria por administrador, conservados ante envío incierto y descartados al cerrar sesión; no se guardan contraseñas ni claves JWT. Un error explícito de validación/conflicto permite corregir; sin conexión se reintenta el mismo envío. No se promete conservar un borrador tras terminar el proceso de la app: antes de repetir una operación nueva, consultar lo guardado.
+
+### Verificaciones realizadas
+
+- **13 casos nuevos**, focalizados en alta y claves concurrentes, códigos históricos/únicos/no limitados por ejemplos, permisos de anónimo/cliente/empleado/pendiente, condición independiente, bloqueos concretos, mantenimiento sin servicio y su persistencia en sesión nueva, propiedad entre dos empleados, baja lógica/filtros/historial, validación de datos y carreras baja↔programación y baja↔asignación de servicio.
+- Durante desarrollo: 15 casos existentes afectados de Estado Baños correctos y 11 casos nuevos correctos antes de incorporar los últimos dos. Cierre: **suite completa 203/203 correcta**, sin omisiones (190 existentes conservados + 13 nuevos). Total acumulado de esas ejecuciones: **229 casos ejecutados**, incluyendo repeticiones justificadas entre desarrollo y cierre; no son 229 pruebas distintas.
+- Bases aisladas nuevas BanosQuimicosAuthPruebas_GUID y cuentas aleatorias identificadas. No se borran bases anteriores ni se modifican cuentas, claves, roles o trabajos del estudiante. En la base principal solo se aplicó la migración aditiva, sin insertar baños/tareas operativos de ejemplo.
+- API y componentes Razor compilaron con las pruebas. App Debug Windows y Android compilaron con **0 errores y 0 advertencias**, incluyendo el ajuste final de confirmación de baja; parámetros Java temporales ya usados (-m:1, heap 512M, SerialGC), sin cambio de configuración versionada. Compilar no equivale a ejecutar la app ni probarla visualmente.
+- Guía reproducible: **docs/inventario-banos.md**. El estudiante crea unidades nuevas desde Agregar baño y anota el código real; mantenimiento identificado por descripción PRUEBA LOCAL INVENTARIO: revisar bisagras e ID devuelto. No se reutilizan ni reinician trabajos anteriores.
+
+### Pendientes y cierre para revisión
+
+**Implementación cerrada para revisión, sin declarar aprobada la prueba manual Windows.** Falta recorrer alta → No apto → mantenimiento → empleado registra/finaliza → confirmación manual Apto → baja y filtro, según guía. La prueba integral manual Android contra API local sigue reservada para el final, antes de correcciones y republicación. Vencimiento real del token y alternancia de servidores en dispositivo continúan pendientes. Hosting sin cambios; migración nueva pendiente para futura publicación. No se repiten pruebas/compilaciones por la documentación de cierre.
+
+Mensaje de commit sugerido: **feat: gestionar inventario y mantenimiento de baños sin servicio**. No se hizo commit, push, merge ni publicación; esperar revisión y confirmación antes del siguiente bloque.
+
+Revisión final: EF confirmó que no quedan cambios del modelo sin migración. Diff sin errores de espacios; índice de Git vacío. Se revisaron 28 archivos candidatos del bloque: sin generados, perfiles de publicación ni indicadores de secretos en las rutas/textos examinados. ConexionApi y AGENTS.md sin cambios. PDF y dos PNG originales conservan sus hashes anteriores. Los cambios finales son documentales: no se repiten pruebas ni compilaciones.
+
+
+### Inventario: aprobación manual Windows y filtro por condición — 08/11/2026
+
+El estudiante confirmó **aprobados manualmente**: alta y bloqueo de baja por mantenimiento pendiente; finalización del mantenimiento por el empleado conservando No apto hasta confirmación administrativa; baja lógica con consulta por filtro de bajas. Esta evidencia manual queda separada de la suite completa anterior **203/203**. Sustituye el pendiente Windows del cierre inicial para esos tres pasos, sin extender la aprobación a casos no informados.
+
+Ajuste solicitado: Estado Baños agrega filtro de condición **Todos / Aptos / No aptos**, combinado con inventario Activos/Bajas/Todos. La API aplica ambos filtros al conjunto completo antes de materializarlo; no existe paginación en este listado. Condición física no equivale a disponibilidad: Apto puede tener servicio vigente o mantenimiento bloqueante. La app conserva ambas selecciones al actualizar, incluido el refresco tras operaciones, y muestra un mensaje específico sin coincidencias. No cambia entidades ni requiere migración. Se conservaron todos los cambios de feature/inventario-banos.
+
+Guía docs/inventario-banos.md actualizada: **solo queda pendiente la comprobación manual del filtro nuevo en este ajuste**. No se reabre la aprobación de los tres recorridos confirmados. Permanecen los pendientes generales de integral Android local, vencimiento real del token, alternancia de servidores y migraciones/republicación posteriores; InventarioBanosYMantenimiento sigue pendiente para hosting. Sin cambios en hosting, commit, push o merge. Resultado de la verificación focalizada se registra a continuación; no se ejecuta nuevamente la suite completa ni compilaciones de plataformas no afectadas.
+
+Verificación de este ajuste: **1 regresión nueva ejecutada y aprobada**, con las nueve combinaciones de inventario/condición, resultado completo ordenado, Apto asignado frente a Apto disponible y rechazo del filtro inválido. API y Razor de la app compilaron con esa ejecución. Hay 204 casos definidos; la suite completa anterior de 203 se conserva como evidencia histórica y **no se volvió a ejecutar**. El primer intento no pudo iniciar el fixture por el fallo recurrente de LocalDB; se verificó la instancia, archivos y ausencia de transacciones/trabajo activo (solo una sesión ociosa), se recuperó mediante SHUTDOWN normal y arranque según docs/localdb.md, y el reintento usó el nombre normal. Sin recreación ni canal guardado. Diff sin errores de espacios e índice Git vacío.
+
+Implementación del ajuste lista para revisión; cierre manual del bloque pendiente únicamente de confirmar el nuevo filtro. Mensaje de commit sugerido conservado: **feat: gestionar inventario y mantenimiento de baños sin servicio**.
+
+
+### Cierre final de inventario — 08/11/2026
+
+**Prueba manual Windows del filtro aprobada por el estudiante:** opciones Todos / Aptos / No aptos, combinación con filtro de bajas, mensaje sin coincidencias y conservación de ambas selecciones al actualizar. Esta confirmación sustituye el pendiente del ajuste anterior. Los recorridos de alta/bloqueo de baja por mantenimiento, finalización conservando No apto hasta confirmación administrativa y baja lógica/consulta ya estaban aprobados. **Bloque feature/inventario-banos cerrado y listo para commit**, sin comenzar otro bloque.
+
+Evidencia manual separada de las pruebas automatizadas: suite completa previa **203/203**, más **1/1 regresión focalizada del filtro**; 204 casos definidos, sin afirmar una suite completa de 204 ejecutada. Este cierre modifica exclusivamente docs/plan-trabajo.md y docs/inventario-banos.md: no se repiten pruebas ni compilaciones ni se modifican datos/configuración.
+
+Se mantiene **20261108174906_InventarioBanosYMantenimiento pendiente para hosting**, aplicada solo en LocalDB, con las 12 tablas conservadas. Android integral contra API local, correcciones y posterior migraciones/republicación/comprobación de hosting siguen para el final. Vencimiento real del token y alternancia de servidores continúan como pendientes generales. Sin commit, push, merge ni cambios en hosting. Mensaje sugerido: **feat: gestionar inventario y mantenimiento de baños sin servicio**. Esperar confirmación antes del siguiente bloque.
+
+Revisión de candidatos al cierre final: 28 archivos del bloque, diff sin errores de espacios, índice vacío; sin archivos generados, perfiles de publicación ni indicadores de secretos en las rutas/textos revisados. PDF y dos PNG originales mantienen sus hashes. No se prepararon archivos con git add. Solo se editaron el plan y la guía en esta confirmación documental.

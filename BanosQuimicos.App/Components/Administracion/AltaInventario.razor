@@ -1,0 +1,53 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+<button class="principal" disabled="@ocupada" @onclick="() => abierto = !abierto">Agregar baño</button>
+@if (abierto)
+{
+    <div class="tarjeta">
+        <label for="tipo-alta">Tipo del baño nuevo</label>
+        <select id="tipo-alta" @bind="borrador.Tipo" disabled="@(ocupada || borrador.Alta is not null)">
+            <option value="0">Elegir tipo</option>
+            @foreach (var t in tipos) { <option value="@t.IdTipoBano">@t.Nombre</option> }
+        </select>
+        <p>Se generará un código único. El baño se creará Apto, sin servicio ni responsable habitual.</p>
+        <button class="principal" disabled="@(ocupada || borrador.Tipo == 0)" @onclick="GuardarAsync">@(borrador.Alta is null ? "Confirmar alta" : "Reintentar la misma alta")</button>
+        @if (borrador.Alta is not null) { <p>Se conserva este envío hasta confirmar su resultado; reintentar no crea otro baño.</p> }
+    </div>
+}
+@if (ocupada) { <p role="status">Guardando…</p> }
+@if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+@if (aviso is not null) { <p class="aviso" role="status">@aviso</p> }
+
+@code {
+    [Parameter] public EventCallback Guardado { get; set; }
+    private BorradorInventario borrador = new();
+    private List<TipoBanoPedido> tipos = [];
+    private bool abierto, ocupada;
+    private string? error, aviso;
+    protected override async Task OnInitializedAsync()
+    {
+        try { borrador = Sesion.InventarioActual(); abierto = borrador.Alta is not null; tipos = await Sesion.TiposInventarioAsync(); }
+        catch (ErrorApi ex) { error = ex.Message; }
+    }
+    private async Task GuardarAsync()
+    {
+        if (ocupada || borrador.Tipo == 0) return;
+        ocupada = true; error = null; aviso = null;
+        try
+        {
+            borrador.Alta ??= new(Guid.NewGuid(), borrador.Tipo);
+            var b = await Sesion.AltaInventarioAsync(borrador.Alta);
+            borrador.Alta = null; borrador.Tipo = 0; abierto = false;
+            aviso = $"Baño {b.Codigo} guardado. Condición: {b.Condicion}.";
+            await Guardado.InvokeAsync();
+        }
+        catch (ErrorApi ex)
+        {
+            error = ex.Message;
+            // Un rechazo explícito permite corregir; una desconexión conserva la clave.
+            if (ex.Tipo is TipoErrorApi.Validacion or TipoErrorApi.Conflicto) borrador.Alta = null;
+        }
+        finally { ocupada = false; }
+    }
+}

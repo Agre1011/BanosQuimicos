@@ -27,7 +27,7 @@ public class ServiciosController(BanosQuimicosDbContext db, TimeProvider reloj) 
             s.CantidadLimpiezasSemana, s.EstadoServicio,
             s.Bano.ResponsableLimpieza == null ? null : s.Bano.ResponsableLimpieza.Nombre + " " + s.Bano.ResponsableLimpieza.Apellido,
             s.Bano.EstadoBano.NombreEstado, mantenimiento,
-            s.Bano.EstadoBano.NombreEstado == "Apto" && !mantenimiento && !db.Servicios.Any(o => o.IdBano == s.IdBano && (o.EstadoServicio == "Pendiente de entrega" || o.EstadoServicio == "Entregado")),
+            s.Bano.FechaBaja == null && s.Bano.EstadoBano.NombreEstado == "Apto" && !mantenimiento && !db.Servicios.Any(o => o.IdBano == s.IdBano && (o.EstadoServicio == "Pendiente de entrega" || o.EstadoServicio == "Entregado")),
             db.UbicacionesServicio.Where(u => u.IdServicio == s.IdServicio && u.EsActual).Select(u => (int?)u.IdUbicacion).FirstOrDefault(),
             s.FechaEntregaReal, s.FechaRetiroReal, s.FechaFinalizacion,
             db.TareasOperativas.Where(t => t.IdServicio == s.IdServicio).OrderBy(t => t.IdTarea)
@@ -66,6 +66,8 @@ public class ServiciosController(BanosQuimicosDbContext db, TimeProvider reloj) 
             await tx.CommitAsync(ct); return await Detalle(id, ct);
         }
         if (servicio.EstadoServicio != "Entregado") return Conflict(new { mensaje = "Solo se retira un servicio entregado; no se elimina ni cancela desde esta acción." });
+        if (await db.BanosQuimicos.AnyAsync(b => b.IdBano == servicio.IdBano && b.FechaBaja != null, ct))
+            return Conflict(new { mensaje = "El baño está dado de baja del inventario y no admite trabajos nuevos." });
         var conflictoDireccion = await BanosQuimicos.Api.Reglas.ReglasDireccion.Conflicto(db, id, datos.IdSolicitudBaja, ct, true);
         if (conflictoDireccion is not null) return Conflict(new { mensaje = "Operación incompatible: " + conflictoDireccion });
         if (await db.TareasOperativas.AnyAsync(x => x.IdServicio == id && x.IdTipoOperacion == 8 && x.IdEstadoOperacion != 9, ct))
