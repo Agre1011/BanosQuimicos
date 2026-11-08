@@ -14,4 +14,4 @@ public class NuevoServicioSolicitud
 
 public record SolicitudPropiaRespuesta(int IdSolicitud, string Tipo, string Estado, DateTimeOffset FechaSolicitud,
     string? Descripcion, int? CantidadBanos, string? TipoBano, string? TipoUso, string? Direccion,
-    DateTimeOffset? FechaDeseada, List<string> Banos);
+    DateTimeOffset? FechaDeseada, List<string> Banos, string? Modalidad = null, string? NuevaDireccion = null, DateTimeOffset? FechaEfectiva = null);

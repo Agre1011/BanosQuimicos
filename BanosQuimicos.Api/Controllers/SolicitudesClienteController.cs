@@ -14,7 +14,7 @@ namespace BanosQuimicos.Api.Controllers;
 [Route("api/solicitudes-cliente")]
 [Authorize(Policy = Politicas.Cliente)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public class SolicitudesClienteController(BanosQuimicosDbContext db, TimeProvider reloj) : ControllerBase
+public partial class SolicitudesClienteController(BanosQuimicosDbContext db, TimeProvider reloj) : ControllerBase
 {
     private int Usuario => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private IQueryable<SolicitudPropiaRespuesta> Propias(int? id = null) => db.SolicitudesCliente.AsNoTracking()
@@ -25,7 +25,7 @@ public class SolicitudesClienteController(BanosQuimicosDbContext db, TimeProvide
             s.TipoBanoSolicitado == null ? null : s.TipoBanoSolicitado.NombreTipo,
             s.TipoUsoSolicitado, s.DireccionSolicitada, s.FechaDeseada,
             db.Servicios.Where(v => v.IdSolicitudOrigen == s.IdSolicitud || v.IdServicio == s.IdServicioReferencia)
-                .OrderBy(v => v.IdServicio).Select(v => v.Bano.CodigoInterno).ToList()));
+                .OrderBy(v => v.IdServicio).Select(v => v.Bano.CodigoInterno).ToList(), s.ModalidadCambioDireccion, s.NuevaDireccion, s.FechaCambioEfectiva));
 
     [HttpGet("mias")]
     public async Task<ActionResult<List<SolicitudPropiaRespuesta>>> Listar(CancellationToken ct) =>
@@ -52,7 +52,7 @@ public class SolicitudesClienteController(BanosQuimicosDbContext db, TimeProvide
         // Ordenar reintentos concurrentes, incluso si el primero guardó pero se perdió su respuesta.
         await db.Database.ExecuteSqlRawAsync("""
             DECLARE @r int;
-            EXEC @r=sys.sp_getapplock @Resource=N'BanosQuimicos.EnvioSolicitudes',
+            EXEC @r=sys.sp_getapplock @Resource=N'BanosQuimicos.CumplimientoTareas',
                 @LockMode=N'Exclusive', @LockOwner=N'Transaction', @LockTimeout=10000;
             IF @r<0 THROW 51000, 'No se pudo bloquear el envío.', 1;
             """, ct);
@@ -101,7 +101,7 @@ public class SolicitudesClienteController(BanosQuimicosDbContext db, TimeProvide
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         await db.Database.ExecuteSqlRawAsync("""
             DECLARE @r int;
-            EXEC @r=sys.sp_getapplock @Resource=N'BanosQuimicos.EnvioSolicitudes',
+            EXEC @r=sys.sp_getapplock @Resource=N'BanosQuimicos.CumplimientoTareas',
                 @LockMode=N'Exclusive', @LockOwner=N'Transaction', @LockTimeout=10000;
             IF @r<0 THROW 51000, 'No se pudo bloquear el envío.', 1;
             """, ct);

@@ -35,7 +35,13 @@ public class TareasController(BanosQuimicosDbContext db, TimeProvider reloj) : C
             x.FechaRealizada,
             (x.IdEstadoOperacion == 6 || x.IdEstadoOperacion == 7) && x.FechaTrabajoRegistrado == null,
             (x.IdEstadoOperacion == 6 || x.IdEstadoOperacion == 7) && x.FechaTrabajoRegistrado != null && x.IdEmpleadoRegistroTrabajo == x.IdEmpleado,
-            x.Solicitud != null ? x.Solicitud.ObservacionesAdministrador : x.Servicio == null || x.Servicio.SolicitudOrigen == null ? null : x.Servicio.SolicitudOrigen.ObservacionesAdministrador));
+            x.Solicitud != null ? x.Solicitud.ObservacionesAdministrador : x.Servicio == null || x.Servicio.SolicitudOrigen == null ? null : x.Servicio.SolicitudOrigen.ObservacionesAdministrador,
+            x.IdServicio, x.IdSolicitud, x.IdUbicacion, x.IdUbicacionDestino,
+            x.UbicacionDestino == null ? null : x.UbicacionDestino.Direccion,
+            db.TareasOperativas.Where(t => x.IdTipoOperacion == 8 && x.IdServicio != null && t.IdServicio == x.IdServicio && t.IdTarea != x.IdTarea
+                && (t.IdEstadoOperacion == 7 || t.IdEstadoOperacion == 6 && !(t.IdTipoOperacion == 11 && t.BloqueaAsignacion)))
+                .OrderBy(t => t.IdTarea).Select(t => new ImpedimentoRetiroRespuesta(t.IdTarea, t.TipoOperacion.NombreOperacion,
+                    t.EstadoOperacion.NombreEstado, t.FechaTrabajoRegistrado != null)).ToList()));
 
     [HttpGet("mias/resumen")]
     public async Task<ActionResult<ResumenTareasRespuesta>> Resumen(CancellationToken ct)
@@ -155,9 +161,14 @@ public class TareasController(BanosQuimicosDbContext db, TimeProvider reloj) : C
                 break;
             case 8: // Retiro: recién al cierre se libera la asignación vigente.
                 if (servicio.EstadoServicio != "Entregado" || ahora < servicio.FechaEntregaReal) return "El servicio no admite el retiro.";
-                if (await db.TareasOperativas.AnyAsync(x => x.IdServicio == servicio.IdServicio && x.IdTarea != tarea.IdTarea
-                    && (x.IdEstadoOperacion == 7 || x.IdEstadoOperacion == 6 && !(x.IdTipoOperacion == 11 && x.BloqueaAsignacion)), ct))
-                    return "Hay trabajos del servicio por completar o revisar explícitamente por el administrador antes del retiro. No se cancelan automáticamente.";
+                var impedimentos = await db.TareasOperativas.Where(x => x.IdServicio == servicio.IdServicio && x.IdTarea != tarea.IdTarea
+                    && (x.IdEstadoOperacion == 7 || x.IdEstadoOperacion == 6 && !(x.IdTipoOperacion == 11 && x.BloqueaAsignacion)))
+                    .OrderBy(x => x.IdTarea).Select(x => new ImpedimentoRetiroRespuesta(x.IdTarea, x.TipoOperacion.NombreOperacion,
+                        x.EstadoOperacion.NombreEstado, x.FechaTrabajoRegistrado != null)).ToListAsync(ct);
+                if (impedimentos.Count > 0)
+                    return $"Retiro del servicio {servicio.IdServicio} bloqueado por " + string.Join("; ", impedimentos.Select(x =>
+                        $"tarea {x.IdTarea} {x.Tipo} ({x.Estado}{(x.TrabajoRegistrado ? ", trabajo registrado" : "")})"))
+                        + ". El administrador debe revisar esos trabajos en Baños y Servicios: cancelar explícitamente pendientes sin registro que no correspondan, o completar los que deben conservarse. En curso o con trabajo registrado deben finalizarse; no se cancelan automáticamente.";
                 servicio.EstadoServicio = "Finalizado"; servicio.FechaRetiroReal = ahora; servicio.FechaFinalizacion = ahora;
                 break;
             case 10:
@@ -166,6 +177,10 @@ public class TareasController(BanosQuimicosDbContext db, TimeProvider reloj) : C
                 var origen = await db.UbicacionesServicio.SingleOrDefaultAsync(x => x.IdServicio == servicio.IdServicio && x.EsActual, ct);
                 if (destino is null || origen is null || origen.IdUbicacion != tarea.IdUbicacion || destino.EsActual || destino.FechaDesde != null || destino.FechaHasta != null || ahora < origen.FechaDesde)
                     return "Revisar origen y destino del traslado con el administrador.";
+                var solicitudTraslado = tarea.IdSolicitud is int idTraslado ? await db.SolicitudesCliente.SingleAsync(s => s.IdSolicitud == idTraslado, ct) : null;
+                var errorRevision = await BanosQuimicos.Api.Reglas.ReglasDireccion.AplicarRevision(db, solicitudTraslado,
+                    servicio.IdServicio, tarea.IdTarea, origen.IdUbicacion, destino.IdUbicacion, ct);
+                if (errorRevision is not null) return errorRevision;
                 origen.EsActual = false; origen.FechaHasta = ahora;
                 // Primero liberar el índice filtrado de ubicación actual, dentro de la transacción.
                 await db.SaveChangesAsync(ct);

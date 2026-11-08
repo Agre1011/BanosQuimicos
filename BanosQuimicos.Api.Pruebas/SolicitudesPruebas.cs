@@ -79,6 +79,15 @@ public class SolicitudesPruebas(AplicacionTareasPruebas app) : IClassFixture<Apl
                 Assert.False(destino.EsActual); Assert.Null(destino.FechaDesde);
             }
         }
+        if (esperado == 10)
+        {
+            // La tarea auxiliar sigue pendiente: administración conserva explícitamente su contexto.
+            var revision = (await admin.GetFromJsonAsync<RevisionDireccionRespuesta>($"/api/solicitudes/{s.IdSolicitud}/direccion", Ct))!;
+            Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"/api/solicitudes/{s.IdSolicitud}/direccion", new RevisarDireccionSolicitud {
+                ClaveRevision = Guid.NewGuid(), IdEstadoAnterior = revision.IdEstado, IdUbicacionEsperada = revision.IdOrigen,
+                Decisiones = revision.Tareas.Select(t => new DecisionUbicacionSolicitud(t.IdTarea, t.IdUbicacion, false)).ToList()
+            }, Ct)).StatusCode);
+        }
         Assert.Equal(HttpStatusCode.OK, (await empleado.PostAsync($"/api/tareas/{tareaId}/registrar-trabajo", null, Ct)).StatusCode);
         foreach (var _ in Enumerable.Range(0, 2)) Assert.Equal(HttpStatusCode.OK, (await empleado.PostAsync($"/api/tareas/{tareaId}/finalizar", null, Ct)).StatusCode);
         var resuelta = (await admin.GetFromJsonAsync<SolicitudDetalleRespuesta>($"/api/solicitudes/{s.IdSolicitud}", Ct))!;

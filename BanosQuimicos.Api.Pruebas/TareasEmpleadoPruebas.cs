@@ -395,6 +395,50 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
     }
 
     [Fact]
+    public async Task Regresion_traslado_muestra_origen_y_destino_en_api_y_detalle_antes_y_despues()
+    {
+        var a = await Usuario(); var tarea = await Tarea(a.Id, null); int origenId, destinoId;
+        using (var db = app.NuevoContexto())
+        {
+            var t = await db.TareasOperativas.SingleAsync(t => t.IdTarea == tarea.IdTarea, Ct);
+            var origen = await db.UbicacionesServicio.SingleAsync(u => u.IdServicio == tarea.IdServicio && u.EsActual, Ct);
+            var destino = new UbicacionServicio { IdServicio = tarea.IdServicio!.Value, Direccion = "REGRESION DESTINO TRASLADO 456", FechaRegistro = AplicacionTareasPruebas.Ahora };
+            db.UbicacionesServicio.Add(destino); await db.SaveChangesAsync(Ct);
+            t.IdTipoOperacion = 10; t.IdUbicacion = origen.IdUbicacion; t.IdUbicacionDestino = destino.IdUbicacion;
+            await db.SaveChangesAsync(Ct); origenId = origen.IdUbicacion; destinoId = destino.IdUbicacion;
+        }
+        using var http = Http();
+        var sesion = new ClienteApp.SesionUsuario(new ClienteApp.ClienteAutenticacion(http), new AutenticacionAppPruebas.AlmacenPrueba { Token = a.Token });
+        await sesion.InicializarAsync();
+        var captura = new Captura();
+        await using var proveedor = new ServiceCollection().AddLogging().AddSingleton(sesion).AddSingleton<IComponentActivator>(captura).BuildServiceProvider();
+        await using var renderer = new HtmlRenderer(proveedor, proveedor.GetRequiredService<ILoggerFactory>());
+        await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            var vista = await renderer.RenderComponentAsync<Vistas.TareasAsignadas>();
+            var componente = captura.Instancias[typeof(Vistas.TareasAsignadas)];
+            await Callback(componente, "AbrirAsync", tarea.IdTarea);
+            void Verificar()
+            {
+                var html = WebUtility.HtmlDecode(vista.ToHtmlString());
+                Assert.Contains("Dirección de origen", html); Assert.Contains("PRUEBA OTRA DIRECCION ACTUAL", html);
+                Assert.Contains("Dirección de destino", html); Assert.Contains("REGRESION DESTINO TRASLADO 456", html);
+                Assert.Contains($"<dd>{tarea.IdServicio}</dd>", html);
+            }
+            Verificar();
+            await Callback(componente, "GuardarAsync", false); await Callback(componente, "GuardarAsync", true);
+            await Callback(componente, "AbrirAsync", tarea.IdTarea); Verificar();
+        });
+        using var autenticado = Http(a.Token);
+        var dto = (await autenticado.GetFromJsonAsync<TareaAsignadaRespuesta>($"/api/tareas/{tarea.IdTarea}", Ct))!;
+        Assert.Equal(origenId, dto.IdUbicacionOrigen); Assert.Equal(destinoId, dto.IdUbicacionDestino);
+        Assert.Equal("PRUEBA OTRA DIRECCION ACTUAL", dto.DireccionOrigen); Assert.Equal("REGRESION DESTINO TRASLADO 456", dto.DireccionDestino);
+        using var final = app.NuevoContexto();
+        Assert.False((await final.UbicacionesServicio.SingleAsync(u => u.IdUbicacion == origenId, Ct)).EsActual);
+        Assert.True((await final.UbicacionesServicio.SingleAsync(u => u.IdUbicacion == destinoId, Ct)).EsActual);
+    }
+
+    [Fact]
     public async Task Pedido_multibano_no_resuelve_por_completar_una_sola_entrega()
     {
         var a = await Usuario(); var tarea = await Tarea(a.Id, null); int solicitudId;

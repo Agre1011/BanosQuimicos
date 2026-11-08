@@ -15,6 +15,11 @@
                 <p>Fecha: @s.FechaSolicitud.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy HH:mm")</p>
                 @if (s.Banos.Count > 0) { <p>Baño(s): @string.Join(", ", s.Banos)</p> }
                 @if (!string.IsNullOrWhiteSpace(s.Descripcion)) { <p class="texto-trabajo">@s.Descripcion</p> }
+                @if (s.Modalidad is not null)
+                {
+                    <p>@(s.Modalidad == "Informado" ? "Ya realicé el cambio de dirección" : "Necesito que lo trasladen") · Nueva dirección: @s.NuevaDireccion</p>
+                    @if (s.FechaEfectiva is { } efectiva) { <p>Fecha efectiva: @efectiva.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy HH:mm")</p> }
+                }
                 @if (s.CantidadBanos is not null)
                 {
                     <p>Cantidad: @s.CantidadBanos · Tipo: @s.TipoBano · Uso: @s.TipoUso</p>

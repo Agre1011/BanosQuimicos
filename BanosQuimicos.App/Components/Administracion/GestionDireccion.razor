@@ -1,0 +1,75 @@
+@using BanosQuimicos.App.Autenticacion
+@inject SesionUsuario Sesion
+
+<section class="decision-pendiente" aria-busy="@ocupada">
+    <h3>Revisión de ubicación de los trabajos</h3>
+    @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    @if (aviso is not null) { <p class="aviso" role="status">@aviso</p> }
+    @if (revision is { } r)
+    {
+        <p>Origen: @r.DireccionActual → Destino: @r.NuevaDireccion</p>
+        @if (r.FechaEfectiva is { } fecha) { <p>Fecha efectiva informada: @fecha.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy HH:mm")</p> }
+        @if (r.IdEstado == 4) { <p>Solicitud Resuelta. Se conserva el historial.</p> }
+        else
+        {
+            @if (r.Revisada) { <p>Hay una revisión guardada; el cierre del traslado vuelve a comprobar su vigencia.</p> }
+            @if (r.Tareas.Count == 0) { <p>No hay otros trabajos pendientes que requieran decisiones de ubicación.</p> }
+            @foreach (var tarea in r.Tareas)
+            {
+                <div class="cuenta-resumen">
+                    <p>Tarea @tarea.IdTarea · @tarea.Tipo · @tarea.Estado · @(tarea.Direccion ?? "Sin ubicación")</p>
+                    @if (tarea.ImpideContinuar)
+                    { <p class="aviso error">Esta tarea impide continuar: resolver su estado En curso o su trabajo registrado. Su ubicación no se modificará.</p> }
+                    else
+                    {
+                        <label for="@($"ubicacion-tarea-{tarea.IdTarea}")">Decisión de ubicación</label>
+                        <select id="@($"ubicacion-tarea-{tarea.IdTarea}")" value="@selecciones[tarea.IdTarea]" disabled="@(ocupada || intento is not null)" @onchange="e => selecciones[tarea.IdTarea] = e.Value?.ToString() ?? string.Empty">
+                            <option value="">Elegir explícitamente</option><option value="conservar">Conservar ubicación de la tarea</option><option value="mover">Pasar a la nueva ubicación</option>
+                        </select>
+                    }
+                </div>
+            }
+            @if (r.Modalidad == "Informado")
+            {
+                <label for="explicacion-aviso">Explicación del administrador (opcional)</label>
+                <textarea id="explicacion-aviso" maxlength="2000" @bind="explicacion" disabled="@(ocupada || intento is not null)"></textarea>
+                <p>Validar cambia la dirección con la fecha efectiva indicada y resuelve el aviso, sin tarea física.</p>
+            }
+            else { <p>Guardar la revisión no cambia la dirección. Se aplicará cuando el empleado finalice el traslado, si los trabajos no cambiaron.</p> }
+            <button class="principal" disabled="@(ocupada || r.Tareas.Any(t => t.ImpideContinuar) || selecciones.Values.Any(v => v.Length == 0))" @onclick="Guardar">@(intento is not null ? "Reintentar la misma revisión" : r.Modalidad == "Informado" ? "Confirmar: Validar aviso" : "Confirmar revisión de tareas")</button>
+        }
+    }
+    <button class="secundario" disabled="@ocupada" @onclick="Cargar">Consultar tareas nuevamente</button>
+</section>
+
+@code {
+    [Parameter] public int IdSolicitud { get; set; }
+    [Parameter] public EventCallback Guardada { get; set; }
+    private RevisionDireccion? revision;
+    private readonly Dictionary<int, string> selecciones = [];
+    private RevisarDireccion? intento;
+    private string? error, aviso, explicacion;
+    private bool ocupada;
+    protected override Task OnInitializedAsync() => Cargar();
+    private async Task Cargar()
+    {
+        ocupada = true; error = null; revision = null; selecciones.Clear(); intento = null;
+        try { revision = await Sesion.RevisionDireccionAsync(IdSolicitud); foreach (var t in revision.Tareas.Where(t => !t.ImpideContinuar)) selecciones[t.IdTarea] = ""; }
+        catch (ErrorApi ex) { error = ex.Message; }
+        finally { ocupada = false; }
+    }
+    private async Task Guardar()
+    {
+        if (ocupada || revision is not { } r) return;
+        ocupada = true; error = null;
+        intento ??= new(Guid.NewGuid(), r.IdOrigen, r.IdEstado, r.Tareas.Select(t => new DecisionUbicacion(t.IdTarea, t.IdUbicacion, selecciones[t.IdTarea] == "mover")).ToList(), explicacion);
+        try
+        {
+            revision = await Sesion.RevisarDireccionAsync(IdSolicitud, intento);
+            aviso = r.Modalidad == "Informado" ? "Aviso validado y solicitud Resuelta." : "Revisión guardada. El traslado sigue pendiente de finalizar por el empleado.";
+            intento = null; await Guardada.InvokeAsync();
+        }
+        catch (ErrorApi ex) { error = ex.Message; }
+        finally { ocupada = false; }
+    }
+}

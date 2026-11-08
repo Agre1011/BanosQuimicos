@@ -15,6 +15,7 @@
             {
                 <article class="tarjeta tarea-asignada" @key="tarea.IdTarea">
                     <h2>@tarea.Tipo</h2>
+                    <p>Tarea @tarea.IdTarea · Servicio @(tarea.IdServicio?.ToString() ?? "sin servicio") · Solicitud @(tarea.IdSolicitud?.ToString() ?? "sin solicitud") · @tarea.Estado</p>
                     <dl class="cuenta-detalle">
                         <dt>Baño</dt><dd>@tarea.CodigoBano</dd>
                         <dt>Dirección</dt><dd>@(tarea.Direccion ?? "Sin dirección registrada")</dd>
@@ -34,9 +35,17 @@
                 <p class="aviso estado-tarea @(tarea.Estado == "Realizada" ? "realizada" : "")">@(tarea.Estado == "Realizada" ? "Realizado" : tarea.Estado)</p>
                 <dl class="cuenta-detalle">
                     <dt>Tipo de tarea</dt><dd>@tarea.Tipo</dd>
+                    <dt>Tarea</dt><dd>@tarea.IdTarea</dd>
+                    <dt>Servicio</dt><dd>@(tarea.IdServicio?.ToString() ?? "Sin servicio asociado")</dd>
+                    <dt>Solicitud</dt><dd>@(tarea.IdSolicitud?.ToString() ?? "Retiro administrativo o tarea sin solicitud")</dd>
                     <dt>Cliente</dt><dd>@(tarea.Cliente ?? "Sin servicio asociado")</dd>
                     <dt>Baño</dt><dd>@tarea.CodigoBano</dd>
-                    <dt>Dirección</dt><dd>@(tarea.Direccion ?? "Sin dirección registrada")</dd>
+                    @if (tarea.Tipo == "Traslado")
+                    {
+                        <dt>Dirección de origen</dt><dd>@(tarea.DireccionOrigen ?? "Sin origen registrado")</dd>
+                        <dt>Dirección de destino</dt><dd>@(tarea.DireccionDestino ?? "Sin destino registrado; consultar al administrador")</dd>
+                    }
+                    else { <dt>Dirección</dt><dd>@(tarea.Direccion ?? "Sin dirección registrada")</dd> }
                     <dt>Fecha</dt><dd>@Fecha(tarea.FechaProgramada)</dd>
                 </dl>
                 @if (!string.IsNullOrWhiteSpace(tarea.TipoSolicitud)) { <p><strong>Origen:</strong> @tarea.TipoSolicitud</p> }
@@ -46,6 +55,22 @@
                 @if (!string.IsNullOrWhiteSpace(tarea.ObservacionesEmpleado)) { <p class="texto-trabajo"><strong>Observaciones registradas:</strong> @tarea.ObservacionesEmpleado</p> }
                 @if (tarea.PapelHigienicoRepuesto is { } papel) { <p>Papel higiénico repuesto: @(papel ? "Sí" : "No")</p> }
             </article>
+            @if (tarea.Tipo == "Retiro")
+            {
+                <p>Este retiro corresponde al servicio @tarea.IdServicio y a @(tarea.IdSolicitud is int solicitud ? $"la solicitud {solicitud}" : "una operación administrativa sin solicitud").</p>
+                @if (tarea.ImpedimentosRetiro is { Count: > 0 } impedimentos)
+                {
+                    <div class="aviso error" role="alert">
+                        <p>Estos trabajos impiden finalizar el retiro:</p>
+                        @foreach (var bloqueo in impedimentos) { <p>Tarea @bloqueo.IdTarea · @bloqueo.Tipo · @bloqueo.Estado @(bloqueo.TrabajoRegistrado ? "· trabajo registrado" : "")</p> }
+                        <p>Administración debe revisarlos en Baños y Servicios. Los pendientes sin registro que ya no correspondan se cancelan explícitamente; En curso o con trabajo registrado deben completarse.</p>
+                    </div>
+                }
+            }
+            else if (tarea.Tipo is "Limpieza semanal" or "Limpieza extra")
+            {
+                <p>Finalizar esta limpieza no completa un retiro ni da de baja el servicio.</p>
+            }
             @if (tarea.FechaTrabajoRegistrado is { } registro)
             {
                 <p class="aviso" role="status">Trabajo registrado por @tarea.EmpleadoRegistroTrabajo el @Momento(registro).@(tarea.Estado == "Realizada" ? "" : " El estado todavía no se ha finalizado.")</p>

@@ -7,5 +7,11 @@ public record TareaAsignada(int IdTarea, string Tipo, string CodigoBano, string?
     bool? PapelHigienicoRepuesto = null, DateTimeOffset? FechaTrabajoRegistrado = null,
     int? IdEmpleadoRegistroTrabajo = null, string? EmpleadoRegistroTrabajo = null,
     DateTimeOffset? FechaRealizada = null, bool PuedeRegistrar = false, bool PuedeFinalizar = false,
-    string? ObservacionesSolicitud = null);
+    string? ObservacionesSolicitud = null, int? IdServicio = null, int? IdSolicitud = null,
+    int? IdUbicacionOrigen = null, int? IdUbicacionDestino = null, string? DireccionDestino = null,
+    List<ImpedimentoRetiro>? ImpedimentosRetiro = null)
+{
+    public string? DireccionOrigen => Direccion;
+}
+public record ImpedimentoRetiro(int IdTarea, string Tipo, string Estado, bool TrabajoRegistrado);
 public record ResumenTareas(DateOnly Fecha, int Cantidad);

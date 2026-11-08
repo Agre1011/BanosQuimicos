@@ -55,6 +55,10 @@
                     <p>Tarea @trabajo.IdTarea: @trabajo.Tipo · @trabajo.CodigoBano · @trabajo.Estado · @(trabajo.Empleado ?? "Sin empleado asignado") · @(trabajo.FechaProgramada is { } programada ? Fecha(programada) : "Sin programar")</p>
                 }
                 @if (aviso is not null) { <p class="aviso" role="status">@aviso</p> }
+                @if (s.IdTipoOperacion == 4 && (s.ModalidadCambioDireccion == "Informado" || s.Trabajos.Any(t => t.Tipo == "Traslado")))
+                {
+                    <GestionDireccion @key="s.IdSolicitud" IdSolicitud="s.IdSolicitud" Guardada="ReintentarAsync" />
+                }
                 @if (s.IdTipoOperacion == 1 && s.IdEstadoOperacion is 1 or 2 && s.Trabajos.Count == 0 && s.Servicios is not { Count: > 0 })
                 {
                     <AsignarBanosServicio @key="s.IdSolicitud" Solicitud="s" Guardada="PedidoGuardado" />

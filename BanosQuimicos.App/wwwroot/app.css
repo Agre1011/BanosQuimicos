@@ -85,3 +85,4 @@ select { width: 100%; min-height: 3rem; font-size: 1rem; padding: .6rem; backgro
 .solicitud-propia { margin-top: 1.5rem; }
 .cliente-vista textarea { display: block; width: 100%; min-height: 12rem; padding: .8rem; font: inherit; background: #d9d9d9; color: #191919; resize: vertical; }
 .cliente-vista textarea:focus { outline: 3px solid #165d9b; outline-offset: 3px; }
+.modalidad-direccion input[type="radio"] { display: inline-block; width: auto; min-height: 1rem; margin-right: .5rem; }

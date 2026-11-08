@@ -66,6 +66,8 @@ public class ServiciosController(BanosQuimicosDbContext db, TimeProvider reloj) 
             await tx.CommitAsync(ct); return await Detalle(id, ct);
         }
         if (servicio.EstadoServicio != "Entregado") return Conflict(new { mensaje = "Solo se retira un servicio entregado; no se elimina ni cancela desde esta acción." });
+        var conflictoDireccion = await BanosQuimicos.Api.Reglas.ReglasDireccion.Conflicto(db, id, datos.IdSolicitudBaja, ct, true);
+        if (conflictoDireccion is not null) return Conflict(new { mensaje = "Operación incompatible: " + conflictoDireccion });
         if (await db.TareasOperativas.AnyAsync(x => x.IdServicio == id && x.IdTipoOperacion == 8 && x.IdEstadoOperacion != 9, ct))
             return Conflict(new { mensaje = "El servicio ya tiene un retiro. Consultá su estado, no se crea otro." });
         if (!await db.Usuarios.AnyAsync(x => x.IdUsuario == datos.IdEmpleado && x.EstadoCuenta == "Activa" && x.Rol.NombreRol == "Empleado", ct))
