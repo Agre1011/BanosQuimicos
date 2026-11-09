@@ -1,3 +1,5 @@
+> Documento histórico archivado el 08/11/2026. Conserva decisiones, resultados y pendientes de su etapa; no es una guía vigente. Las actualizaciones posteriores pueden sustituir sus reglas. Consultar el [plan actual](../plan-trabajo.md) y el [índice histórico](indice.md).
+
 # Contadores, listados paginados y logo Celeris
 
 Rama `feature/paginacion-tareas-logo`, desde master limpio `30dcbf2`. API local/LocalDB, sin migraciones ni cambios en datos del estudiante o hosting. Se mantienen reglas de estados, propiedad, permisos y cumplimiento. Solo cambia el conteo de trabajo sin finalizar y la forma de consultar/presentar listados.

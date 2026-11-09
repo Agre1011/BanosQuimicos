@@ -1,3 +1,5 @@
+> Documento histórico archivado el 08/11/2026. Conserva decisiones, resultados y pendientes de su etapa; no es una guía vigente. Las actualizaciones posteriores pueden sustituir sus reglas. Consultar el [plan actual](../plan-trabajo.md) y el [índice histórico](indice.md).
+
 # Acceso de empleados mediante cambio de rol
 
 **Regla vigente desde estado-cuentas (08/11/2026):** los registros nuevos son **Cliente/Activa** y no requieren aprobación. La espera y activación documentadas en evidencias históricas corresponden solo a cuentas antiguas Pendientes. Suspensión, reactivación, baja definitiva desde la app y bloqueos se describen en [la guía actual](estado-cuentas.md). No activar masivamente cuentas existentes.
@@ -46,7 +48,7 @@ La activación POST /api/cuentas/{id}/activar se reserva para cuentas antiguas P
    ```
 
    Esperado: Database name BanosQuimicosDb y Data source (localdb)\MSSQLLocalDB. Esto comprueba la configuración seleccionada; no identifica una base por la respuesta pública de /api/estado.
-3. En esa misma terminal: `dotnet run --project BanosQuimicos.Api --launch-profile https`. Esperado: escucha HTTPS 7292 y HTTP 5148 en localhost. Comprobar https://localhost:7292/api/estado: 200. Usar el administrador **local** existente; las cuentas del hosting no se copian. Si no existe uno, seguir el comando interactivo de docs/autenticacion-api.md, después de verificar LocalDB, con credenciales propias y fuera del chat.
+3. En esa misma terminal: `dotnet run --project BanosQuimicos.Api --launch-profile https`. Esperado: escucha HTTPS 7292 y HTTP 5148 en localhost. Comprobar https://localhost:7292/api/estado: 200. Usar el administrador **local** existente; las cuentas del hosting no se copian. Si no existe uno, seguir el comando interactivo de docs/historico/autenticacion-api.md, después de verificar LocalDB, con credenciales propias y fuera del chat.
 4. Abrir BanosQuimicos.App en Visual Studio, Debug, Windows Machine o Moto G9 Plus autorizado por USB. Para Android ejecutar `adb reverse tcp:5148 tcp:5148` desde el SDK y comprobar `adb reverse --list`. No cambiar firewall ni certificados. Mantener la API local activa.
 5. Para verificar el servidor de la app, poner un punto de interrupción al retornar CrearCliente en ConexionApi.cs y observar `direccion` o BaseAddress: deben ser los destinos locales indicados, nunca celeris.runasp.net. El registro de peticiones de la API local debe reflejar las llamadas. El cambio de URL invalida la restauración de la sesión alojada según la lógica existente; no copiar tokens entre destinos.
 

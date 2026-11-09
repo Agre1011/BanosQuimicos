@@ -1,3 +1,5 @@
+> Documento histórico archivado el 08/11/2026. Conserva decisiones, resultados y pendientes de su etapa; no es una guía vigente. Las actualizaciones posteriores pueden sustituir sus reglas. Consultar el [plan actual](../plan-trabajo.md) y el [índice histórico](indice.md).
+
 # Cambio de dirección y baja del cliente
 
 Rama `feature/direccion-baja-cliente`, solo API local y LocalDB. **Bloque cerrado y listo para commit:** verificaciones manuales Windows aprobadas según el cierre final del 08/11/2026. Las adaptaciones de fecha/hora efectivas y revisión administrativa fueron autorizadas por el estudiante; actualizará Figma. No se modifican los originales.
@@ -85,7 +87,7 @@ No se encontró en estos registros un cierre de retiro persistido que dejara sin
 
 **Pruebas focalizadas de esta corrección:** dos regresiones nuevas (contrato/API/app/detalle de traslado antes/después; limpieza frente a retiro correcto, bloqueo concreto y actualización de Mis Solicitudes/Mis Servicios/contador). Se ejecutaron **28 casos afectados, todos correctos**, reutilizando los de retiros/dirección y consulta de empleado. Ahora hay **190 casos definidos**; las 188 pruebas de la suite completa anterior son evidencia previa, no una nueva ejecución completa de 190. No se repite la suite completa por esta revisión focalizada.
 
-LocalDB volvió a presentar el estado Stopped mientras un motor mantenía abiertos sus archivos. Se diagnosticó por lectura, se comprobó que no había otras sesiones/transacciones de usuario y se hizo apagado normal y arranque por nombre, siguiendo `docs/localdb.md`. Se volvió a consultar por `(localdb)\MSSQLLocalDB`; no quedó un canal temporal en ninguna configuración, ni se recreó instancia/base. En BanosQuimicosDb solo se leyeron datos de negocio: no se ejecutó preparación ni se modificaron estados para pasar la prueba.
+LocalDB volvió a presentar el estado Stopped mientras un motor mantenía abiertos sus archivos. Se diagnosticó por lectura, se comprobó que no había otras sesiones/transacciones de usuario y se hizo apagado normal y arranque por nombre, siguiendo `docs/historico/localdb.md`. Se volvió a consultar por `(localdb)\MSSQLLocalDB`; no quedó un canal temporal en ninguna configuración, ni se recreó instancia/base. En BanosQuimicosDb solo se leyeron datos de negocio: no se ejecutó preparación ni se modificaron estados para pasar la prueba.
 
 En ese momento quedaban pendientes repetir el detalle del traslado y finalizar el retiro correcto comprobando IDs y cliente titular. Esas verificaciones fueron aprobadas en el cierre final siguiente. Android integral y publicación/migraciones del hosting siguen para el final. Sin commit, push, merge ni cambios en hosting.
 

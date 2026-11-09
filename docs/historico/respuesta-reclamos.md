@@ -1,3 +1,5 @@
+> Documento histórico archivado el 08/11/2026. Conserva decisiones, resultados y pendientes de su etapa; no es una guía vigente. Las actualizaciones posteriores pueden sustituir sus reglas. Consultar el [plan actual](../plan-trabajo.md) y el [índice histórico](indice.md).
+
 # Reclamos: respuesta administrativa sin trabajo físico
 
 Rama `feature/respuesta-reclamos`, desde master limpio `cb4b0a8`. API local/LocalDB; sin cambios en hosting. Se adapta el detalle existente de Solicitudes y Reclamos con campo y confirmación autorizados, sin pantalla nueva ni cambios en originales.
