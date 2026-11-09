@@ -6,6 +6,8 @@ Proyecto de Programación Móvil para gestionar baños químicos, servicios, sol
 - **BanosQuimicos.Api:** ASP.NET Core Web API con controladores, EF Core y SQL Server.
 - **BanosQuimicos.Api.Pruebas:** integración con bases LocalDB aisladas.
 
+-Despliegue. La API REST está alojada en MonsterASP, en https://celeris.runasp.net/, con la base de datos SQL Server en el mismo proveedor. Para verificar que el servicio está activo puede consultarse https://celeris.runasp.net/api/estado. La aplicación móvil se conecta a esta dirección cuando está configurada para usar el hosting.
+
 Abrir `BanosQuimicos.sln` en Visual Studio 2026. Preparación y ejecución: [ejecución local](docs/ejecucion-local.md).
 
 ## Documentación vigente
