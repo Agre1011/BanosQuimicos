@@ -9,11 +9,11 @@
     @if (aviso is not null) { <p class="aviso" role="status">@aviso</p> }
     <AltaInventario Guardado="RefrescarAsync" />
     <label for="filtro-inventario">Inventario</label>
-    <select id="filtro-inventario" @bind="filtro" @bind:after="CargarAsync" disabled="@ocupada">
+    <select id="filtro-inventario" @bind="filtro" @bind:after="FiltrarAsync" disabled="@ocupada">
         <option value="Activos">Activos</option><option value="Bajas">Bajas del inventario</option><option value="Todos">Todos</option>
     </select>
     <label for="filtro-condicion">Condición física</label>
-    <select id="filtro-condicion" @bind="condicion" @bind:after="CargarAsync" disabled="@ocupada">
+    <select id="filtro-condicion" @bind="condicion" @bind:after="FiltrarAsync" disabled="@ocupada">
         <option value="Todos">Todos</option><option value="Apto">Aptos</option><option value="No apto">No aptos</option>
     </select>
     <p>La condición física no indica disponibilidad: un baño Apto puede estar asignado a un servicio.</p>
@@ -64,11 +64,13 @@
             </article>
         }
     }
+    @if (banos is not null) { <Paginador Total="total" Pagina="pagina" Ocupada="ocupada" Cambiar="PaginarAsync" /> }
     <button class="salir" disabled="@ocupada" @onclick="Volver">Volver</button>
 </section>
 
 @code {
     [Parameter] public EventCallback Volver { get; set; }
+    private int pagina = 1, total;
     private string filtro = "Activos", condicion = "Todos";
     private List<EstadoBano>? banos;
     private List<EmpleadoAsignable> empleados = [];
@@ -92,8 +94,8 @@
     private Task CargarAsync() => EjecutarAsync(async () =>
     {
         banos = null; abierto = null; intento = null; programada = null;
-        var lista = await Sesion.EstadoBanosAsync(filtro, condicion); var activos = await Sesion.EmpleadosAsignablesAsync();
-        if (!dispuesto) { banos = lista; empleados = activos; }
+        var lista = await Sesion.PaginaBanosAsync(pagina, filtro, condicion); var activos = await Sesion.EmpleadosAsignablesAsync();
+        if (!dispuesto) { banos = lista.Elementos; pagina = lista.PaginaActual; total = lista.Total; empleados = activos; }
     });
     private async Task InventarioGuardadoAsync(string mensaje)
     {
@@ -102,9 +104,11 @@
     }
     private async Task RefrescarAsync()
     {
-        try { var lista = await Sesion.EstadoBanosAsync(filtro, condicion); if (!dispuesto) banos = lista; }
+        try { var lista = await Sesion.PaginaBanosAsync(pagina, filtro, condicion); if (!dispuesto) { banos = lista.Elementos; pagina = lista.PaginaActual; total = lista.Total; } }
         catch (ErrorApi ex) { if (!dispuesto) { banos = null; error = ex.Message; } }
     }
+    private Task FiltrarAsync() { pagina = 1; return CargarAsync(); }
+    private Task PaginarAsync(int p) { if (ocupada) return Task.CompletedTask; pagina = p; return CargarAsync(); }
     private void Abrir(EstadoBano bano)
     {
         if (ocupada) return;

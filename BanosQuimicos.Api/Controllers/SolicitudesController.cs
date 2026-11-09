@@ -22,6 +22,13 @@ public partial class SolicitudesController(BanosQuimicosDbContext db, TimeProvid
             .Select(x => new SolicitudResumenRespuesta(x.IdSolicitud, x.Cliente.Usuario.Nombre + " " + x.Cliente.Usuario.Apellido,
                 x.TipoOperacion.NombreOperacion, x.EstadoOperacion.NombreEstado, x.FechaSolicitud)).ToListAsync(ct));
 
+    [HttpGet("pagina")]
+    public async Task<IActionResult> Pagina(CancellationToken ct, [FromQuery, System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int pagina = 1) =>
+        Ok(await BanosQuimicos.Api.Contratos.ConsultaPaginada.Leer(db.SolicitudesCliente.AsNoTracking()
+            .OrderByDescending(x => x.FechaSolicitud).ThenByDescending(x => x.IdSolicitud)
+            .Select(x => new SolicitudResumenRespuesta(x.IdSolicitud, x.Cliente.Usuario.Nombre + " " + x.Cliente.Usuario.Apellido,
+                x.TipoOperacion.NombreOperacion, x.EstadoOperacion.NombreEstado, x.FechaSolicitud)), pagina, ct));
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<SolicitudDetalleRespuesta>> Detalle(int id, CancellationToken ct)
     {

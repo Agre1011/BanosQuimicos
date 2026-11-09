@@ -212,6 +212,8 @@ public class ClienteAutenticacion
         catch (HttpRequestException) { throw new ErrorApi(TipoErrorApi.Conexion, "No pudimos conectar con el servidor. Revisá la conexión y que la API esté ejecutándose."); }
         catch (TaskCanceledException) { throw new ErrorApi(TipoErrorApi.Conexion, "El servidor tardó demasiado. Podés volver a intentar."); }
     }
+    public Task<Pagina<T>> PaginaAsync<T>(string token, string ruta, int pagina, string filtros = "") =>
+        LeerAutenticadoAsync<Pagina<T>>(token, ruta + "?pagina=" + pagina + filtros, "solicitudes");
     public Task<List<TipoBanoPedido>> TiposInventarioAsync(string token) => LeerAutenticadoAsync<List<TipoBanoPedido>>(token, "api/banos/tipos", "banos");
     public async Task<T> InventarioAsync<T>(string token, string ruta, HttpMethod metodo, object? datos = null)
     {

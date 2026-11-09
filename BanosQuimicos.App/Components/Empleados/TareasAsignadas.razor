@@ -8,7 +8,11 @@
     @if (error is not null) { <p class="aviso error" role="alert">@error</p> <button class="secundario" @onclick="ReintentarAsync">Volver a intentar</button> }
     @if (idDetalle is null)
     {
-        @if (tareas is { Count: 0 }) { <p class="aviso" role="status">No tenés tareas asignadas.</p> }
+        <label for="filtro-tareas">Estado de las tareas</label>
+        <select id="filtro-tareas" @bind="filtro" @bind:after="FiltrarAsync" disabled="@cargando">
+            <option>Sin realizar</option><option>Realizadas</option><option>Todas</option>
+        </select>
+        @if (tareas is { Count: 0 }) { <p class="aviso" role="status">No hay tareas que coincidan con el filtro seleccionado.</p> }
         @if (tareas is not null)
         {
             @foreach (var tarea in tareas)
@@ -25,6 +29,8 @@
                 </article>
             }
         }
+        <button class="secundario" disabled="@cargando" @onclick="CargarAsync">Actualizar consulta</button>
+        @if (tareas is not null) { <Paginador Total="total" Pagina="pagina" Ocupada="cargando" Cambiar="PaginarAsync" /> }
         <button class="salir" disabled="@cargando" @onclick="Volver">Volver</button>
     }
     else
@@ -92,6 +98,8 @@
 
 @code {
     [Parameter] public EventCallback Volver { get; set; }
+    private int pagina = 1, total;
+    private string filtro = "Sin realizar";
     private List<TareaAsignada>? tareas;
     private TareaAsignada? detalle;
     private int? idDetalle;
@@ -111,9 +119,11 @@
     private Task CargarAsync() => EjecutarAsync(async () =>
     {
         idDetalle = null; detalle = null; tareas = null;
-        var resultado = await Sesion.TareasAsync();
-        if (!dispuesto) tareas = resultado;
+        var resultado = await Sesion.PaginaTareasAsync(pagina, filtro);
+        if (!dispuesto) { tareas = resultado.Elementos; pagina = resultado.PaginaActual; total = resultado.Total; }
     });
+    private Task FiltrarAsync() { pagina = 1; return CargarAsync(); }
+    private Task PaginarAsync(int p) { if (cargando) return Task.CompletedTask; pagina = p; return CargarAsync(); }
     private Task AbrirAsync(int id) => EjecutarAsync(async () =>
     {
         idDetalle = id; tareas = null; detalle = null;

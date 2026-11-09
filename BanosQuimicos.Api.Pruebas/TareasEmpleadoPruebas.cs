@@ -113,7 +113,7 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
         // Ahora es 5/4 UTC pero todavía 4/4 en Argentina.
         var inicio = DateTimeOffset.Parse("2030-04-04T00:00:00-03:00");
         await Tarea(a.Id, inicio, false);
-        await Tarea(a.Id, inicio.AddDays(1).AddTicks(-1), false, 9);
+        await Tarea(a.Id, inicio.AddDays(1).AddTicks(-1), false);
         await Tarea(a.Id, inicio.AddTicks(-1), false);
         await Tarea(a.Id, inicio.AddDays(1), false);
         await Tarea(a.Id, null, false);
@@ -205,7 +205,7 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
         await renderer.Dispatcher.InvokeAsync(async () =>
         {
             var inicio = await renderer.RenderComponentAsync<Vistas.InicioEmpleado>();
-            Assert.Contains("1 tarea(s) programada(s)", inicio.ToHtmlString());
+            Assert.Contains("1 tarea(s) sin finalizar", inicio.ToHtmlString());
             var lista = await renderer.RenderComponentAsync<Vistas.TareasAsignadas>();
             Assert.Contains(tarea.Bano.CodigoInterno, lista.ToHtmlString());
             var componente = captura.Instancias[typeof(Vistas.TareasAsignadas)];
@@ -235,7 +235,7 @@ public class TareasEmpleadoPruebas(AplicacionTareasPruebas app) : IClassFixture<
         await rendererVacio.Dispatcher.InvokeAsync(async () =>
         {
             Assert.Contains("0 tarea(s)", (await rendererVacio.RenderComponentAsync<Vistas.InicioEmpleado>()).ToHtmlString());
-            Assert.Contains("No ten", (await rendererVacio.RenderComponentAsync<Vistas.TareasAsignadas>()).ToHtmlString());
+            Assert.Contains("No hay tareas que coincidan", (await rendererVacio.RenderComponentAsync<Vistas.TareasAsignadas>()).ToHtmlString());
         });
     }
 

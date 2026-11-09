@@ -1,6 +1,6 @@
 # Plan de trabajo
 
-Última actualización: 08/11/2026. Ajuste de alcance de servicios independientes listo para revisión: sección 30. Respuesta de reclamos conserva su cierre y aprobación Windows en sección 29. Estado de cuentas conserva su cierre y tres recorridos Windows aprobados en la sección 28. Inventario conserva su cierre y aprobación manual en la sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
+Última actualización: 08/11/2026. Contadores, paginación, filtros y logo cerrados y listos para commit, con aprobaciones manuales Windows: sección 31. El ajuste de alcance de servicios independientes se conserva en sección 30. Respuesta de reclamos conserva su cierre y aprobación Windows en sección 29. Estado de cuentas conserva su cierre y tres recorridos Windows aprobados en la sección 28. Inventario conserva su cierre y aprobación manual en la sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
 
 ## 1. Fuentes revisadas y límites de lectura
 
@@ -1625,3 +1625,79 @@ Ajuste de alcance listo para revisión en la rama actual, con título de commit 
 
 
 Verificación de cierre de este ajuste: compilación de API y componentes Razor compartidos mediante BanosQuimicos.Api.Pruebas correcta, **0 errores y 0 advertencias**, sin ejecutar pruebas ni compilar Windows/Android. Comparación estática con HEAD confirma que el único cambio de la app es el texto de ayuda; no cambió lógica. 9 archivos candidatos revisados, diff sin errores de espacios, índice vacío y sin generados/perfiles/indicadores de secretos en lo examinado. Sin cambios de API/modelo/catálogos/migraciones ni acceso a bases; PDF y dos PNG originales conservan sus hashes. Los cambios finales son documentales: no se repiten verificaciones de compilación. Ajuste cerrado y listo para revisión, sin commit, push, merge o publicación.
+
+
+## 31. Contador de tareas, filtros, paginación y Celeris — 08/11/2026
+
+### Revisión y alcance
+
+Master limpio y coincidente con origin/master en **30dcbf2**, merge del ajuste de servicios independientes. Se creó **feature/paginacion-tareas-logo** sin descartar cambios. Se revisaron AGENTS.md, plan, los seis listados/API, navegación de regreso, resúmenes, control de cuentas paginado y recurso adjunto. Continúa descartado el adicional vinculado: este bloque no cambia esas reglas, frecuencias, servicios, permisos ni estados.
+
+### Implementación
+
+- **TareasController.Resumen** ahora cuenta solo tareas del empleado actual programadas para hoy en Argentina (UTC−3), con estado Pendiente o En curso. Excluye Realizada/Cancelada. Registrar Trabajo no descuenta; finalizar sí. InicioEmpleado aclara «tareas sin finalizar para hoy» y, al retornar al inicio, su inicialización vuelve a consultar el resumen real. Un fallo no se presenta como cero. No depende de la página del listado.
+- **TareasAsignadas** inicia en Sin realizar (Pendiente/En curso, incluido trabajo registrado sin finalizar), permite Realizadas (estado interno Realizada) y Todas (incluye Cancelada con su etiqueta). La lista incluye todas las fechas; no confundir su total con el contador específico de hoy. Conserva filtro y página al regresar del detalle; cambiar filtro reinicia en 1. Actualizar consulta conserva filtro/página o ajusta si ya no existe la última página.
+- **ConsultaPaginada / PaginaRespuesta / Pagina<T> / Paginador** centralizan Count, Skip/Take de diez y navegación Anterior/Siguiente, siguiendo el criterio visual de Gestionar cuentas. Propiedad, filtros y orden con ID de desempate se aplican en SQL sobre el conjunto completo, antes de paginar. Página inferior a 1 o filtros inválidos:400; petición superior a la última:se ajusta a la última válida, sin desbordamiento. Cero resultados: página1, controles deshabilitados y mensaje claro. Error de consulta no se muestra como vacío válido.
+- App conecta las seis vistas a rutas paginadas: /api/tareas/mias/pagina, /api/banos/estado/pagina, /api/servicios/pagina, /api/solicitudes/pagina, /api/servicios-cliente/mios/pagina y /api/solicitudes-cliente/mias/pagina. Respuesta con elementos/pagina/tamanoPagina/total. Las rutas previas se conservan por compatibilidad y pruebas existentes; las pantallas ya no descargan todas las filas para paginar en memoria. Detalles, formularios y desplegables permanecen sin paginación añadida. Gestionar cuentas no se rehace.
+- Estado Baños combina inventario y condición **antes de paginar**, conserva ambas selecciones al actualizar y vuelve a página1 al cambiar cualquiera. Apto sigue separado de Disponible. Altas/bajas/condición refrescan la página con los filtros actuales. Baños y Servicios y Solicitudes y Reclamos mantienen su navegación/operaciones; Mis Servicios conserva página al volver del detalle. El resumen del cliente continúa contando **todos** sus servicios vigentes, no diez.
+- **Logo Celeris:** copia exacta del adjunto en wwwroot/images/celeris.png; SHA-256 409669BDCA770650F43BF8A4FD49E41B70E050EEFCF357B279D576030C9E9B46, idéntico a origen. Componente MarcaCeleris reemplaza BQ en el encabezado compartido de login, registro e inicios de los tres roles. Alt Celeris, proporción 443×204, ancho adaptable hasta22rem y altura automática, sin estirar/recortar/quitar fondo. Se conservan títulos/nombre/rol/textos útiles. Manifiestos de recursos estáticos Android y Windows incluyen el PNG local. No se modifican originales ni se genera otra imagen.
+
+### Pruebas y comprobaciones
+
+- **10 casos nuevos**: contador antes/después de registrar/finalizar, estados/fecha/propiedad y total independiente de página; filtros de tareas antes de paginar y aislamiento; seis listados con 23 registros, orden estable, páginas10, total completo, límites/permisos/vacío/propiedad; filtros inventario/condición combinados; navegación Razor real con página/filtro conservados, última página ajustada y consulta actual del inicio. No se agregan tests de detalles visuales simples del logo.
+- Pruebas afectadas seleccionadas: PaginacionPruebas, TareasEmpleadoPruebas, EstadoBanosPruebas, ServiciosClientePruebas, SolicitudesPruebas, ServiciosPruebas y SolicitudesClientePruebas. Primera corrida: **107 casos, 106 correctos y 1 expectativa vieja del texto vacío**. Se actualizó esa expectativa sin eliminar el caso, se conservó la prueba de los dos extremos del día con tareas aún pendientes y se amplió la de inventario para comprobar página1 al filtrar y conservación al actualizar. **Los 3 casos ajustados pasaron** en una corrida focalizada, sin repetir los otros. Resultado final: **107 casos distintos afectados verificados; 110 ejecuciones acumuladas**, no una suite completa. 10 casos nuevos, 240 definidos en total contando los 230 anteriores; no se afirma ejecución completa de240.
+- API/Razor compilaron con las pruebas. Bases nuevas aisladas BanosQuimicosAuthPruebas_GUID; no se borraron bases previas ni se alteraron cuentas, servicios o trabajos del estudiante. No se prepararon filas operativas en la base principal ni se cambiaron condiciones para forzar páginas de prueba.
+- Sin cambios en Modelos/Datos/migraciones, reglas de negocio de cumplimiento, catálogos ni ConexionApi. No se agrega migración; todas las de hosting previamente pendientes conservan su estado. Sin configuración nueva de HTTPS, red o firewall.
+
+### Guía y cierre para revisión
+
+**docs/paginacion-contadores-logo.md** contiene contratos y guía Windows dividida en grupos de tres comprobaciones: logo; contador; filtro/navegación de tareas; listados administrativos; cliente y conexión. Si los datos locales no superan diez coincidencias, Siguiente deshabilitado es correcto: no se alteran registros anteriores para fabricar una segunda página. Los conjuntos11/12/23 se probaron automáticamente en bases aisladas. Para el contador manual se programa una tarea nueva de prueba para hoy por el recorrido administrativo existente.
+
+**Implementación lista para revisión manual**, sin marcar Windows/Android visualmente aprobados por haber compilado. Android integral contra API local, vencimiento real del token y alternancia de servidores siguen pendientes. Después de validación/correcciones se revisarán migraciones y republicación. Sin commit, push, merge, publicación ni cambios en hosting; no iniciar otro bloque sin confirmación. Mensaje de commit sugerido: **feat: paginar listados y actualizar tareas pendientes con logo Celeris**.
+
+
+Verificación final de compilación: app Debug **Windows y Android correctas, 0 errores y 0 advertencias**, código0. Se completó una compilación incremental posterior al ajuste de ambos filtros de Estado Baños para asegurar que Android y Windows incluyan la versión final; no se repitieron tests por ese cambio visual de enlace ni por documentación. La verificación focalizada de3 casos ya comprobó el reinicio/conservación de página mediante los componentes reales. No hubo ejecución ni revisión visual en Android o Windows durante este bloque.
+
+Revisión final: **33 archivos candidatos**, diff sin errores de espacios e índice vacío; sin generados, perfiles de publicación ni indicadores de secretos en lo examinado. Sin cambios en modelos/migraciones o ConexionApi. PDF y dos PNG originales mantienen sus hashes; el logo nuevo mantiene exactamente el hash del adjunto. **Implementación cerrada para revisión manual**, sin commit, push, merge ni cambios en hosting. No repetir pruebas/compilaciones por el cierre documental.
+
+
+### Windows confirmado y ajustes de tipo físico y alcance del logo — 08/11/2026
+
+Se registran exclusivamente las confirmaciones del estudiante: **contador y filtro de tareas funcionan; paginación y regreso del detalle funcionan**. Sobre el logo: **se ve bien en Windows, pero se mostró en más pantallas de las solicitadas**. No se extrapola aprobación al filtro nuevo, a la nueva restricción del logo ni a escenarios no informados. Son evidencias manuales, separadas de las107 pruebas afectadas anteriores y sus reejecuciones focalizadas.
+
+En la misma feature/paginacion-tareas-logo se ajustó:
+
+- Baños y Servicios: **Todos / Baños de obra / Baños de evento**. ServiciosController filtra por la relación Bano.TipoBano.NombreTipo del catálogo, no por Servicio.TipoUso ni por códigos, antes de Count/Skip/Take. Endpoint paginado acepta tipoBano=Todos/Obra/Evento; inválido:400. SesionUsuario y BanosServicios envían/conservan ese filtro; al cambiarlo vuelven a página1. Actualizar y cerrar el detalle/selector inline conservan la selección/página. Mensaje específico sin coincidencias. Los baños creados por la app quedan incluidos cuando tengan servicio asociado; sin servicio se siguen consultando en Estado Baños. No se borran registros ni cambia el alcance del listado de servicios.
+- Home condiciona MarcaCeleris a login, registro e inicios de los tres roles. Se retira de pantallas hijas, espera y errores, sin reemplazar por BQ ni cambiar títulos/navegación. PNG, fondo, proporciones y componente se mantienen intactos.
+
+**2 regresiones nuevas, 2/2 correctas**, ejecutadas de forma focalizada: filtro físico con usos cruzados y paginación completa (24 baños de altas API reales en base aislada más un código sin prefijo), y selección/página en el componente; lógica de visibilidad del logo para acceso y todos los roles/pantallas hijas. No se agregan pruebas de píxeles/detalles visuales ni se repite la suite completa o los107 casos anteriores. Se suman a las10 regresiones previas: 12 casos nuevos en el bloque, 242 definidos en el proyecto; no se afirma ejecución completa de242.
+
+API/Razor y app Debug **Windows/Android compilaron con 0 errores y 0 advertencias**, proceso terminado con código0. No se ejecutó la app ni se revisó visualmente Android. Pruebas con bases LocalDB aisladas; no se borraron datos SQL ni se modificaron cuentas/trabajos existentes del estudiante. Sin cambios de modelo/migraciones, imagen, configuración de conexión o hosting.
+
+Guía docs/paginacion-contadores-logo.md actualizada con grupos de tres comprobaciones para ambos ajustes. **Los dos ajustes quedan pendientes de revisión manual; bloque abierto para esa confirmación.** Las aprobaciones del contador/filtro de tareas y paginación/regreso se conservan. Integral Android local, vencimiento real del token, alternancia de servidores y posterior migraciones/republicación siguen pendientes generales. No comenzar otro bloque, hacer commit, push, merge o cambios en hosting. Mensaje sugerido conservado: **feat: paginar listados y actualizar tareas pendientes con logo Celeris**.
+
+Revisión del ajuste: diff sin errores de espacios; 33 candidatos del bloque, índice vacío, sin generados/perfiles ni indicadores de secretos en lo examinado. Sin cambios de modelo/migraciones; PNG idéntico al adjunto original. Los cambios de cierre son documentales y no justifican repetir pruebas/compilaciones. Los dos ajustes siguen pendientes de revisión manual.
+
+
+### Cierre final: aprobaciones manuales Windows — 08/11/2026
+
+Se consolidan exclusivamente las comprobaciones informadas por el estudiante como **aprobadas manualmente en Windows**:
+
+- Contador y filtro de tareas.
+- Paginación y regreso del detalle.
+- Filtro **Todos / Baños de obra / Baños de evento**.
+- Logo únicamente en login, registro y los tres inicios, sin Celeris ni BQ en listados y detalles.
+
+La observación previa de logo en pantallas extra queda corregida y aprobada por esta confirmación. No se atribuyen comprobaciones manuales adicionales no informadas. Los pasos de la guía permanecen para repetir el recorrido, sin afirmar que cada subcaso opcional se haya probado manualmente.
+
+Estas aprobaciones se separan de la evidencia automatizada previa: **107 casos afectados verificados** tras la corrección focalizada de3 casos, más **2/2 regresiones de los ajustes**. Hay12 casos nuevos en el bloque y242 definidos en el proyecto; **no se ejecutó la suite completa** ni se afirma una ejecución completa de242. La compilación final anterior de API/Razor y app Debug Windows/Android fue correcta, **0 errores y 0 advertencias**. No se confunde compilación con revisión visual Android.
+
+**Bloque feature/paginacion-tareas-logo cerrado y listo para commit.** En este cierre solo se actualizan plan y guía: no se repiten pruebas ni compilaciones ni se cambian código, datos o configuración. Sin migración nueva; las migraciones pendientes para hosting mantienen su estado. Android integral contra API local, correcciones y posterior migraciones/republicación/comprobación de hosting continúan para el final; vencimiento real del token y alternancia de servidores siguen pendientes generales.
+
+Título de commit y PR sugerido: **feat: paginar listados y actualizar tareas pendientes con logo Celeris**.
+
+Descripción breve del PR: «Corrige el contador de tareas sin finalizar de hoy e incorpora filtros y paginación de diez elementos en la API, conservando página y selección al regresar. Agrega filtro por tipo físico en Baños y Servicios y limita Celeris a login, registro y los tres inicios. Conserva permisos y datos, sin migraciones. Verificado con pruebas focalizadas, compilación Windows/Android y las comprobaciones manuales Windows confirmadas; Android integral y republicación pendientes.»
+
+Sin commit, push, merge ni cambios en hosting. Esperar confirmación antes de comenzar otro bloque.
+
+Revisión final del cierre: 33 archivos candidatos, diff sin errores de espacios e índice vacío; sin generados, perfiles de publicación ni indicadores de secretos en las rutas/textos examinados. Sin cambios de modelo/migraciones. PDF, dos PNG originales y logo Celeris mantienen sus hashes. En este cierre exclusivamente documental solo se editaron plan y guía; no se ejecutaron pruebas/compilaciones ni git add.

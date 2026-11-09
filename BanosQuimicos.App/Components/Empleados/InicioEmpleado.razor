@@ -6,7 +6,7 @@
         <h1 id="saludo-empleado">Hola, @Nombre</h1>
         <p>Rol: Empleado</p>
         @if (cargando) { <p role="status">Consultando tus tareas de hoy…</p> }
-        else if (resumen is { } hoy) { <p>Tenés @hoy.Cantidad tarea(s) programada(s) para hoy (@hoy.Fecha.ToString("dd/MM/yyyy")).</p> }
+        else if (resumen is { } hoy) { <p>Tenés @hoy.Cantidad tarea(s) sin finalizar para hoy (@hoy.Fecha.ToString("dd/MM/yyyy")).</p> }
     </div>
     @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
     <button class="tareas-empleado" disabled="@cargando" @onclick="VerTareas">Tareas asignadas</button>

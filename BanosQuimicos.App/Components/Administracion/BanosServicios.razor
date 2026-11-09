@@ -6,8 +6,12 @@
     <h1 id="titulo-servicios">Baños y Servicios</h1>
     @if (ocupada) { <p role="status">Procesando…</p> }
     @if (error is not null) { <p class="aviso error" role="alert">@error</p> }
+    <label for="tipo-bano-servicio">Tipo físico del baño</label>
+    <select id="tipo-bano-servicio" @bind="tipoBano" @bind:after="FiltrarAsync" disabled="@ocupada">
+        <option value="Todos">Todos</option><option value="Obra">Baños de obra</option><option value="Evento">Baños de evento</option>
+    </select>
     <button class="secundario" disabled="@ocupada" @onclick="CargarAsync">Consultar nuevamente</button>
-    @if (servicios is { Count: 0 }) { <p class="aviso">No hay servicios registrados.</p> }
+    @if (servicios is { Count: 0 }) { <p class="aviso">No hay servicios que coincidan con el tipo de baño seleccionado.</p> }
     @if (servicios is not null)
     {
         @foreach (var s in servicios)
@@ -88,11 +92,14 @@
             </article>
         }
     }
+    @if (servicios is not null) { <Paginador Total="total" Pagina="pagina" Ocupada="ocupada" Cambiar="PaginarAsync" /> }
     <button class="salir" disabled="@ocupada" @onclick="Volver">Volver</button>
 </section>
 
 @code {
     [Parameter] public EventCallback Volver { get; set; }
+    private int pagina = 1, total;
+    private string tipoBano = "Todos";
     private List<ServicioGestion>? servicios;
     private List<EmpleadoAsignable> empleados = [];
     private int? abierto, revisando, idAviso;
@@ -119,9 +126,11 @@
     private Task CargarAsync() => EjecutarAsync(async () =>
     {
         servicios = null; CerrarSeleccion(); revisando = null;
-        var lista = await Sesion.ServiciosAsync(); var activos = await Sesion.EmpleadosAsignablesAsync();
-        if (!dispuesto) { servicios = lista; empleados = activos; }
+        var lista = await Sesion.PaginaServiciosAsync(pagina, tipoBano); var activos = await Sesion.EmpleadosAsignablesAsync();
+        if (!dispuesto) { servicios = lista.Elementos; pagina = lista.PaginaActual; total = lista.Total; empleados = activos; }
     });
+    private Task FiltrarAsync() { pagina = 1; return CargarAsync(); }
+    private Task PaginarAsync(int p) { if (ocupada) return Task.CompletedTask; pagina = p; return CargarAsync(); }
     private void AbrirRetiro(ServicioGestion s)
     {
         abierto = s.IdServicio; revisando = null; intento = null; empleado = 0;

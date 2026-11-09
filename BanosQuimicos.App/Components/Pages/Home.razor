@@ -8,11 +8,7 @@
 @inject SesionUsuario Sesion
 @implements IDisposable
 
-<header class="marca" aria-label="Baños Químicos">
-    <span class="marca-simbolo" aria-hidden="true">BQ</span>
-    <p>BAÑOS QUÍMICOS</p>
-    <span>Sistema de gestión</span>
-</header>
+@if (MostrarMarca) { <MarcaCeleris /> }
 
 @if (!string.IsNullOrEmpty(Sesion.Mensaje))
 {
@@ -98,6 +94,15 @@ else
 }
 
 @code {
+    // Solo acceso e inicios: las pantallas hijas conservan sus títulos sin logo.
+    private bool MostrarMarca => Sesion.Estado == EstadoSesion.SinSesion ||
+        Sesion.Estado == EstadoSesion.Activa && (Sesion.Cuenta?.Rol switch
+        {
+            "Administrador" => !gestion && !verBanos && !verSolicitudes && !verServicios,
+            "Empleado" => !verTareas,
+            "Cliente" => !verMisServicios && !verMisSolicitudes && !nuevoServicio,
+            _ => false
+        });
     private bool registro, gestion, verTareas, verBanos, verSolicitudes, verServicios, verMisServicios;
     private bool verMisSolicitudes, nuevoServicio;
     private void AbrirMisSolicitudes() { nuevoServicio = false; verMisSolicitudes = true; }
