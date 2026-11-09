@@ -1,116 +1,54 @@
-# Modelo y persistencia
+# Base de datos y persistencia
 
-La API contiene las 12 entidades acordadas. La app no se conecta directamente a SQL Server y todavía no consume la API. El bloque posterior agregó [autenticación de la API](autenticacion-api.md) sin cambiar el esquema; todavía no hay CRUD del negocio.
+App → API → EF Core → SQL Server. La app no conecta directamente a SQL. Modelo en `BanosQuimicos.Api/Modelos`, configuraciones en `Datos/Configuraciones`, contexto en `Datos/BanosQuimicosDbContext.cs` y migraciones/snapshot en `Datos/Migraciones`. La API **no migra automáticamente al iniciar**.
 
-## Archivos para estudiar
+## Las 12 tablas
 
-- `BanosQuimicos.Api/Modelos`: una clase por entidad, con propiedades y referencias de navegación.
-- `BanosQuimicos.Api/Datos/BanosQuimicosDbContext.cs`: reúne los conjuntos de entidades, carga sus configuraciones y establece relaciones sin borrado en cascada.
-- `BanosQuimicos.Api/Datos/Configuraciones`: una configuración por entidad. Define nombres de tablas, claves, longitudes, campos opcionales, índices, restricciones y datos de catálogos.
-- `BanosQuimicos.Api/Datos/Migraciones`: migración Inicial, metadatos y snapshot. El snapshot describe el último modelo migrado; no es una copia de los datos.
-- `BanosQuimicos.Api/Program.cs`: registra el contexto con `UseSqlServer`. No migra ni crea bases automáticamente al iniciar.
-- `BanosQuimicos.Api/appsettings.Development.json`: conexión local de desarrollo con autenticación de Windows, sin usuario ni contraseña guardados.
-- `dotnet-tools.json`: manifiesto de `dotnet-ef` local, versión 10.0.12. No requiere instalación global.
-- `scripts/verificar-persistencia.sql`: comprobaciones de solo lectura del estado inicial; no inserta usuarios ni ejemplos operativos.
+- **ROLES:** Administrador, Empleado y Cliente; referenciado por USUARIOS.
+- **USUARIOS:** identidad, correo, hash, rol, estado y datos de suspensión/baja. Empleado es un rol, no otra tabla.
+- **CLIENTES:** perfil opcional de un usuario, único por IdUsuario. Registro público crea ambos juntos; no se elimina perfil al cambiar rol.
+- **TIPOS_BANO:** Obra/Evento, tipo físico del inventario.
+- **ESTADOS_BANO:** condición Apto/No apto, no disponibilidad ni baja lógica.
+- **BANOS_QUIMICOS:** código único, tipo/condición, responsable habitual opcional, clave de alta y fecha de baja opcionales. Referencia de servicios y tareas históricas.
+- **SERVICIOS:** cliente, baño, solicitud origen opcional, uso, frecuencia, estado y fechas. Un registro por baño; varios pueden provenir de una misma solicitud.
+- **UBICACIONES_SERVICIO:** dirección por servicio con intervalos y EsActual; las tareas conservan referencias históricas, incluido destino de traslado.
+- **TIPOS_OPERACION:** catálogo compartido con indicadores de uso para solicitud/tarea. Adicional histórico se conserva sin ofrecerlo.
+- **ESTADOS_OPERACION:** catálogo con ámbito solicitud/tarea.
+- **SOLICITUDES_CLIENTE:** cliente, servicio opcional, tipo/estado, datos del pedido/modalidad/destino, descripción, respuesta administrativa/fecha, ClaveEnvio y revisión técnica de ubicación opcionales.
+- **TAREAS_OPERATIVAS:** baño directo, servicio/solicitud/empleado opcionales según operación, tipo/estado, fecha programada, origen/destino, bloqueo, descripción y cumplimiento. Registro de trabajo guarda autor/fecha; finalización independiente.
 
-Se usa EF Core SQL Server y Design 10.0.12, compatibles con net10.0. Se fija además System.Security.Cryptography.Pkcs 10.0.13 para corregir los avisos de la dependencia transitiva de SqlClient. Design se marca como dependencia privada de desarrollo.
+`__EFMigrationsHistory` es técnica: registra migración/versión EF, sin ser una entidad de negocio. Por eso se ven 13 tablas. Catálogos iniciales: 3 roles + 2 tipos + 2 condiciones + 11 operaciones + 9 estados = **27 filas**; no incluyen usuarios ni datos operativos de ejemplo.
 
-Fuentes: [proveedor EF Core SQL Server 10.0.12](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.SqlServer/10.0.12), [herramienta local dotnet-ef](https://www.nuget.org/packages/dotnet-ef/10.0.12), [aviso de seguridad de Pkcs](https://github.com/advisories/GHSA-846f-f764-76mx).
+## Restricciones y lógica
 
-## Conexión local
+Configuraciones declaran longitudes, obligatorios/opcionales, FK sin cascada e índices: correo único normalizado sin distinguir mayúsculas, código de baño único, usuario del perfil único, una asignación vigente por baño y una ubicación actual por servicio. Claves opcionales de alta/programación/envío tienen índices únicos filtrados `IS NOT NULL`, conservando múltiples registros antiguos sin clave.
 
-- Servidor: `(localdb)\MSSQLLocalDB`
-- Base exclusiva: `BanosQuimicosDb`
-- Autenticación: Windows / seguridad integrada del usuario de desarrollo.
-- Instancia comprobada: SQL Server LocalDB 2019, 15.0.4382.1. No se cambió a la versión 2025 también instalada.
+La base conserva límites y consistencia básica; no sustituye reglas de API sobre rol/estado, ámbito de catálogo, propiedad, empleado activo, baño/servicio/ubicación compatibles, disponibilidad, estados actuales y revisión de trabajos. Esas operaciones usan las transacciones/bloqueos existentes, que esta limpieza no modifica. Reglas funcionales en [alcance](alcance-y-reglas.md).
 
-El fallo de arranque por nombre detectado durante autenticación quedó resuelto sin recrear la instancia. La conexión normal anterior está verificada; consultar [diagnóstico de LocalDB](localdb.md) si se repite una inconsistencia de estado.
+## Conectar y consultar
 
-`TrustServerCertificate=True` se utiliza solo en esta conexión local de desarrollo. La configuración de otros entornos se proporciona externamente mediante `ConnectionStrings__BanosQuimicos`; no guardar credenciales reales en el repositorio. LocalDB corresponde a la PC del backend, no al teléfono Android.
+Desarrollo: `(localdb)\MSSQLLocalDB`, `BanosQuimicosDb`, autenticación Windows del propietario. Configuración en `appsettings.Development.json`; `TrustServerCertificate=True` limitado a esa conexión local. No usar dirección temporal de canal. Fuera de desarrollo: conexión externa, ver [publicación](publicacion.md).
 
-## Consultar desde Visual Studio 2026
-
-1. Abrir `BanosQuimicos.sln`.
-2. Abrir Ver > Explorador de objetos de SQL Server (SQL Server Object Explorer).
-3. Agregar conexión SQL Server: servidor `(localdb)\MSSQLLocalDB`, autenticación de Windows.
-4. Expandir Bases de datos > BanosQuimicosDb > Tablas.
-5. En un catálogo, por ejemplo `dbo.ROLES`, usar Ver datos; también se puede abrir Nueva consulta y ejecutar el script de verificación.
-
-## Consultar desde SQL Server Management Studio
-
-1. Conectar a Motor de base de datos.
-2. Servidor `(localdb)\MSSQLLocalDB` y autenticación de Windows, con el mismo usuario que creó la instancia.
-3. Expandir Bases de datos > BanosQuimicosDb > Tablas.
-4. Abrir Nueva consulta, seleccionar esa base y ejecutar, por ejemplo:
+Visual Studio 2026: Ver → Explorador de objetos de SQL Server → agregar servidor LocalDB con autenticación Windows → Bases de datos → BanosQuimicosDb → Tablas → Ver datos/Nueva consulta. SSMS: Motor de base de datos, mismo servidor/usuario y base. No editar estados para fabricar pruebas.
 
 ```sql
-SELECT * FROM dbo.ROLES;
-SELECT * FROM dbo.TIPOS_OPERACION;
-SELECT * FROM dbo.ESTADOS_OPERACION;
-SELECT * FROM dbo.__EFMigrationsHistory;
+SELECT DB_NAME() AS BaseActual;
+SELECT MigrationId, ProductVersion FROM dbo.__EFMigrationsHistory ORDER BY MigrationId;
+SELECT IdRol, NombreRol FROM dbo.ROLES;
 ```
 
-Si SSMS no está instalado, Visual Studio o `sqlcmd` son suficientes; no se instaló SSMS en esta tarea.
+## Migraciones conservadas
 
-## Migraciones y verificación desde terminal
+1. `20261027203511_Inicial`: esquema y catálogos.
+2. `20261106204848_RegistroTrabajoTarea`: autor/fecha opcionales de trabajo, FK, índice y CHECK que mantiene ambos juntos.
+3. `20261106222844_ResponsableLimpiezaYProgramacion`: responsable habitual opcional del baño, FK/índice; clave de programación opcional con índice único filtrado.
+4. `20261107191916_ClaveEnvioSolicitud`: clave opcional de solicitud e índice único filtrado.
+5. `20261107211946_RevisionUbicacionSolicitud`: `RevisionUbicacionJson` opcional, instantánea técnica para revisar tareas/destino sin reescribir historial prematuramente.
+6. `20261108174906_InventarioBanosYMantenimiento`: FechaBaja y ClaveAlta opcionales en baños, índice filtrado/CHECK; DescripcionTrabajo opcional hasta 2000 en tareas.
+7. `20261108193729_RegistroClienteActivo`: solo DEFAULT EstadoCuenta a Activa; no cambia estados de cuentas existentes. La API además establece explícitamente Cliente/Activa.
 
-Ejecutar desde la raíz del repositorio. Restaurar la herramienta local y los paquetes no crea tablas:
+Aplicaciones locales y pendientes de hosting están registrados históricamente; no se consultaron bases durante esta limpieza. Lista de despliegue en [publicación](publicacion.md). No se agregan migraciones ahora.
 
-```powershell
-dotnet tool restore
-dotnet restore BanosQuimicos.Api
-dotnet build BanosQuimicos.sln
-```
+Equipo local nuevo: revisar primero base/conexión e historial. `dotnet tool restore` usa `dotnet-tools.json` (dotnet-ef local); `dotnet ef migrations list --project BanosQuimicos.Api -- --environment Development` permite revisar historial. Solo tras comprobar destino y necesidad, `dotnet ef database update --project BanosQuimicos.Api -- --environment Development` aplica faltantes; no borrar/recrear bases.
 
-Para revisar modelo y migraciones:
-
-```powershell
-dotnet ef migrations list --project BanosQuimicos.Api -- --environment Development
-dotnet ef migrations has-pending-model-changes --project BanosQuimicos.Api -- --environment Development
-```
-
-La migración inicial ya fue aplicada. Para reproducir la preparación en otra PC, primero revisar si la base existe y qué contiene; no borrar ni reinicializar una base existente. Solo después de esa revisión:
-
-```powershell
-SqlLocalDB start MSSQLLocalDB
-dotnet ef database update --project BanosQuimicos.Api -- --environment Development
-sqlcmd -S '(localdb)\MSSQLLocalDB' -E -d BanosQuimicosDb -b -f 65001 -i scripts/verificar-persistencia.sql
-```
-
-El script comprueba el estado inicial (una migración y tablas operativas vacías). Cuando se agreguen datos o migraciones nuevas deberá adaptarse esa expectativa; un fallo por nuevos datos no significa necesariamente corrupción.
-
-## Las 12 tablas y el historial de EF
-
-Las tablas de negocio son USUARIOS, ROLES, CLIENTES, BANOS_QUIMICOS, TIPOS_BANO, ESTADOS_BANO, SERVICIOS, UBICACIONES_SERVICIO, SOLICITUDES_CLIENTE, TAREAS_OPERATIVAS, TIPOS_OPERACION y ESTADOS_OPERACION.
-
-SQL Server muestra además `__EFMigrationsHistory`: es la tabla técnica donde EF registra el identificador y versión de cada migración aplicada. Por eso se ven 13 tablas, pero siguen siendo 12 entidades del negocio.
-
-Catálogos iniciales: 3 roles, 2 tipos de baño, 2 condiciones físicas, 11 tipos de operación y 9 estados de operación: 27 filas. No se crearon usuarios, clientes, baños ni operaciones de ejemplo. Los IDs de los catálogos son estables y las restricciones que usan esos IDs se deben actualizar con migraciones si cambia su significado.
-
-## Qué protege la base y qué falta implementar
-
-Ya protege:
-
-- Email obligatorio, sin espacios exteriores, único con collation que no distingue mayúsculas/minúsculas. La propiedad Email también recorta espacios al asignarla desde C#.
-- Código de baño único; un perfil CLIENTES por IdUsuario; claves foráneas y longitudes declaradas. CUIT no es único y teléfono/CUIT son texto.
-- Una asignación por baño entre servicios Pendiente de entrega o Entregado, con índice único filtrado. Finalizados/cancelados no ocupan ese índice.
-- Como máximo una ubicación EsActual por servicio. Consistencia básica de intervalos y fechas de los estados de servicio.
-- Valores de uso, modalidad y estado de cuenta; cantidades no negativas/positivas cuando corresponda; mantenimiento como único tipo sin servicio o con bloqueo; empleado no nulo para tareas En curso/Realizada.
-- Las 21 claves foráneas se crean con NO ACTION: borrar directamente un registro referenciado no arrastra el historial. Los futuros flujos de baja deben ser lógicos y no desvincular referencias históricas.
-
-Pendiente para servicios de negocio y endpoints posteriores (no queda implementado con una FK):
-
-- Validar ámbito de estado/tipo en solicitudes y tareas. Las FKs solo garantizan que el catálogo exista; el campo Ambito y los indicadores no validan automáticamente su uso desde otra tabla.
-- Validar cliente compartido entre solicitud/servicio, baño compartido entre tarea/servicio y pertenencia de las ubicaciones al servicio.
-- Registro atómico de usuario/perfil, activación y políticas de cuenta/rol ya implementados en el bloque de autenticación. Pendientes: empleado activo al asignar/avanzar y conservación de responsable/ubicación al realizar tareas del negocio.
-- Disponibilidad completa según condición y mantenimiento, comprobada transaccionalmente al asignar. El índice evita duplicar asignaciones, pero no impide por sí solo asignar una unidad No apta o con mantenimiento bloqueante.
-- Datos condicionales de cada solicitud (dirección de prestación, cantidad/tipo/fecha, servicio de referencia o modalidad), transición de estados y resolución por todos los trabajos requeridos.
-- Cambios de dirección, intervalos históricos sin superposición y actualización coordinada de servicio, tareas y ubicaciones. Un índice de ubicación actual no comprueba todos los intervalos históricos.
-- Cambios de condición por administrador, bajas lógicas y asignación/programación manual de tareas; sin generación automática semanal.
-
-El bloque de persistencia no escribió pruebas de altas/modificaciones con datos operativos. La verificación de su script consulta estructura y catálogos reales sin insertar usuarios. El bloque posterior de autenticación sí agrega integración de cuentas en bases nuevas de prueba, según docs/autenticacion-api.md, sin alterar BanosQuimicosDb.
-
-
-## Extensión de inventario (08/11/2026)
-
-El esquema actual conserva las 12 tablas. La migración 20261108174906_InventarioBanosYMantenimiento agrega FechaBaja y ClaveAlta opcionales en BANOS_QUIMICOS, índice único filtrado de ClaveAlta, CHECK de fecha de baja y DescripcionTrabajo opcional de hasta 2000 caracteres en TAREAS_OPERATIVAS. Aplicada solo en LocalDB; pendiente para hosting. Ver docs/inventario-banos.md y sección 27 del plan para reglas, evidencias y guía. Los pendientes enumerados en la sección del bloque original de persistencia reflejan su fecha histórica; el plan registra su implementación posterior.
+`scripts/verificar-persistencia.sql` fue escrito para la etapa Inicial, con tablas operativas vacías; no es un control universal de una base con datos/migraciones posteriores. Los scripts `preparar-*-local.sql` son escenarios locales, no semillas de producción. Se conservan por reproducibilidad, sin ejecutarlos en esta limpieza.

@@ -1,3 +1,5 @@
+> Documento histórico archivado el 08/11/2026. Conserva decisiones, resultados y pendientes de su etapa; no es una guía vigente. Las actualizaciones posteriores pueden sustituir sus reglas. Consultar el [plan actual](../plan-trabajo.md) y el [índice histórico](indice.md).
+
 # Consulta de servicios del cliente
 
 **Alcance vigente (08/11/2026):** para necesitar otro baño se usa **Solicitar un nuevo servicio**, pudiendo repetir la dirección. No hay adicionales vinculados, agrupación de contrataciones ni herencia de datos. Los servicios resultantes son independientes, con sus propias frecuencias, tareas, traslados y bajas. Esta decisión reemplaza las propuestas previas de adicionales; no cambia el recorrido existente ni elimina tipos o registros históricos.

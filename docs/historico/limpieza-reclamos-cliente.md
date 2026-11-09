@@ -1,3 +1,5 @@
+> Documento histórico archivado el 08/11/2026. Conserva decisiones, resultados y pendientes de su etapa; no es una guía vigente. Las actualizaciones posteriores pueden sustituir sus reglas. Consultar el [plan actual](../plan-trabajo.md) y el [índice histórico](indice.md).
+
 # Limpieza extra y reclamos del cliente
 
 Rama `feature/limpieza-reclamos-cliente`, API local y LocalDB. Mis Servicios → detalle de un servicio propio → Solicitar Limpieza Extra o Realizar Reclamo. Cambio de dirección y baja siguen deshabilitados.

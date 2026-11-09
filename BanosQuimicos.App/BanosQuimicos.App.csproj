@@ -12,25 +12,20 @@
         <EnableDefaultCssItems>false</EnableDefaultCssItems>
         <Nullable>enable</Nullable>
 
-        <!-- Enable XAML source generation for faster build times and improved performance.
-             This generates C# code from XAML at compile time instead of runtime inflation.
-             To disable, remove this line.
-             For individual files, you can override by setting Inflator metadata:
-               <MauiXaml Update="MyPage.xaml" Inflator="Default" /> (reverts to defaults: Runtime for Debug, XamlC for Release)
-               <MauiXaml Update="MyPage.xaml" Inflator="Runtime" /> (force runtime inflation) -->
+        <!-- Generar C# desde XAML durante la compilación. -->
         <MauiXamlInflator>SourceGen</MauiXamlInflator>
 
-        <!-- Display name -->
+        <!-- Nombre visible -->
         <ApplicationTitle>Baños Químicos</ApplicationTitle>
 
-        <!-- App Identifier -->
+        <!-- Identificador de la aplicación -->
         <ApplicationId>com.companyname.banosquimicos.app</ApplicationId>
 
-        <!-- Versions -->
+        <!-- Versiones -->
         <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
         <ApplicationVersion>1</ApplicationVersion>
 
-        <!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
+        <!-- Ejecutar Windows sin empaquetado MSIX. -->
         <WindowsPackageType>None</WindowsPackageType>
 
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
@@ -53,20 +48,19 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- App Icon -->
+        <!-- Icono -->
         <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
 
-        <!-- Splash Screen -->
+        <!-- Pantalla de arranque -->
         <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
 
-        <!-- Images -->
+        <!-- Imágenes -->
         <MauiImage Include="Resources\Images\*" />
-        <MauiImage Update="Resources\Images\dotnet_bot.svg" BaseSize="168,208" />
 
-        <!-- Custom Fonts -->
+        <!-- Fuentes -->
         <MauiFont Include="Resources\Fonts\*" />
 
-        <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
+        <!-- Recursos con nombre relativo a Resources\Raw. -->
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
     </ItemGroup>
 

@@ -1,3 +1,5 @@
+> Documento histórico archivado el 08/11/2026. Conserva decisiones, resultados y pendientes de su etapa; no es una guía vigente. Las actualizaciones posteriores pueden sustituir sus reglas. Consultar el [plan actual](../plan-trabajo.md) y el [índice histórico](indice.md).
+
 # Inventario de baños: guía local
 
 Bloque `feature/inventario-banos`, desde master `3503ed6`. API local y LocalDB; no se publica ni modifica MonsterASP. Adaptaciones autorizadas: alta sencilla dentro de Estado Baños, filtro de bajas, confirmaciones de condición/baja y programación de mantenimiento sin servicio en la misma tarjeta. Se conservan tarjetas, estilos y navegación existentes; no hay pantallas nuevas ni modificación de originales.

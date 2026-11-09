@@ -1,3 +1,5 @@
+> Documento histórico archivado el 08/11/2026. Conserva decisiones, resultados y pendientes de su etapa; no es una guía vigente. Las actualizaciones posteriores pueden sustituir sus reglas. Consultar el [plan actual](../plan-trabajo.md) y el [índice histórico](indice.md).
+
 # Baños y Servicios: baja y retiro
 
 ## Recorrido y reglas confirmadas
@@ -76,4 +78,4 @@ Esta confirmación manual se separa de las **147 pruebas automatizadas** y de la
 La pantalla ahora consulta /api/servicios/pagina con páginas de diez, total y navegación. Las rutas de lista anteriores se conservan por compatibilidad; los filtros se aplican antes de paginar en la API y no a una página aislada. Ver [guía Windows actual por grupos](paginacion-contadores-logo.md). Las aprobaciones manuales anteriores no acreditan la paginación nueva.
 
 
-Filtro paginado vigente: Todos / Baños de obra / Baños de evento, según tipo físico del baño relacionado con el servicio, independiente de su uso. Consulta /api/servicios/pagina con tipoBano=Todos/Obra/Evento. Cambiar filtro reinicia página1; actualizar/cerrar selección conserva filtro/página. Sin coincidencias muestra un aviso específico. Ver los dos ajustes pendientes de revisión manual en docs/paginacion-contadores-logo.md; no se declaran ya probados por las aprobaciones previas.
+Filtro paginado vigente: Todos / Baños de obra / Baños de evento, según tipo físico del baño relacionado con el servicio, independiente de su uso. Consulta /api/servicios/pagina con tipoBano=Todos/Obra/Evento. Cambiar filtro reinicia página1; actualizar/cerrar selección conserva filtro/página. Sin coincidencias muestra un aviso específico. Ver los dos ajustes pendientes de revisión manual en docs/historico/paginacion-contadores-logo.md; no se declaran ya probados por las aprobaciones previas.

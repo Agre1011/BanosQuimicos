@@ -7,7 +7,6 @@ p { line-height: 1.5; }
 .marca { text-align: center; margin: .5rem 0 1.5rem; }
 .marca p { font-size: 1.1rem; font-weight: 800; letter-spacing: .07em; margin: .65rem 0 .1rem; }
 .marca > span:last-child { font-size: .9rem; }
-.marca-simbolo { display: inline-grid; place-items: center; width: 3.25rem; height: 3.25rem; background: #f5cf45; color: #192d55; border-radius: .6rem; font-weight: 800; }
 .tarjeta { padding: 1.3rem; border-radius: .8rem; background: #fffaf3; border: 1px solid #876443; box-shadow: 0 .2rem .7rem #49341c22; }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 label { display: block; margin: 1rem 0 .35rem; font-weight: 600; }
