@@ -48,6 +48,13 @@ public partial class BanosController(BanosQuimicosDbContext db, TimeProvider rel
         return Ok(await Estados(inventario: inventario, condicion: condicion).ToListAsync(ct));
     }
 
+    [HttpGet("estado/pagina")]
+    public async Task<IActionResult> Pagina(CancellationToken ct, [FromQuery, System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int pagina = 1, [FromQuery] string inventario = "Activos", [FromQuery] string condicion = "Todos")
+    {
+        if (inventario is not ("Activos" or "Bajas" or "Todos") || condicion is not ("Todos" or "Apto" or "No apto")) return BadRequest(new { mensaje = "Filtros de inventario/condición inválidos." });
+        return Ok(await BanosQuimicos.Api.Contratos.ConsultaPaginada.Leer(Estados(inventario: inventario, condicion: condicion), pagina, ct));
+    }
+
     [HttpPut("{id:int}/responsable-limpieza")]
     public async Task<ActionResult<EstadoBanoRespuesta>> Responsable(int id, AsignarResponsableSolicitud datos, CancellationToken ct)
     {

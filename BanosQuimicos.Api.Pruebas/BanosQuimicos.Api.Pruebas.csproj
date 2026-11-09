@@ -29,6 +29,8 @@
     <RazorComponent Include="../BanosQuimicos.App/Components/Administracion/*.razor" Link="Components/Administracion/%(Filename)%(Extension)" />
     <RazorComponent Include="../BanosQuimicos.App/Components/Pages/Home.razor" Link="Components/Pages/Home.razor" />
     <RazorComponent Include="../BanosQuimicos.App/Components/Autenticacion/*.razor" Link="Components/Autenticacion/%(Filename)%(Extension)" />
+    <RazorComponent Include="../BanosQuimicos.App/Components/Paginador.razor" Link="Components/Paginador.razor" />
+    <RazorComponent Include="../BanosQuimicos.App/Components/Layout/MarcaCeleris.razor" Link="Components/Layout/MarcaCeleris.razor" />
     <RazorComponent Include="../BanosQuimicos.App/Components/Layout/MainLayout.razor" Link="Components/Layout/MainLayout.razor" />
   </ItemGroup>
 </Project>

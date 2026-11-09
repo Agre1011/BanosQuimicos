@@ -22,6 +22,7 @@
                 </article>
             }
         }
+        @if (solicitudes is not null) { <Paginador Total="total" Pagina="pagina" Ocupada="ocupada" Cambiar="PaginarAsync" /> }
         <button class="salir" disabled="@ocupada" @onclick="Volver">Volver</button>
     }
     else
@@ -107,6 +108,7 @@
 
 @code {
     [Parameter] public EventCallback Volver { get; set; }
+    private int pagina = 1, total;
     private List<SolicitudResumen>? solicitudes;
     private SolicitudDetalle? detalle;
     private List<EmpleadoAsignable> empleados = [];
@@ -145,8 +147,9 @@
     private Task CargarAsync() => EjecutarAsync(async () =>
     {
         idDetalle = null; detalle = null; solicitudes = null; Cancelar();
-        var resultado = await Sesion.SolicitudesAsync(); if (!dispuesto) solicitudes = resultado;
+        var resultado = await Sesion.PaginaSolicitudesAsync(pagina); if (!dispuesto) { solicitudes = resultado.Elementos; pagina = resultado.PaginaActual; total = resultado.Total; }
     });
+    private Task PaginarAsync(int p) { if (ocupada) return Task.CompletedTask; pagina = p; return CargarAsync(); }
     private Task AbrirAsync(int id) => EjecutarAsync(async () =>
     {
         idDetalle = id; detalle = null; solicitudes = null; Cancelar();

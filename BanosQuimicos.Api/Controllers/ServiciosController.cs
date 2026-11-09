@@ -16,9 +16,10 @@ namespace BanosQuimicos.Api.Controllers;
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class ServiciosController(BanosQuimicosDbContext db, TimeProvider reloj) : ControllerBase
 {
-    private IQueryable<ServicioGestionRespuesta> Datos(int? id = null) =>
+    private IQueryable<ServicioGestionRespuesta> Datos(int? id = null, string tipoBano = "Todos") =>
         from s in db.Servicios.AsNoTracking()
         where id == null || s.IdServicio == id
+        where tipoBano == "Todos" || s.Bano.TipoBano.NombreTipo == tipoBano
         let mantenimiento = db.TareasOperativas.Any(t => t.IdBano == s.IdBano && t.BloqueaAsignacion && (t.IdEstadoOperacion == 6 || t.IdEstadoOperacion == 7))
         orderby s.Bano.CodigoInterno, s.IdServicio descending
         select new ServicioGestionRespuesta(s.IdServicio, s.IdBano, s.Bano.CodigoInterno, s.Bano.TipoBano.NombreTipo, s.TipoUso,
@@ -39,6 +40,13 @@ public class ServiciosController(BanosQuimicosDbContext db, TimeProvider reloj) 
 
     [HttpGet]
     public async Task<ActionResult<List<ServicioGestionRespuesta>>> Listar(CancellationToken ct) => Ok(await Datos().ToListAsync(ct));
+
+    [HttpGet("pagina")]
+    public async Task<IActionResult> Pagina(CancellationToken ct, [FromQuery, System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int pagina = 1, [FromQuery] string tipoBano = "Todos")
+    {
+        if (tipoBano is not ("Todos" or "Obra" or "Evento")) return BadRequest(new { mensaje = "Filtro de tipo de baño inválido." });
+        return Ok(await BanosQuimicos.Api.Contratos.ConsultaPaginada.Leer(Datos(tipoBano: tipoBano), pagina, ct));
+    }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ServicioGestionRespuesta>> Detalle(int id, CancellationToken ct)

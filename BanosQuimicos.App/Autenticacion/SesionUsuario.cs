@@ -196,6 +196,12 @@ public class SesionUsuario(ClienteAutenticacion api, IAlmacenSesion almacen)
     public Task<List<EmpleadoAsignable>> EmpleadosAsignablesAsync() => ComoAdministradorAsync(api.EmpleadosAsignablesAsync);
     public Task<EstadoBano> AsignarResponsableAsync(int id, int empleado, int? anterior) => ComoAdministradorAsync(t => api.AsignarResponsableAsync(t, id, empleado, anterior));
     public Task<LimpiezaProgramada> ProgramarLimpiezaAsync(int id, ProgramarLimpieza datos) => ComoAdministradorAsync(t => api.ProgramarLimpiezaAsync(t, id, datos));
+    public Task<Pagina<TareaAsignada>> PaginaTareasAsync(int p, string estado) => ComoRolAsync("Empleado", t => api.PaginaAsync<TareaAsignada>(t, "api/tareas/mias/pagina", p, "&estado=" + Uri.EscapeDataString(estado)));
+    public Task<Pagina<EstadoBano>> PaginaBanosAsync(int p, string inventario, string condicion) => ComoAdministradorAsync(t => api.PaginaAsync<EstadoBano>(t, "api/banos/estado/pagina", p, "&inventario=" + Uri.EscapeDataString(inventario) + "&condicion=" + Uri.EscapeDataString(condicion)));
+    public Task<Pagina<ServicioGestion>> PaginaServiciosAsync(int p, string tipoBano = "Todos") => ComoAdministradorAsync(t => api.PaginaAsync<ServicioGestion>(t, "api/servicios/pagina", p, "&tipoBano=" + Uri.EscapeDataString(tipoBano)));
+    public Task<Pagina<SolicitudResumen>> PaginaSolicitudesAsync(int p) => ComoAdministradorAsync(t => api.PaginaAsync<SolicitudResumen>(t, "api/solicitudes/pagina", p));
+    public Task<Pagina<ServicioCliente>> PaginaMisServiciosAsync(int p) => ComoRolAsync("Cliente", t => api.PaginaAsync<ServicioCliente>(t, "api/servicios-cliente/mios/pagina", p));
+    public Task<Pagina<SolicitudPropia>> PaginaMisSolicitudesAsync(int p) => ComoRolAsync("Cliente", t => api.PaginaAsync<SolicitudPropia>(t, "api/solicitudes-cliente/mias/pagina", p));
     public Task<List<TareaAsignada>> TareasAsync() => ComoRolAsync("Empleado", api.TareasAsync);
     public Task<TareaAsignada> DetalleTareaAsync(int id) => ComoRolAsync("Empleado", t => api.DetalleTareaAsync(t, id));
     public Task<TareaAsignada> GuardarTrabajoAsync(int id, bool finalizar) => ComoRolAsync("Empleado", t => api.GuardarTrabajoAsync(t, id, finalizar));

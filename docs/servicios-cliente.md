@@ -54,3 +54,8 @@ Integral manual Android al terminar los bloques, contra API local: `adb reverse 
 Se conservaron los 147 casos anteriores y se agregaron 8 casos de reglas/seguridad en `ServiciosClientePruebas.cs`, sin pruebas nuevas de detalles visuales simples. Primera pasada focalizada: 7 correctos/1 fallido por filtro de detalle después de proyectar el DTO; corregido para filtrar antes de proyectar. Segunda pasada: 8/8 correctos. Una única suite completa de cierre: **155 correctos, 0 fallidos, 0 omitidos**. Total **171 ejecuciones de casos**, incluidos los dos recorridos focalizados y el fallo corregido; 155 casos distintos.
 
 La API y los componentes Razor compilaron con las pruebas. La app Debug Windows y Android compiló con **0 errores y 0 advertencias**, usando solo parámetros temporales de Java ya documentados. TestServer y bases LocalDB aisladas prueban la API real; no equivalen a ejecutar la app nativa. El recorrido manual Windows indicado arriba está aprobado; la integral manual Android queda pendiente para el final, antes de republicar. Revisión de diff/candidatos sin archivos generados, perfiles privados ni indicadores de secretos; originales conservados. **Bloque cerrado y listo para commit**, sin commit, push, merge, publicación ni inicio del siguiente. Mensaje sugerido: `feat: consultar servicios propios del cliente`.
+
+
+## Actualización: paginación y contadores
+
+La pantalla ahora consulta /api/servicios-cliente/mios/pagina con páginas de diez, total y navegación. Las rutas de lista anteriores se conservan por compatibilidad; los filtros se aplican antes de paginar en la API y no a una página aislada. Ver [guía Windows actual por grupos](paginacion-contadores-logo.md). Las aprobaciones manuales anteriores no acreditan la paginación nueva.

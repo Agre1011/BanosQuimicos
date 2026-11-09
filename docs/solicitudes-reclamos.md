@@ -73,3 +73,8 @@ Ampliación posterior: [Servicio nuevo](asignar-banos-servicio.md) incorpora su 
 ## Ampliación: respuesta sin trabajo físico
 
 El bloque respuesta-reclamos habilita Responder y resolver en el detalle y muestra la respuesta al propietario en Mis Solicitudes, sin crear una tarea. La referencia anterior a respuesta no implementada describe el bloque histórico de asignación. Ver [guía actual](respuesta-reclamos.md), permisos, reintentos y bloqueo por trabajos activos.
+
+
+## Actualización: paginación y contadores
+
+La pantalla ahora consulta /api/solicitudes/pagina con páginas de diez, total y navegación. Las rutas de lista anteriores se conservan por compatibilidad; los filtros se aplican antes de paginar en la API y no a una página aislada. Ver [guía Windows actual por grupos](paginacion-contadores-logo.md). Las aprobaciones manuales anteriores no acreditan la paginación nueva.

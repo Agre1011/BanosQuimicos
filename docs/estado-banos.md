@@ -72,3 +72,8 @@ Los resultados de pruebas y compilación se registran en la sección 19 del plan
 **Windows aprobado por el estudiante:** guardar responsable habitual, programar una limpieza para el **07/11/2026**, ingresar como empleado, consultar la tarea, registrar el trabajo y finalizarla. Esta confirmación manual es independiente de las 100 pruebas automatizadas y compilaciones anteriores; no se repitieron por este cambio documental. La tarea y el responsable utilizados se conservan con el resultado de la prueba; las referencias anteriores a Sin asignar describen la preparación inicial.
 
 **Android pendiente.** También queda pendiente aplicar al hosting, tras revisar su historial, la migración local 20261106222844_ResponsableLimpiezaYProgramacion: responsable opcional del baño con FK/índice y clave opcional de programación con índice único filtrado. Se mantiene pendiente RegistroTrabajoTarea si todavía no está aplicada allí. No se ejecutó nada en MonsterASP ni se repite el script inicial. Bloque cerrado y listo para commit, sin commit/push/publicación del agente.
+
+
+## Actualización: paginación y contadores
+
+La pantalla ahora consulta /api/banos/estado/pagina con páginas de diez, total y navegación. Las rutas de lista anteriores se conservan por compatibilidad; los filtros se aplican antes de paginar en la API y no a una página aislada. Ver [guía Windows actual por grupos](paginacion-contadores-logo.md). Las aprobaciones manuales anteriores no acreditan la paginación nueva.

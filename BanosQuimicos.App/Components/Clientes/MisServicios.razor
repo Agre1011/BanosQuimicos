@@ -62,6 +62,7 @@ else
                 <button class="cliente-detalle" @onclick="() => Abrir(servicio.IdServicio)">Ver detalle</button>
             </article>
         }
+        <Paginador Total="total" Pagina="pagina" Ocupada="cargando" Cambiar="Paginar" />
         <button class="principal" @onclick="Cargar">Consultar nuevamente</button>
     }
     @if (!confirmarLimpieza && !confirmarBaja) { <button class="volver" disabled="@cargando" @onclick="Regresar">Volver</button> }
@@ -70,6 +71,7 @@ else
 
 @code {
     [Parameter] public EventCallback Volver { get; set; }
+    private int pagina = 1, total;
     private List<ServicioCliente> servicios = [];
     private ServicioCliente? detalle;
     private bool cargando, enDetalle;
@@ -83,10 +85,11 @@ else
     private async Task Cargar()
     {
         cargando = true; error = null; servicios = []; detalle = null;
-        try { servicios = await Sesion.MisServiciosAsync(); }
+        try { var p = await Sesion.PaginaMisServiciosAsync(pagina); servicios = p.Elementos; pagina = p.PaginaActual; total = p.Total; }
         catch (ErrorApi ex) { error = ex.Message; }
         finally { cargando = false; }
     }
+    private Task Paginar(int p) { if (cargando) return Task.CompletedTask; pagina = p; return Cargar(); }
     private async Task Abrir(int id)
     {
         confirmarLimpieza = false; reclamoAbierto = false;

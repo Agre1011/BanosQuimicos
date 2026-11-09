@@ -51,12 +51,20 @@ public class TareasController(BanosQuimicosDbContext db, TimeProvider reloj) : C
         var hoy = reloj.GetUtcNow().ToOffset(TimeSpan.FromHours(-3)).Date;
         var inicio = new DateTimeOffset(hoy, TimeSpan.FromHours(-3));
         var fin = inicio.AddDays(1);
-        var cantidad = await MisTareas().CountAsync(x => x.FechaProgramada >= inicio && x.FechaProgramada < fin, ct);
+        var cantidad = await MisTareas().CountAsync(x => (x.IdEstadoOperacion == 6 || x.IdEstadoOperacion == 7) && x.FechaProgramada >= inicio && x.FechaProgramada < fin, ct);
         return Ok(new ResumenTareasRespuesta(DateOnly.FromDateTime(hoy), cantidad));
     }
     [HttpGet("mias")]
     public async Task<ActionResult<List<TareaAsignadaRespuesta>>> Listar(CancellationToken ct) =>
         Ok(await Datos(MisTareas().OrderBy(x => x.FechaProgramada == null).ThenBy(x => x.FechaProgramada).ThenBy(x => x.IdTarea)).ToListAsync(ct));
+
+    [HttpGet("mias/pagina")]
+    public async Task<IActionResult> Pagina(CancellationToken ct, [FromQuery, System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int pagina = 1, [FromQuery] string estado = "Sin realizar")
+    {
+        if (estado is not ("Sin realizar" or "Realizadas" or "Todas")) return BadRequest(new { mensaje = "Filtro de tareas inválido." });
+        var tareas = MisTareas().Where(t => estado == "Todas" || (estado == "Realizadas" ? t.IdEstadoOperacion == 8 : t.IdEstadoOperacion == 6 || t.IdEstadoOperacion == 7));
+        return Ok(await BanosQuimicos.Api.Contratos.ConsultaPaginada.Leer(Datos(tareas.OrderBy(t => t.FechaProgramada == null).ThenBy(t => t.FechaProgramada).ThenBy(t => t.IdTarea)), pagina, ct));
+    }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<TareaAsignadaRespuesta>> Detalle(int id, CancellationToken ct)

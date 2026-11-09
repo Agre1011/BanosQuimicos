@@ -32,6 +32,10 @@ public partial class SolicitudesClienteController(BanosQuimicosDbContext db, Tim
     public async Task<ActionResult<List<SolicitudPropiaRespuesta>>> Listar(CancellationToken ct) =>
         Ok(await Propias().ToListAsync(ct));
 
+    [HttpGet("mias/pagina")]
+    public async Task<IActionResult> Pagina(CancellationToken ct, [FromQuery, System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)] int pagina = 1) =>
+        Ok(await BanosQuimicos.Api.Contratos.ConsultaPaginada.Leer(Propias(), pagina, ct));
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<SolicitudPropiaRespuesta>> Detalle(int id, CancellationToken ct)
     {

@@ -65,3 +65,10 @@ Bloque de consulta cerrado. Pendientes: recorrido manual Android; definición e 
 ### Ampliación posterior: cumplimiento en dos pasos
 
 La adaptación autorizada del bloque siguiente habilita ambos botones en este mismo detalle, sin formularios nuevos. Las referencias anteriores a acciones deshabilitadas describen el cierre del bloque de consulta. Ver [guía de registro y finalización](registrar-trabajo.md) y sección 18 del plan para la migración local, reglas y pruebas nuevas.
+
+
+## Actualización: paginación y contadores
+
+La pantalla ahora consulta /api/tareas/mias/pagina con páginas de diez, total y navegación. Las rutas de lista anteriores se conservan por compatibilidad; los filtros se aplican antes de paginar en la API y no a una página aislada. Ver [guía Windows actual por grupos](paginacion-contadores-logo.md). Las aprobaciones manuales anteriores no acreditan la paginación nueva.
+
+El contador del inicio cambió a tareas **sin finalizar para hoy** (Pendiente/En curso), excluyendo Realizada/Cancelada; registrar no descuenta y finalizar sí. El listado usa Sin realizar inicialmente y también Realizadas/Todas, en todas las fechas. Este criterio sustituye las descripciones históricas de cantidad programada sin filtrar estados.

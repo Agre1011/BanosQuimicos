@@ -61,7 +61,7 @@ La solución incluye dos proyectos de aplicación y un proyecto de pruebas. El p
 
 ## Git
 
-El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/banos-adicionales`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
+El estudiante realizó los commits, push y merge previos. El bloque actual se desarrolla en `feature/paginacion-tareas-logo`, sin commit ni push en este bloque. `.gitignore` excluye, entre otros, `bin`, `obj`, `.vs` y archivos personales de Visual Studio. La documentación original se conserva.
 
 Cliente: [Mis Servicios](docs/servicios-cliente.md), [nuevo servicio y Mis Solicitudes](docs/solicitudes-cliente.md), [limpieza extra y reclamos](docs/limpieza-reclamos-cliente.md) y [cambio de dirección y baja](docs/direccion-baja-cliente.md), habilitados para probar localmente. La última guía incluye revisión administrativa de tareas y los tres escenarios Windows preparados.
 
@@ -110,3 +110,7 @@ El administrador responde y resuelve sin tarea ficticia cuando no hay trabajos a
 ## Alcance vigente: más baños mediante un nuevo servicio
 
 Se descartó el adicional vinculado al servicio original. No hay agrupación de contrataciones ni herencia de dirección, uso o frecuencia. Se reutiliza Solicitar un nuevo servicio sin cambiar su recorrido; cada servicio resultante conserva sus propias frecuencias, tareas, traslados y bajas. El tipo histórico Baño adicional se conserva en el catálogo y los datos, sin ofrecerlo en recorridos nuevos. Ver decisión definitiva y referencias originales a actualizar manualmente en la sección 30 de docs/plan-trabajo.md.
+
+## Contadores, paginación y Celeris
+
+Listados de diez elementos paginados en API, filtro de tareas Sin realizar/Realizadas/Todas y contador actualizado de tareas sin finalizar de hoy. Logo Celeris local en el encabezado compartido. [Guía de revisión Windows por grupos](docs/paginacion-contadores-logo.md). Sin migración ni publicación; Android visual pendiente.

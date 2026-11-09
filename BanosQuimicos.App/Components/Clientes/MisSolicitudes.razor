@@ -37,21 +37,24 @@
             </article>
         }
     }
+    @if (!cargando && error is null) { <Paginador Total="total" Pagina="pagina" Ocupada="cargando" Cambiar="Paginar" /> }
     <button class="principal" disabled="@cargando" @onclick="Cargar">Actualizar consulta</button>
     <button class="volver" disabled="@cargando" @onclick="Volver">Volver</button>
 </section>
 
 @code {
     [Parameter] public EventCallback Volver { get; set; }
+    private int pagina = 1, total;
     private List<SolicitudPropia> solicitudes = [];
     private bool cargando;
     private string? error;
     protected override Task OnInitializedAsync() => Cargar();
     private static string Clase(string estado) => estado switch { "Resuelta" => "resuelta", "Rechazada" or "Cancelada" => "cerrada", _ => "pendiente" };
+    private Task Paginar(int p) { if (cargando) return Task.CompletedTask; pagina = p; return Cargar(); }
     private async Task Cargar()
     {
         cargando = true; error = null; solicitudes = [];
-        try { solicitudes = await Sesion.MisSolicitudesAsync(); }
+        try { var p = await Sesion.PaginaMisSolicitudesAsync(pagina); solicitudes = p.Elementos; pagina = p.PaginaActual; total = p.Total; }
         catch (ErrorApi ex) { error = ex.Message; }
         finally { cargando = false; }
     }
