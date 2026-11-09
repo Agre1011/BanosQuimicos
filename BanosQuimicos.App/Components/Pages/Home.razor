@@ -78,7 +78,6 @@ else if (Sesion.Estado == EstadoSesion.Activa && Sesion.Cuenta is { } cuenta)
             <button class="solicitudes-admin" disabled="@Sesion.Ocupada" @onclick="() => verSolicitudes = true">Solicitudes y Reclamos</button>
             <button class="estado-banos-admin" disabled="@Sesion.Ocupada" @onclick="() => verBanos = true">Estado Baños</button>
         }
-        <button class="principal" disabled="@Sesion.Ocupada" @onclick="Sesion.ActualizarAsync">Actualizar estado de la cuenta</button>
         <button class="salir" disabled="@Sesion.Ocupada" @onclick="SalirAsync">Cerrar sesión</button>
     </section>
     }

@@ -1,6 +1,6 @@
 # Plan de trabajo
 
-Última actualización: 08/11/2026. Contadores, paginación, filtros y logo cerrados y listos para commit, con aprobaciones manuales Windows: sección 31. El ajuste de alcance de servicios independientes se conserva en sección 30. Respuesta de reclamos conserva su cierre y aprobación Windows en sección 29. Estado de cuentas conserva su cierre y tres recorridos Windows aprobados en la sección 28. Inventario conserva su cierre y aprobación manual en la sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
+Última actualización: 08/11/2026. Ajuste puntual del inicio administrador para revisión: sección 32. Contadores, paginación, filtros y logo conservan su cierre y aprobaciones Windows en sección 31. El ajuste de alcance de servicios independientes se conserva en sección 30. Respuesta de reclamos conserva su cierre y aprobación Windows en sección 29. Estado de cuentas conserva su cierre y tres recorridos Windows aprobados en la sección 28. Inventario conserva su cierre y aprobación manual en la sección 27. Las secciones anteriores conservan la historia y sus evidencias; no autorizan otros bloques funcionales ni dan por aprobadas pruebas manuales pendientes.
 
 ## 1. Fuentes revisadas y límites de lectura
 
@@ -1701,3 +1701,22 @@ Descripción breve del PR: «Corrige el contador de tareas sin finalizar de hoy 
 Sin commit, push, merge ni cambios en hosting. Esperar confirmación antes de comenzar otro bloque.
 
 Revisión final del cierre: 33 archivos candidatos, diff sin errores de espacios e índice vacío; sin generados, perfiles de publicación ni indicadores de secretos en las rutas/textos examinados. Sin cambios de modelo/migraciones. PDF, dos PNG originales y logo Celeris mantienen sus hashes. En este cierre exclusivamente documental solo se editaron plan y guía; no se ejecutaron pruebas/compilaciones ni git add.
+
+
+## 32. Inicio administrador sin botón de actualización de cuenta — 08/11/2026
+
+Se verificó master limpio y coincidente con origin/master en **6b78b90** (merge paginación/tareas/logo). Se creó **codex/inicio-admin-sin-actualizar-cuenta** sin descartar cambios ni hacer pull adicional. Se revisaron AGENTS.md, plan y usos de la acción antes de editar.
+
+Cambio puntual: se retira únicamente el botón **Actualizar estado de la cuenta** del inicio administrador en **BanosQuimicos.App/Components/Pages/Home.razor**. Se conservan Gestionar cuentas y todas sus operaciones, Cerrar sesión, navegación, logo y demás accesos. No se elimina Sesion.ActualizarAsync: sigue compartido por la consulta de cuentas antiguas Pendientes, recuperación de errores y otras pantallas/pruebas. La API conserva la validación de rol y estado actuales por petición, sin cambios de seguridad, datos, modelos, migraciones o configuración.
+
+### Comprobaciones manuales Android confirmadas por el estudiante
+
+**Aprobadas:** conexión del teléfono Android a la API local mediante USB; registro; inicio de sesión correcto. Son evidencias manuales informadas por el estudiante, separadas de las pruebas automatizadas previas. **No equivalen a aprobación de la integral Android** ni de los restantes recorridos del negocio, filtros, paginación o permisos en el dispositivo. La integral contra API local continúa pendiente; migraciones del hosting y republicación se mantienen para después de esa validación y correcciones. Vencimiento real del token y alternancia de servidores siguen pendientes generales.
+
+### Revisión del ajuste
+
+Solo se modifica una línea de interfaz y esta documentación. Para revisión manual: ingresar como administrador local, comprobar ausencia de Actualizar estado de la cuenta y presencia de Gestionar cuentas; abrirlo, volver al inicio y comprobar Cerrar sesión y navegación. La confirmación Android anterior no se atribuye a esta nueva pantalla ajustada. No se ejecuta la suite ni se agregan tests visuales para retirar un botón; se comprueba la compilación Razor afectada y el diff. Sin commit, push, merge ni cambios en hosting.
+
+Mensaje de commit sugerido: **fix: quitar actualización de cuenta del inicio administrador**. Esperar confirmación antes del siguiente bloque.
+
+Resultado: compilación API/Razor correcta, 0 errores y 0 advertencias; no se ejecutaron tests, compilaciones Windows/Android ni acceso a LocalDB. Comparación con HEAD confirma que el único cambio de Home es quitar ese botón, y que Gestionar cuentas y los accesos compartidos permanecen. API sin diff. Dos archivos candidatos (Home y plan), diff sin errores de espacios, índice vacío y sin archivos nuevos/generados. Implementación cerrada para revisión manual, sin iniciar otro bloque ni hacer commit/push/merge/publicación.
